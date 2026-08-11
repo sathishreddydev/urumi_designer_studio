@@ -43,7 +43,7 @@ export const POST = withPermission(
         .insert(users)
         .values({
           name: parsed.data.name,
-          email: parsed.data.email,
+          email: parsed.data.email.toLowerCase(),
           password: hashedPassword,
           role: parsed.data.role,
           phone: parsed.data.phone,

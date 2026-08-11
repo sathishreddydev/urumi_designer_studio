@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { customers, orders, outfits } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeadlineAlerts } from "@/components/deadline-alerts";
 import {
   Users,
   ShoppingBag,
@@ -105,6 +106,7 @@ export default async function DashboardPage() {
           <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} />
           <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
+        <DeadlineAlerts />
       </div>
     );
   }
@@ -125,6 +127,7 @@ export default async function DashboardPage() {
           <StatCard title="Production Released" value={stats.productionReleased} icon={<Scissors className="h-4 w-4" />} />
           <StatCard title="Trials Today" value={stats.trials} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
+        <DeadlineAlerts />
       </div>
     );
   }
@@ -143,6 +146,7 @@ export default async function DashboardPage() {
           <StatCard title="Fabric Cutting" value={stats.fabricCutting} icon={<Clock className="h-4 w-4" />} />
           <StatCard title="Stitching" value={stats.stitching} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
+        <DeadlineAlerts />
       </div>
     );
   }

@@ -137,9 +137,14 @@ export default function OrderDetailPage() {
           </p>
         </div>
         {can("update", "order") && (
-          <Link href={`/dashboard/orders/${params.id}/edit`}>
-            <Button variant="outline" size="sm">Edit</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/dashboard/orders/${params.id}/invoice`}>
+              <Button variant="outline" size="sm">Invoice</Button>
+            </Link>
+            <Link href={`/dashboard/orders/${params.id}/edit`}>
+              <Button variant="outline" size="sm">Edit</Button>
+            </Link>
+          </div>
         )}
       </div>
 

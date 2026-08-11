@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Scissors, Calendar, Package, CreditCard, Shirt, Upload, Check } from "lucide-react";
+import { Scissors, Calendar, Package, CreditCard, Shirt, Upload, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 
 const statusProgress: Record<string, number> = {
   DRAFT: 5, DESIGN_IN_PROGRESS: 15, WAITING_FOR_REFERENCES: 20,
@@ -126,19 +126,19 @@ export default function CustomerPortalPage() {
                     <Progress value={statusProgress[outfit.status] || 0} className="h-2" />
                   </div>
 
-                  {/* Locked references */}
+                  {/* Locked references — with approve/reject */}
                   {outfit.references.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-1.5">
                         Final References
                       </p>
-                      <div className="grid grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {outfit.references.map((ref: any) => (
-                          <img
+                          <PortalReferenceCard
                             key={ref.id}
-                            src={ref.url}
-                            alt="Reference"
-                            className="aspect-square rounded object-cover"
+                            reference={ref}
+                            token={params.token as string}
+                            outfitId={outfit.id}
                           />
                         ))}
                       </div>
@@ -253,6 +253,90 @@ function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) 
       <p className="text-[10px] text-muted-foreground mt-1 text-center">
         Share your inspiration photos. Our designer will review them.
       </p>
+    </div>
+  );
+}
+
+// ─── PORTAL REFERENCE CARD — APPROVE/REJECT ─────────────────────────────────
+
+function PortalReferenceCard({
+  reference,
+  token,
+  outfitId,
+}: {
+  reference: any;
+  token: string;
+  outfitId: string;
+}) {
+  const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
+    reference.customerFeedback || null
+  );
+  const [loading, setLoading] = useState(false);
+
+  async function handleFeedback(action: "approved" | "rejected") {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/portal/${token}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceId: reference.id, outfitId, feedback: action }),
+      });
+      if (res.ok) {
+        setFeedback(action);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="relative rounded-lg overflow-hidden border">
+      <img
+        src={reference.url}
+        alt="Reference"
+        className="aspect-square w-full object-cover"
+      />
+      {/* Feedback overlay */}
+      {feedback && (
+        <div className={`absolute top-1 right-1 rounded-full p-1 ${
+          feedback === "approved" ? "bg-green-500" : "bg-red-500"
+        }`}>
+          {feedback === "approved" ? (
+            <ThumbsUp className="h-2.5 w-2.5 text-white" />
+          ) : (
+            <ThumbsDown className="h-2.5 w-2.5 text-white" />
+          )}
+        </div>
+      )}
+      {/* Action buttons */}
+      {!feedback && (
+        <div className="absolute bottom-0 left-0 right-0 flex">
+          <button
+            className="flex-1 bg-green-600/90 text-white py-1.5 flex items-center justify-center gap-1 text-[10px] font-medium hover:bg-green-700 disabled:opacity-50"
+            onClick={() => handleFeedback("approved")}
+            disabled={loading}
+          >
+            <ThumbsUp className="h-3 w-3" /> Approve
+          </button>
+          <button
+            className="flex-1 bg-red-600/90 text-white py-1.5 flex items-center justify-center gap-1 text-[10px] font-medium hover:bg-red-700 disabled:opacity-50"
+            onClick={() => handleFeedback("rejected")}
+            disabled={loading}
+          >
+            <ThumbsDown className="h-3 w-3" /> Reject
+          </button>
+        </div>
+      )}
+      {/* Feedback message */}
+      {feedback && (
+        <div className={`absolute bottom-0 left-0 right-0 py-1 text-center text-[10px] font-medium text-white ${
+          feedback === "approved" ? "bg-green-600/90" : "bg-red-600/90"
+        }`}>
+          {feedback === "approved" ? "✓ Approved" : "✗ Rejected"}
+        </div>
+      )}
     </div>
   );
 }
