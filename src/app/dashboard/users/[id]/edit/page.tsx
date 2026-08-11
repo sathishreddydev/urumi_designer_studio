@@ -52,7 +52,7 @@ export default function EditUserPage() {
       reset({
         name: user.name,
         phone: user.phone || "",
-        role: user.role,
+        role: user.role?.toUpperCase() || "",
         password: "",
         active: user.active,
       });
