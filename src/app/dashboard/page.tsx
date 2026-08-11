@@ -90,20 +90,20 @@ export default async function DashboardPage() {
   if (session.role === "ADMIN" || session.role === "RECEPTION") {
     const stats = await getAdminStats();
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {session.name}</p>
+          <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-5 w-5" />} />
-          <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-5 w-5" />} />
-          <StatCard title="Total Outfits" value={stats.totalOutfits} icon={<Shirt className="h-5 w-5" />} />
-          <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-5 w-5" />} />
-          <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-5 w-5" />} />
-          <StatCard title="Pending Trials" value={stats.pendingTrials} icon={<AlertTriangle className="h-5 w-5" />} />
-          <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-5 w-5" />} />
-          <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} />
+          <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-4 w-4" />} />
+          <StatCard title="Total Outfits" value={stats.totalOutfits} icon={<Shirt className="h-4 w-4" />} />
+          <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-4 w-4" />} />
+          <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-4 w-4" />} />
+          <StatCard title="Pending Trials" value={stats.pendingTrials} icon={<AlertTriangle className="h-4 w-4" />} />
+          <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} />
+          <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
       </div>
     );
@@ -112,18 +112,18 @@ export default async function DashboardPage() {
   if (session.role === "DESIGNER") {
     const stats = await getDesignerStats(session.id);
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Designer Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {session.name}</p>
+          <h1 className="text-2xl font-bold sm:text-3xl">Designer Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="New Consultations" value={stats.newConsultations} icon={<Users className="h-5 w-5" />} />
-          <StatCard title="Pending Designs" value={stats.pendingDesigns} icon={<Shirt className="h-5 w-5" />} />
-          <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-5 w-5" />} />
-          <StatCard title="Waiting for Dependencies" value={stats.waitingDependencies} icon={<AlertTriangle className="h-5 w-5" />} />
-          <StatCard title="Production Released" value={stats.productionReleased} icon={<Scissors className="h-5 w-5" />} />
-          <StatCard title="Trials Today" value={stats.trials} icon={<CheckCircle className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatCard title="New Consultations" value={stats.newConsultations} icon={<Users className="h-4 w-4" />} />
+          <StatCard title="Pending Designs" value={stats.pendingDesigns} icon={<Shirt className="h-4 w-4" />} />
+          <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} />
+          <StatCard title="Waiting for Dependencies" value={stats.waitingDependencies} icon={<AlertTriangle className="h-4 w-4" />} />
+          <StatCard title="Production Released" value={stats.productionReleased} icon={<Scissors className="h-4 w-4" />} />
+          <StatCard title="Trials Today" value={stats.trials} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
       </div>
     );
@@ -132,16 +132,16 @@ export default async function DashboardPage() {
   if (session.role === "MASTER") {
     const stats = await getMasterStats(session.id);
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Production Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {session.name}</p>
+          <h1 className="text-2xl font-bold sm:text-3xl">Production Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Pattern Drafting" value={stats.patternDrafting} icon={<Scissors className="h-5 w-5" />} />
-          <StatCard title="Maggam Work" value={stats.maggamWork} icon={<Shirt className="h-5 w-5" />} />
-          <StatCard title="Fabric Cutting" value={stats.fabricCutting} icon={<Clock className="h-5 w-5" />} />
-          <StatCard title="Stitching" value={stats.stitching} icon={<CheckCircle className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard title="Pattern Drafting" value={stats.patternDrafting} icon={<Scissors className="h-4 w-4" />} />
+          <StatCard title="Maggam Work" value={stats.maggamWork} icon={<Shirt className="h-4 w-4" />} />
+          <StatCard title="Fabric Cutting" value={stats.fabricCutting} icon={<Clock className="h-4 w-4" />} />
+          <StatCard title="Stitching" value={stats.stitching} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
       </div>
     );
@@ -153,12 +153,12 @@ export default async function DashboardPage() {
 function StatCard({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-4 sm:pb-2">
+        <CardTitle className="text-xs font-medium sm:text-sm">{title}</CardTitle>
         <div className="text-muted-foreground">{icon}</div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+        <div className="text-xl font-bold sm:text-2xl">{value}</div>
       </CardContent>
     </Card>
   );

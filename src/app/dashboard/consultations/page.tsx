@@ -18,10 +18,10 @@ export default function ConsultationsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold">Consultations</h1>
-        <p className="text-muted-foreground">New outfits awaiting design consultation</p>
+        <h1 className="text-2xl font-bold lg:text-3xl">Consultations</h1>
+        <p className="text-sm text-muted-foreground">New outfits awaiting design consultation</p>
       </div>
 
       {isLoading ? (
@@ -41,24 +41,24 @@ export default function ConsultationsPage() {
           {data?.outfits?.map((outfit: any) => (
             <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Shirt className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-semibold">{outfit.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Shirt className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{outfit.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           {outfit.order?.customer?.name} · {outfit.type}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right space-y-1">
-                      <Badge className={getStatusColor(outfit.status)}>
+                    <div className="text-right shrink-0 space-y-1">
+                      <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
                         {formatStatus(outfit.status)}
                       </Badge>
                       {outfit.deliveryDate && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                          <Calendar className="h-3 w-3" /> {formatDate(outfit.deliveryDate)}
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1 justify-end">
+                          <Calendar className="h-2.5 w-2.5" /> {formatDate(outfit.deliveryDate)}
                         </p>
                       )}
                     </div>

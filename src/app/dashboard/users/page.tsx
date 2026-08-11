@@ -66,38 +66,38 @@ export default function UsersPage() {
         <div className="space-y-3">
           {users?.map((user: any) => (
             <Card key={user.id}>
-              <CardContent className="flex items-center justify-between pt-4 pb-4 gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <UserCircle className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{user.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium">{user.name}</p>
+                      <Badge className={ROLE_COLORS[user.role]}>{user.role}</Badge>
+                    </div>
                     <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                     {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <Badge className={ROLE_COLORS[user.role]}>{user.role}</Badge>
-                  {user.role !== "ADMIN" && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={user.active}
-                          onCheckedChange={(checked: boolean) =>
-                            toggleMutation.mutate({ id: user.id, active: checked })
-                          }
-                        />
-                        <span className="text-xs text-muted-foreground w-12">
-                          {user.active ? "Active" : "Disabled"}
-                        </span>
-                      </div>
-                      <Link href={`/dashboard/users/${user.id}/edit`}>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </Link>
-                    </>
-                  )}
-                </div>
+                {user.role !== "ADMIN" && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t ml-[52px]">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={user.active}
+                        onCheckedChange={(checked: boolean) =>
+                          toggleMutation.mutate({ id: user.id, active: checked })
+                        }
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {user.active ? "Active" : "Disabled"}
+                      </span>
+                    </div>
+                    <Link href={`/dashboard/users/${user.id}/edit`}>
+                      <Button variant="ghost" size="sm">Edit</Button>
+                    </Link>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

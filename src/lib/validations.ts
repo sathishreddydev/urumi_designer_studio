@@ -8,7 +8,6 @@ export const loginSchema = z.object({
 export const customerSchema = z.object({
   name: z.string().min(2, "Name is required"),
   mobile: z.string().min(10, "Valid mobile number required"),
-  whatsapp: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   occasion: z.string().optional(),
@@ -50,7 +49,7 @@ export const userSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["admin", "reception", "designer", "master"]),
+  role: z.enum(["ADMIN", "RECEPTION", "DESIGNER", "MASTER"]),
   phone: z.string().optional(),
 });
 

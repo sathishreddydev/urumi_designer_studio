@@ -43,7 +43,6 @@ export default function EditCustomerPage() {
       reset({
         name: customer.name,
         mobile: customer.mobile,
-        whatsapp: customer.whatsapp || "",
         email: customer.email || "",
         address: customer.address || "",
         occasion: customer.occasion || "",
@@ -98,10 +97,6 @@ export default function EditCustomerPage() {
                 <Label>Mobile *</Label>
                 <Input {...register("mobile")} />
                 {errors.mobile && <p className="text-xs text-destructive">{errors.mobile.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>WhatsApp</Label>
-                <Input {...register("whatsapp")} />
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>

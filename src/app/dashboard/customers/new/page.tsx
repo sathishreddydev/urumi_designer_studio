@@ -73,10 +73,6 @@ export default function NewCustomerPage() {
                 {errors.mobile && <p className="text-xs text-destructive">{errors.mobile.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input id="whatsapp" {...register("whatsapp")} placeholder="WhatsApp number" />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" {...register("email")} placeholder="Email address" />
               </div>

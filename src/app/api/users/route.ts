@@ -45,7 +45,7 @@ export const POST = withPermission(
           name: parsed.data.name,
           email: parsed.data.email,
           password: hashedPassword,
-          role: parsed.data.role as "ADMIN" | "RECEPTION" | "DESIGNER" | "MASTER",
+          role: parsed.data.role,
           phone: parsed.data.phone,
         })
         .returning({

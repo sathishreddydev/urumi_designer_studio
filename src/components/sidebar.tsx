@@ -11,7 +11,6 @@ import {
   ShoppingBag,
   Shirt,
   Scissors,
-  Settings,
   LogOut,
   UserCircle,
   Calendar,
@@ -40,7 +39,6 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
     { label: "Reports", href: "/dashboard/reports", icon: <BarChart3 className="h-5 w-5" /> },
     { label: "Users", href: "/dashboard/users", icon: <UserCircle className="h-5 w-5" /> },
-    { label: "Settings", href: "/dashboard/settings", icon: <Settings className="h-5 w-5" /> },
   ],
   RECEPTION: [
     { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },

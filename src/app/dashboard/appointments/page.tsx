@@ -29,16 +29,16 @@ export default function AppointmentsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold">Appointments</h1>
-        <p className="text-muted-foreground">Upcoming trials and deliveries</p>
+        <h1 className="text-2xl font-bold lg:text-3xl">Appointments</h1>
+        <p className="text-sm text-muted-foreground">Upcoming trials and deliveries</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5" /> Upcoming Trials
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> Upcoming Trials
           </h2>
           {trialsLoading ? (
             <Card className="animate-pulse"><CardContent className="h-20 pt-6" /></Card>
@@ -52,18 +52,18 @@ export default function AppointmentsPage() {
             trials?.outfits?.map((outfit: any) => (
               <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`}>
                 <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold">{outfit.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{outfit.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           {outfit.order?.customer?.name}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <Badge className={getStatusColor(outfit.status)}>Trial</Badge>
                         {outfit.trialDate && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
                             {formatDate(outfit.trialDate)}
                           </p>
                         )}
@@ -76,9 +76,9 @@ export default function AppointmentsPage() {
           )}
         </div>
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Shirt className="h-5 w-5" /> Ready for Delivery
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Shirt className="h-4 w-4" /> Ready for Delivery
           </h2>
           {deliveriesLoading ? (
             <Card className="animate-pulse"><CardContent className="h-20 pt-6" /></Card>
@@ -92,18 +92,18 @@ export default function AppointmentsPage() {
             deliveries?.outfits?.map((outfit: any) => (
               <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`}>
                 <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold">{outfit.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{outfit.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           {outfit.order?.customer?.name}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <Badge className="bg-green-100 text-green-700">Ready</Badge>
                         {outfit.deliveryDate && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
                             {formatDate(outfit.deliveryDate)}
                           </p>
                         )}
