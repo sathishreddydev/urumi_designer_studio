@@ -81,6 +81,34 @@ export const PATCH = withPermission(
       await onReferencesLocked(id, session.id);
     }
 
+    if (body.action === "unlock") {
+      const { id } = await params;
+      await db
+        .update(referenceImages)
+        .set({ status: "SELECTED", updatedAt: new Date() })
+        .where(
+          and(
+            eq(referenceImages.outfitId, id),
+            eq(referenceImages.type, body.type),
+            eq(referenceImages.status, "LOCKED")
+          )
+        );
+    }
+
+    if (body.action === "lock-single") {
+      await db
+        .update(referenceImages)
+        .set({ status: "LOCKED", updatedAt: new Date() })
+        .where(eq(referenceImages.id, body.id));
+    }
+
+    if (body.action === "unlock-single") {
+      await db
+        .update(referenceImages)
+        .set({ status: "DRAFT", updatedAt: new Date() })
+        .where(eq(referenceImages.id, body.id));
+    }
+
     // Emit event for any reference change
     const { eventBus } = await import("@/lib/events");
     const { id: outfitId } = await params;

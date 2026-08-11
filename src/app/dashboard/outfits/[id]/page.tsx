@@ -15,6 +15,16 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/image-viewer";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,6 +35,8 @@ import {
   ArrowLeft,
   Plus,
   Lock,
+  Unlock,
+  Trash2,
   CheckCircle,
   Image as ImageIcon,
   AlertTriangle,
@@ -159,6 +171,55 @@ export default function OutfitDetailPage() {
     },
   });
 
+  // Unlock references
+  const unlockRefsMutation = useMutation({
+    mutationFn: async (data: { type: string }) => {
+      const res = await fetch(`/api/outfits/${params.id}/references`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unlock", type: data.type }),
+      });
+      if (!res.ok) throw new Error("Failed to unlock");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
+    },
+  });
+
+  // Lock single reference
+  const lockSingleMutation = useMutation({
+    mutationFn: async (refId: string) => {
+      const res = await fetch(`/api/outfits/${params.id}/references`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "lock-single", id: refId }),
+      });
+      if (!res.ok) throw new Error("Failed to lock");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+    },
+  });
+
+  // Unlock single reference
+  const unlockSingleMutation = useMutation({
+    mutationFn: async (refId: string) => {
+      const res = await fetch(`/api/outfits/${params.id}/references`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unlock-single", id: refId }),
+      });
+      if (!res.ok) throw new Error("Failed to unlock");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+    },
+  });
+
   // Select references
   const selectRefsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -190,6 +251,18 @@ export default function OutfitDetailPage() {
         body: JSON.stringify({ type, url, filename }),
       });
       if (!res.ok) throw new Error("Failed to save reference");
+      return res.json();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+    },
+  });
+
+  // Delete reference
+  const deleteRefMutation = useMutation({
+    mutationFn: async (refId: string) => {
+      const res = await fetch(`/api/references/${refId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
       return res.json();
     },
     onSuccess: () => {
@@ -435,7 +508,7 @@ export default function OutfitDetailPage() {
           <ReferenceSection
             title="Pattern References"
             type="PATTERN"
-            references={patternRefs.filter((r: any) => !r.isCustomerUpload)}
+            references={patternRefs}
             canUpload={can("upload", "reference")}
             canSelect={can("select", "reference")}
             canLock={can("lock", "reference")}
@@ -443,12 +516,16 @@ export default function OutfitDetailPage() {
             onUpload={(file) => uploadRefMutation.mutate({ file, type: "PATTERN" })}
             onSelect={(ids) => selectRefsMutation.mutate(ids)}
             onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
+            onUnlock={() => unlockRefsMutation.mutate({ type: "PATTERN" })}
+            onDelete={(refId) => deleteRefMutation.mutate(refId)}
+            onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+            onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
           />
           {outfit.maggamRequired && (
             <ReferenceSection
               title="Maggam References"
               type="MAGGAM"
-              references={maggamRefs.filter((r: any) => !r.isCustomerUpload)}
+              references={maggamRefs}
               canUpload={can("upload", "reference")}
               canSelect={can("select", "reference")}
               canLock={can("lock", "reference")}
@@ -456,31 +533,12 @@ export default function OutfitDetailPage() {
               onUpload={(file) => uploadRefMutation.mutate({ file, type: "MAGGAM" })}
               onSelect={(ids) => selectRefsMutation.mutate(ids)}
               onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
+              onUnlock={() => unlockRefsMutation.mutate({ type: "MAGGAM" })}
+              onDelete={(refId) => deleteRefMutation.mutate(refId)}
+              onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+              onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
             />
           )}
-
-          {/* Customer Inspiration Images */}
-          {(() => {
-            const customerUploads = (outfit.references || []).filter((r: any) => r.isCustomerUpload);
-            if (customerUploads.length === 0) return null;
-            return (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  📷 Customer Inspiration ({customerUploads.length})
-                </h3>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                  {customerUploads.map((ref: any) => (
-                    <div key={ref.id} className="relative rounded-lg border-2 border-dashed border-blue-200 overflow-hidden">
-                      <img src={ref.url} alt="" className="aspect-square w-full object-cover" />
-                      <div className="absolute bottom-0 left-0 right-0 bg-blue-600/80 px-1.5 py-0.5">
-                        <span className="text-[10px] text-white">Customer</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
         </TabsContent>
 
         {/* Dependencies */}
@@ -690,6 +748,10 @@ function ReferenceSection({
   onUpload,
   onSelect,
   onLock,
+  onUnlock,
+  onDelete,
+  onLockSingle,
+  onUnlockSingle,
 }: {
   title: string;
   type: string;
@@ -701,73 +763,74 @@ function ReferenceSection({
   onUpload: (file: File) => void;
   onSelect: (ids: string[]) => void;
   onLock: () => void;
+  onUnlock: () => void;
+  onDelete: (refId: string) => void;
+  onLockSingle: (refId: string) => void;
+  onUnlockSingle: (refId: string) => void;
 }) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [isLocking, setIsLocking] = useState(false);
-  const hasLocked = references.some((r) => r.status === "LOCKED");
-  const hasSelected = references.some((r) => r.status === "SELECTED");
+  const [deleteRefId, setDeleteRefId] = useState<string | null>(null);
+  const [loadingRefId, setLoadingRefId] = useState<string | null>(null);
 
   function openViewer(index: number) {
     setViewerIndex(index);
     setViewerOpen(true);
   }
 
+  async function handleLockToggle(refId: string, isLocked: boolean) {
+    setLoadingRefId(refId);
+    try {
+      if (isLocked) {
+        onUnlockSingle(refId);
+      } else {
+        onLockSingle(refId);
+      }
+    } finally {
+      // Clear after a short delay to let the mutation settle
+      setTimeout(() => setLoadingRefId(null), 600);
+    }
+  }
+
+  async function handleDelete(refId: string) {
+    setLoadingRefId(refId);
+    setDeleteRefId(null);
+    onDelete(refId);
+    setTimeout(() => setLoadingRefId(null), 600);
+  }
+
   return (
     <div className="space-y-3">
+      {/* Header — only title + upload */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <ImageIcon className="h-4 w-4" /> {title}
-          {hasLocked && <Lock className="h-3 w-3 text-green-600" />}
         </h3>
-        <div className="flex gap-2">
-          {canSelect && selectedIds.length > 0 && !hasLocked && (
-            <LoadingButton size="sm" variant="outline" loading={isSelecting} onClick={() => { 
-              setIsSelecting(true);
-              onSelect(selectedIds); 
-              setSelectedIds([]); 
-              setTimeout(() => setIsSelecting(false), 500);
-            }}>
-              Select ({selectedIds.length})
-            </LoadingButton>
-          )}
-          {canLock && hasSelected && !hasLocked && (
-            <LoadingButton size="sm" loading={isLocking} onClick={() => {
-              setIsLocking(true);
-              onLock();
-              setTimeout(() => setIsLocking(false), 500);
-            }}>
-              <Lock className="h-3 w-3" /> Lock
-            </LoadingButton>
-          )}
-          {canUpload && !hasLocked && (
-            <label>
-              {isUploading ? (
-                <LoadingButton size="sm" variant="outline" loading={true} loadingText="Uploading..." />
-              ) : (
-                <>
-                  <Button size="sm" variant="outline" asChild>
-                    <span><Plus className="h-3 w-3" /> Upload</span>
-                  </Button>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files) {
-                        Array.from(files).forEach((file) => onUpload(file));
-                      }
-                    }}
-                  />
-                </>
-              )}
-            </label>
-          )}
-        </div>
+        {canUpload && (
+          <label>
+            {isUploading ? (
+              <LoadingButton size="sm" variant="outline" loading={true} loadingText="Uploading..." />
+            ) : (
+              <>
+                <Button size="sm" variant="outline" asChild>
+                  <span><Plus className="h-3 w-3" /> Upload</span>
+                </Button>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files) {
+                      Array.from(files).forEach((file) => onUpload(file));
+                    }
+                  }}
+                />
+              </>
+            )}
+          </label>
+        )}
       </div>
 
       {references.length === 0 ? (
@@ -778,64 +841,79 @@ function ReferenceSection({
         </Card>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-          {references.map((ref: any, index: number) => (
-            <div
-              key={ref.id}
-              className={`relative rounded-lg border-2 overflow-hidden transition-all ${
-                ref.status === "LOCKED"
-                  ? "border-green-500"
-                  : ref.status === "SELECTED"
-                  ? "border-primary"
-                  : selectedIds.includes(ref.id)
-                  ? "border-blue-400"
-                  : "border-transparent hover:border-muted-foreground/30"
-              }`}
-            >
-              <img
-                src={ref.url}
-                alt=""
-                className="aspect-square w-full object-cover cursor-pointer"
-                onClick={() => openViewer(index)}
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5 flex items-center justify-between">
-                <span className={`text-[10px] font-medium ${
-                  ref.status === "LOCKED" ? "text-green-300" :
-                  ref.status === "SELECTED" ? "text-blue-300" : "text-gray-300"
-                }`}>
-                  {ref.status}
-                </span>
-                <div className="flex items-center gap-1">
-                  {canUpload && ref.status === "DRAFT" && !hasLocked && (
-                    <button
-                      className="text-red-400 hover:text-red-300 text-[10px]"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Delete this image?")) {
-                          fetch(`/api/references/${ref.id}`, { method: "DELETE" })
-                            .then(() => window.location.reload());
-                        }
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                  {canSelect && ref.status === "DRAFT" && !hasLocked && (
-                    <input
-                      type="checkbox"
-                      className="h-3 w-3"
-                      checked={selectedIds.includes(ref.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setSelectedIds((prev) =>
-                          prev.includes(ref.id) ? prev.filter((id) => id !== ref.id) : [...prev, ref.id]
-                        );
-                      }}
-                    />
-                  )}
-                </div>
+          {references.map((ref: any, index: number) => {
+            const isLocked = ref.status === "LOCKED";
+            const isLoading = loadingRefId === ref.id;
+
+            return (
+              <div
+                key={ref.id}
+                className={`relative rounded-lg border-2 overflow-hidden transition-all ${
+                  isLocked
+                    ? "border-green-500"
+                    : ref.isCustomerUpload
+                    ? "border-dashed border-blue-200"
+                    : "border-transparent hover:border-muted-foreground/30"
+                }`}
+              >
+                <img
+                  src={ref.url}
+                  alt=""
+                  className="aspect-square w-full object-cover cursor-pointer"
+                  onClick={() => openViewer(index)}
+                />
+
+                {/* Loading overlay */}
+                {isLoading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+
+                {/* Top-right: Lock/Unlock toggle */}
+                {canLock && !isLoading && (
+                  <button
+                    className={`absolute top-1 right-1 rounded-full p-1 ${
+                      isLocked
+                        ? "bg-green-600/90 text-white"
+                        : "bg-black/50 text-white hover:bg-black/70"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLockToggle(ref.id, isLocked);
+                    }}
+                    aria-label={isLocked ? "Unlock" : "Lock"}
+                  >
+                    {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </button>
+                )}
+
+                {/* Bottom bar: label + delete */}
+                {!isLoading && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5 flex items-center justify-between">
+                    <span className={`text-[10px] font-medium ${
+                      isLocked ? "text-green-300" :
+                      ref.isCustomerUpload ? "text-yellow-300" : "text-gray-300"
+                    }`}>
+                      {ref.isCustomerUpload ? "Customer" : isLocked ? "Locked" : "Draft"}
+                    </span>
+                    {canUpload && !isLocked && !ref.isCustomerUpload && (
+                      <button
+                        className="text-red-400 hover:text-red-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteRefId(ref.id);
+                        }}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -846,6 +924,31 @@ function ReferenceSection({
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteRefId} onOpenChange={(open) => !open && setDeleteRefId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Reference</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this image? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteRefId) {
+                  handleDelete(deleteRefId);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

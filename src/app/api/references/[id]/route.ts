@@ -20,9 +20,9 @@ export const DELETE = withPermission(
       return NextResponse.json({ error: "Reference not found" }, { status: 404 });
     }
 
-    // Cannot delete LOCKED or SELECTED references
-    if (ref.status === "LOCKED" || ref.status === "SELECTED") {
-      return NextResponse.json({ error: "Cannot delete selected or locked references" }, { status: 400 });
+    // Cannot delete LOCKED references
+    if (ref.status === "LOCKED") {
+      return NextResponse.json({ error: "Cannot delete locked references. Unlock first." }, { status: 400 });
     }
 
     // Delete from Cloudinary if it's a Cloudinary URL
