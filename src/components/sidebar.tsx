@@ -134,12 +134,18 @@ export function Sidebar({ role, userName }: SidebarProps) {
           </div>
           <div className="flex gap-1 mt-1">
             <ThemeToggle />
-            <form action="/api/auth/logout" method="POST" className="flex-1">
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" type="submit">
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
-            </form>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 flex-1"
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/login";
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
         </div>
       </aside>
