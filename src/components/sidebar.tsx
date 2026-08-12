@@ -16,7 +16,6 @@ import {
   Calendar,
   ClipboardList,
   AlertTriangle,
-  BarChart3,
   Menu,
   X,
   Moon,
@@ -37,7 +36,6 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
     { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
     { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
-    { label: "Reports", href: "/dashboard/reports", icon: <BarChart3 className="h-5 w-5" /> },
     { label: "Users", href: "/dashboard/users", icon: <UserCircle className="h-5 w-5" /> },
   ],
   RECEPTION: [

@@ -4,6 +4,7 @@ import { customers, orders, outfits } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeadlineAlerts } from "@/components/deadline-alerts";
+import { DashboardReports } from "@/components/dashboard-reports";
 import {
   Users,
   ShoppingBag,
@@ -106,6 +107,7 @@ export default async function DashboardPage() {
           <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} />
           <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
+        <DashboardReports />
         <DeadlineAlerts />
       </div>
     );
