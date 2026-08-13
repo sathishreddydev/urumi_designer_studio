@@ -211,25 +211,31 @@ export function ImageViewer({
           </>
         )}
 
-        {/* Image */}
+        {/* Image with zoom */}
         <div
-          className="transition-transform duration-200 ease-out touch-none"
-          style={{
-            transform: `scale(${zoom}) rotate(${rotation}deg)`,
-          }}
+          className="w-full h-full overflow-auto flex items-center justify-center"
+          onDoubleClick={() => setZoom((prev) => (prev === 1 ? 2.5 : 1))}
+          style={{ cursor: zoom > 1 ? "grab" : "zoom-in" }}
         >
           <img
             src={current.url}
             alt={current.filename || "Reference image"}
-            className="max-h-[calc(100vh-12rem)] max-w-[calc(100vw-4rem)] object-contain select-none"
+            className="object-contain select-none transition-all duration-200"
+            style={{
+              maxHeight: zoom === 1 ? "calc(100vh - 10rem)" : "none",
+              maxWidth: zoom === 1 ? "calc(100vw - 4rem)" : "none",
+              width: zoom > 1 ? `${zoom * 100}%` : "auto",
+              height: zoom > 1 ? "auto" : "auto",
+              transform: `rotate(${rotation}deg)`,
+            }}
             draggable={false}
           />
         </div>
 
-        {/* Swipe hint for mobile */}
-        {images.length > 1 && (
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs sm:hidden">
-            Swipe or tap arrows to navigate
+        {/* Zoom hint */}
+        {zoom === 1 && (
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs">
+            Double-click to zoom • Use +/- buttons
           </p>
         )}
       </div>

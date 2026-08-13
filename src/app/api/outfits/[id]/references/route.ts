@@ -85,7 +85,7 @@ export const PATCH = withPermission(
       const { id } = await params;
       await db
         .update(referenceImages)
-        .set({ status: "SELECTED", updatedAt: new Date() })
+        .set({ status: "DRAFT", notes: null, updatedAt: new Date() })
         .where(
           and(
             eq(referenceImages.outfitId, id),
@@ -93,6 +93,20 @@ export const PATCH = withPermission(
             eq(referenceImages.status, "LOCKED")
           )
         );
+
+      // Move outfit back to WAITING_FOR_REFERENCES if it was at PRODUCTION_READY
+      const { outfits: outfitsTable } = await import("@/lib/db/schema");
+      const [outfit] = await db
+        .select({ status: outfitsTable.status })
+        .from(outfitsTable)
+        .where(eq(outfitsTable.id, id));
+
+      if (outfit && outfit.status === "PRODUCTION_READY") {
+        await db
+          .update(outfitsTable)
+          .set({ status: "WAITING_FOR_REFERENCES" as any, updatedAt: new Date() })
+          .where(eq(outfitsTable.id, id));
+      }
     }
 
     if (body.action === "lock-single") {
@@ -105,8 +119,23 @@ export const PATCH = withPermission(
     if (body.action === "unlock-single") {
       await db
         .update(referenceImages)
-        .set({ status: "DRAFT", updatedAt: new Date() })
+        .set({ status: "DRAFT", notes: null, updatedAt: new Date() })
         .where(eq(referenceImages.id, body.id));
+
+      // If outfit has moved past WAITING_FOR_REFERENCES, move it back
+      const { id: oid } = await params;
+      const { outfits: outfitsTable } = await import("@/lib/db/schema");
+      const [outfit] = await db
+        .select({ status: outfitsTable.status })
+        .from(outfitsTable)
+        .where(eq(outfitsTable.id, oid));
+
+      if (outfit && outfit.status === "PRODUCTION_READY") {
+        await db
+          .update(outfitsTable)
+          .set({ status: "WAITING_FOR_REFERENCES" as any, updatedAt: new Date() })
+          .where(eq(outfitsTable.id, oid));
+      }
     }
 
     // Emit event for any reference change

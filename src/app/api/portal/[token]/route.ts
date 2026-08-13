@@ -49,7 +49,11 @@ export async function GET(
               .select()
               .from(referenceImages)
               .where(eq(referenceImages.outfitId, outfit.id));
-            const locked = refs.filter((r) => r.status === "LOCKED");
+            // Show locked refs always; show all refs if outfit is still in design/approval phase
+            const DESIGN_STATUSES = ["DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES"];
+            const visibleRefs = DESIGN_STATUSES.includes(outfit.status)
+              ? refs // Show all references during design phase for customer review
+              : refs.filter((r) => r.status === "LOCKED"); // After production starts, only show locked
 
             return {
               id: outfit.id,
@@ -59,7 +63,19 @@ export async function GET(
               deliveryDate: outfit.deliveryDate,
               trialDate: outfit.trialDate,
               maggamRequired: outfit.maggamRequired,
-              references: locked.map((r) => ({ id: r.id, type: r.type, url: r.url })),
+              references: visibleRefs.map((r) => ({
+                id: r.id,
+                type: r.type,
+                url: r.url,
+                filename: r.filename,
+                // Only show feedback if the reference is still in that state
+                // If admin unlocked it (DRAFT), reset feedback so customer can re-approve
+                customerFeedback: r.status === "LOCKED" && r.notes?.includes("Customer approved")
+                  ? "approved"
+                  : r.status === "DRAFT" && r.notes?.includes("Customer rejected")
+                  ? "rejected"
+                  : null,
+              })),
             };
           })
         );
