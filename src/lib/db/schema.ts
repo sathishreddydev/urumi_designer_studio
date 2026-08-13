@@ -105,6 +105,7 @@ export const outfits = pgTable("outfits", {
   name: text("name").notNull(),
   type: text("type").notNull(),
   occasion: text("occasion"),
+  price: decimal("price", { precision: 10, scale: 2 }),
   priority: integer("priority").notNull().default(0),
   deliveryDate: timestamp("delivery_date"),
   trialDate: timestamp("trial_date"),

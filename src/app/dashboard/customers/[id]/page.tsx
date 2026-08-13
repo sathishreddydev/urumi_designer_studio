@@ -143,7 +143,7 @@ export default function CustomerDetailPage() {
   // Unique order statuses for filter
   const orderStatuses = useMemo(() => {
     if (!customer?.orders) return [];
-    return [...new Set(customer.orders.map((o: any) => o.status))].sort();
+    return [...new Set<string>(customer.orders.map((o: any) => o.status))].sort();
   }, [customer]);
 
   if (isLoading) {

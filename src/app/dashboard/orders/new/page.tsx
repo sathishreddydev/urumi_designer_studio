@@ -27,6 +27,7 @@ interface OutfitEntry {
   name: string;
   type: string;
   occasion: string;
+  price: string;
   maggamRequired: boolean;
   designerId: string;
 }
@@ -45,7 +46,7 @@ export default function NewOrderPage() {
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [outfits, setOutfits] = useState<OutfitEntry[]>([
-    { name: "", type: "", occasion: "", maggamRequired: false, designerId: "" },
+    { name: "", type: "", occasion: "", price: "", maggamRequired: false, designerId: "" },
   ]);
 
   const { data: customers } = useQuery({
@@ -72,6 +73,11 @@ export default function NewOrderPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const validOutfits = outfits.filter((o) => o.name && o.type);
+      // Auto-calculate estimated total from outfit prices
+      const calculatedTotal = validOutfits.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+      const finalEstimated = estimatedAmount ? Number(estimatedAmount) : (calculatedTotal > 0 ? calculatedTotal : undefined);
+
       // 1. Create order
       const orderRes = await fetch("/api/orders", {
         method: "POST",
@@ -80,7 +86,7 @@ export default function NewOrderPage() {
           customerId,
           trialDate: trialDate || undefined,
           deliveryDate: deliveryDate || undefined,
-          estimatedAmount: estimatedAmount ? Number(estimatedAmount) : undefined,
+          estimatedAmount: finalEstimated,
           advanceAmount: advanceAmount ? Number(advanceAmount) : undefined,
           notes: notes || undefined,
         }),
@@ -88,8 +94,7 @@ export default function NewOrderPage() {
       if (!orderRes.ok) throw new Error("Failed to create order");
       const order = await orderRes.json();
 
-      // 2. Create outfits
-      const validOutfits = outfits.filter((o) => o.name && o.type);
+      // 2. Create outfits with price
       for (const outfit of validOutfits) {
         await fetch("/api/outfits", {
           method: "POST",
@@ -99,10 +104,25 @@ export default function NewOrderPage() {
             name: outfit.name,
             type: outfit.type,
             occasion: outfit.occasion || undefined,
+            price: outfit.price ? Number(outfit.price) : undefined,
             maggamRequired: outfit.maggamRequired,
             deliveryDate: deliveryDate || undefined,
             trialDate: trialDate || undefined,
             designerId: outfit.designerId || undefined,
+          }),
+        });
+      }
+
+      // 3. Record advance as first payment if provided
+      if (advanceAmount && Number(advanceAmount) > 0) {
+        await fetch("/api/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: order.id,
+            amount: Number(advanceAmount),
+            method: "CASH",
+            notes: "Advance payment at order creation",
           }),
         });
       }
@@ -117,7 +137,7 @@ export default function NewOrderPage() {
   });
 
   function addOutfit() {
-    setOutfits([...outfits, { name: "", type: "", occasion: "", maggamRequired: false, designerId: "" }]);
+    setOutfits([...outfits, { name: "", type: "", occasion: "", price: "", maggamRequired: false, designerId: "" }]);
   }
 
   function removeOutfit(index: number) {
@@ -184,12 +204,22 @@ export default function NewOrderPage() {
               <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Estimated Amount (₹)</Label>
+              <Label className="text-xs">
+                Estimated Total (₹)
+                {outfits.some(o => o.price) && (
+                  <span className="text-muted-foreground font-normal ml-1">
+                    — auto: ₹{outfits.reduce((s, o) => s + (Number(o.price) || 0), 0).toLocaleString()}
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 value={estimatedAmount}
                 onChange={(e) => setEstimatedAmount(e.target.value)}
-                placeholder="e.g., 25000"
+                placeholder={outfits.some(o => o.price)
+                  ? `Auto: ${outfits.reduce((s, o) => s + (Number(o.price) || 0), 0)}`
+                  : "e.g., 25000"
+                }
               />
             </div>
             <div className="space-y-1">
@@ -253,6 +283,16 @@ export default function NewOrderPage() {
                     <option value="">Select type</option>
                     {OUTFIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Price (₹)</Label>
+                  <Input
+                    type="number"
+                    value={outfit.price}
+                    onChange={(e) => updateOutfit(index, "price", e.target.value)}
+                    placeholder="e.g., 15000"
+                    className="h-9"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Occasion</Label>

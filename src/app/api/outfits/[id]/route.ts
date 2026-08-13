@@ -103,6 +103,7 @@ export const PATCH = withPermission(
       if (body.designerId !== undefined) updateData.designerId = body.designerId;
       if (body.masterId !== undefined) updateData.masterId = body.masterId;
       if (body.priority !== undefined) updateData.priority = body.priority;
+      if (body.price !== undefined) updateData.price = body.price ? String(body.price) : null;
       if (body.deliveryDate) updateData.deliveryDate = new Date(body.deliveryDate);
       if (body.trialDate) updateData.trialDate = new Date(body.trialDate);
     }
