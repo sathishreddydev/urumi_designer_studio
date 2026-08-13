@@ -134,3 +134,20 @@ export const PATCH = withPermission(
     return NextResponse.json(final);
   }
 );
+
+export const DELETE = withPermission(
+  { resource: "outfit", action: "delete" },
+  async (_request, { params }) => {
+    const { id } = await params;
+
+    // Delete related data
+    await db.delete(referenceImages).where(eq(referenceImages.outfitId, id));
+    await db.delete(dependencies).where(eq(dependencies.outfitId, id));
+    await db.delete(productionLogs).where(eq(productionLogs.outfitId, id));
+
+    // Delete outfit
+    await db.delete(outfits).where(eq(outfits.id, id));
+
+    return NextResponse.json({ success: true });
+  }
+);

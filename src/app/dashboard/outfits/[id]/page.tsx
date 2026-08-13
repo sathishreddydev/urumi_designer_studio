@@ -56,6 +56,7 @@ export default function OutfitDetailPage() {
   const { can, role } = usePermissions();
 
   const [whatsappPrompt, setWhatsappPrompt] = useState<{ customerName: string; url: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
@@ -270,6 +271,25 @@ export default function OutfitDetailPage() {
     },
   });
 
+  // Delete outfit (admin only)
+  const deleteOutfitMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/outfits/${params.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted", description: "Outfit deleted successfully." });
+      router.push("/dashboard/outfits");
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -308,6 +328,16 @@ export default function OutfitDetailPage() {
             {outfit.customer?.occasion && ` · ${outfit.customer.occasion}`}
           </p>
         </div>
+        {can("delete", "outfit") && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Workflow Transitions */}
@@ -683,6 +713,28 @@ export default function OutfitDetailPage() {
               }}
             >
               Send WhatsApp
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Outfit Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Outfit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{outfit.name}&quot;? This will permanently remove
+              all references, dependencies, and production logs for this outfit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteOutfitMutation.mutate()}
+            >
+              Delete Outfit
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

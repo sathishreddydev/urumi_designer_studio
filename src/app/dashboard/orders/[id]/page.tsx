@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -19,10 +29,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Copy, CreditCard, Shirt, UserCircle } from "lucide-react";
+import { ArrowLeft, Plus, Copy, CreditCard, Shirt, UserCircle, Trash2 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { toast } from "@/hooks/use-toast";
 
 const OUTFIT_TYPES = [
   "Bridal Blouse", "Reception Blouse", "Lehenga", "Gown",
@@ -31,10 +42,12 @@ const OUTFIT_TYPES = [
 
 export default function OrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { can, isAdmin } = usePermissions();
   const [showAddOutfit, setShowAddOutfit] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
@@ -109,6 +122,24 @@ export default function OrderDetailPage() {
     },
   });
 
+  const deleteOrderMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/orders/${params.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted", description: "Order and all related data deleted." });
+      router.push("/dashboard/orders");
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+    },
+  });
+
   if (isLoading) {
     return <div className="h-8 w-64 animate-pulse rounded bg-muted" />;
   }
@@ -145,6 +176,16 @@ export default function OrderDetailPage() {
             <Link href={`/dashboard/orders/${params.id}/edit`}>
               <Button variant="outline" size="sm">Edit</Button>
             </Link>
+            {can("delete", "order") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -353,6 +394,28 @@ export default function OrderDetailPage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete order {order.orderNumber}? This will permanently remove
+              all outfits, references, dependencies, and payments associated with this order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteOrderMutation.mutate()}
+            >
+              Delete Order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

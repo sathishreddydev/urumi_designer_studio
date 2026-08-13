@@ -5,19 +5,44 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Scissors, Calendar, Package, CreditCard, Shirt, Upload, Check, ThumbsUp, ThumbsDown } from "lucide-react";
+import {
+  Scissors,
+  Calendar,
+  Package,
+  CreditCard,
+  Shirt,
+  Upload,
+  Check,
+  ThumbsUp,
+  ThumbsDown,
+  Ruler,
+  IndianRupee,
+} from "lucide-react";
+
+const STATUS_ORDER = [
+  "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES", "PRODUCTION_READY",
+  "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING",
+  "STITCHING", "PRODUCTION_COMPLETED",
+  "TRIAL", "ALTERATION", "QC",
+  "READY_FOR_DELIVERY", "DELIVERED",
+];
 
 const statusProgress: Record<string, number> = {
-  DRAFT: 5, DESIGN_IN_PROGRESS: 15, WAITING_FOR_REFERENCES: 20,
-  WAITING_FOR_DEPENDENCIES: 25, PRODUCTION_READY: 30,
-  PATTERN_DRAFTING: 40, MAGGAM_WORK: 50, FABRIC_CUTTING: 60,
-  STITCHING: 70, PRODUCTION_COMPLETED: 80,
+  DRAFT: 5, DESIGN_IN_PROGRESS: 12, WAITING_FOR_REFERENCES: 18,
+  WAITING_FOR_DEPENDENCIES: 22, PRODUCTION_READY: 28,
+  PATTERN_DRAFTING: 38, MAGGAM_WORK: 48, MAGGAM_REVIEW: 55, FABRIC_CUTTING: 62,
+  STITCHING: 72, PRODUCTION_COMPLETED: 80,
   TRIAL: 85, ALTERATION: 88, QC: 92,
-  READY_FOR_DELIVERY: 95, DELIVERED: 100,
+  READY_FOR_DELIVERY: 96, DELIVERED: 100,
 };
+
+// Statuses where references can still be approved/rejected by customer
+const APPROVAL_ALLOWED_STATUSES = [
+  "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES",
+];
 
 export default function CustomerPortalPage() {
   const params = useParams();
@@ -45,18 +70,25 @@ export default function CustomerPortalPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        <div className="space-y-3 text-center">
+          <Scissors className="h-8 w-8 text-primary mx-auto animate-pulse" />
+          <p className="text-muted-foreground">Loading your outfits...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-6">
-            <p className="text-destructive">{error}</p>
+          <CardContent className="pt-8 pb-8">
+            <Scissors className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-destructive font-medium">{error}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Please contact the studio for a new link.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -65,113 +97,182 @@ export default function CustomerPortalPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center gap-3 px-4 py-4">
-          <Scissors className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">Designer Studio</h1>
+      {/* Header */}
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto flex items-center gap-3 px-4 py-3">
+          <Scissors className="h-5 w-5 text-primary" />
+          <span className="font-bold text-sm">Designer Studio</span>
         </div>
       </header>
 
-      <main className="container mx-auto max-w-3xl space-y-6 p-4 py-8">
+      <main className="container mx-auto max-w-3xl space-y-6 p-4 py-6">
         {/* Customer greeting */}
         <div>
           <h2 className="text-2xl font-bold">Hello, {data.customer.name}!</h2>
-          <p className="text-muted-foreground">Here's the progress of your outfits</p>
+          <p className="text-sm text-muted-foreground">Track the progress of your outfits below</p>
         </div>
 
-        {/* Orders */}
-        {data.orders.map((order: any) => (
-          <Card key={order.id}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{order.orderNumber}</CardTitle>
-                <Badge variant="secondary">{order.status}</Badge>
-              </div>
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                {order.trialDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Trial: {formatDate(order.trialDate)}
-                  </span>
-                )}
-                {order.deliveryDate && (
-                  <span className="flex items-center gap-1">
-                    <Package className="h-3 w-3" /> Delivery: {formatDate(order.deliveryDate)}
-                  </span>
-                )}
-              </div>
+        {/* Measurements Card */}
+        {data.measurements && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Ruler className="h-4 w-4" /> Your Measurements
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Outfits */}
-              {order.outfits.map((outfit: any) => (
-                <div key={outfit.id} className="rounded-lg border p-3 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <Shirt className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{outfit.name}</p>
-                        <p className="text-xs text-muted-foreground">{outfit.type}</p>
-                      </div>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {Object.entries(data.measurements as Record<string, string>).map(
+                  ([key, value]) => (
+                    <div key={key}>
+                      <p className="text-[11px] text-muted-foreground">{key}</p>
+                      <p className="text-sm font-medium">{value || "—"}</p>
                     </div>
-                    <Badge className={getStatusColor(outfit.status)}>
-                      {formatStatus(outfit.status)}
-                    </Badge>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Progress</span>
-                      <span>{statusProgress[outfit.status] || 0}%</span>
-                    </div>
-                    <Progress value={statusProgress[outfit.status] || 0} className="h-2" />
-                  </div>
-
-                  {/* Locked references — with approve/reject */}
-                  {outfit.references.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                        Final References
-                      </p>
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {outfit.references.map((ref: any) => (
-                          <PortalReferenceCard
-                            key={ref.id}
-                            reference={ref}
-                            token={params.token as string}
-                            outfitId={outfit.id}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Customer upload inspiration */}
-                  <PortalUpload outfitId={outfit.id} token={params.token as string} />
-                </div>
-              ))}
-
-              {/* Payment summary */}
-              {order.payments.length > 0 && (
-                <div className="border-t pt-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <CreditCard className="h-3.5 w-3.5" /> Payments
-                    </span>
-                    <span className="font-semibold">₹{order.totalPaid.toLocaleString()}</span>
-                  </div>
-                  {order.estimatedAmount && (
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Estimated: ₹{Number(order.estimatedAmount).toLocaleString()}</span>
-                      <span>
-                        Balance: ₹{Math.max(0, Number(order.estimatedAmount) - order.totalPaid).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+                  )
+                )}
+              </div>
             </CardContent>
           </Card>
-        ))}
+        )}
+
+        {/* Orders */}
+        {data.orders.map((order: any) => {
+          const orderBalance = order.estimatedAmount
+            ? Math.max(0, Number(order.estimatedAmount) - order.totalPaid)
+            : 0;
+
+          return (
+            <Card key={order.id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{order.orderNumber}</CardTitle>
+                  <Badge className={getStatusColor(order.status)} variant="secondary">
+                    {order.status}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {order.trialDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> Trial: {formatDate(order.trialDate)}
+                    </span>
+                  )}
+                  {order.deliveryDate && (
+                    <span className="flex items-center gap-1">
+                      <Package className="h-3 w-3" /> Delivery: {formatDate(order.deliveryDate)}
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Outfits */}
+                {order.outfits.map((outfit: any) => {
+                  const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status);
+                  const progress = statusProgress[outfit.status] || 0;
+
+                  return (
+                    <div key={outfit.id} className="rounded-lg border p-3 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shirt className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium text-sm">{outfit.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {outfit.type}
+                              {outfit.maggamRequired && " · Maggam"}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className={getStatusColor(outfit.status)}>
+                          {formatStatus(outfit.status)}
+                        </Badge>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Progress</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2" />
+                      </div>
+
+                      {/* Status timeline (simplified) */}
+                      {progress > 0 && progress < 100 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Current stage: <span className="font-medium text-foreground">{formatStatus(outfit.status)}</span>
+                        </p>
+                      )}
+                      {progress === 100 && (
+                        <p className="text-[11px] text-green-600 font-medium">
+                          ✓ Delivered
+                        </p>
+                      )}
+
+                      {/* Locked references — with approve/reject only before production */}
+                      {outfit.references.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                            {canApprove ? "Review & Approve References" : "Final References"}
+                          </p>
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                            {outfit.references.map((ref: any) => (
+                              <PortalReferenceCard
+                                key={ref.id}
+                                reference={ref}
+                                token={params.token as string}
+                                outfitId={outfit.id}
+                                canApprove={canApprove}
+                              />
+                            ))}
+                          </div>
+                          {!canApprove && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              References are locked — production has started.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Customer upload — only before production */}
+                      {canApprove && (
+                        <PortalUpload outfitId={outfit.id} token={params.token as string} />
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Payment summary */}
+                {(order.totalPaid > 0 || order.estimatedAmount) && (
+                  <div className="border-t pt-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <CreditCard className="h-3.5 w-3.5" /> Payments
+                      </span>
+                      <span className="font-semibold text-green-600">
+                        ₹{order.totalPaid.toLocaleString()}
+                      </span>
+                    </div>
+                    {order.estimatedAmount && (
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>Estimated: ₹{Number(order.estimatedAmount).toLocaleString()}</span>
+                        {orderBalance > 0 && (
+                          <span className="text-red-600 font-medium">
+                            Balance: ₹{orderBalance.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* Footer */}
+        <div className="text-center text-xs text-muted-foreground py-4">
+          <p>Questions? Contact the studio directly.</p>
+        </div>
       </main>
     </div>
   );
@@ -213,11 +314,9 @@ function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) 
 
   return (
     <div className="border-t pt-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          Upload Inspiration Images
-        </p>
-      </div>
+      <p className="text-xs font-medium text-muted-foreground mb-2">
+        Upload Inspiration Images
+      </p>
 
       {/* Uploaded thumbnails */}
       {uploaded.length > 0 && (
@@ -263,10 +362,12 @@ function PortalReferenceCard({
   reference,
   token,
   outfitId,
+  canApprove,
 }: {
   reference: any;
   token: string;
   outfitId: string;
+  canApprove: boolean;
 }) {
   const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
     reference.customerFeedback || null
@@ -298,7 +399,7 @@ function PortalReferenceCard({
         alt="Reference"
         className="aspect-square w-full object-cover"
       />
-      {/* Feedback overlay */}
+      {/* Feedback indicator */}
       {feedback && (
         <div className={`absolute top-1 right-1 rounded-full p-1 ${
           feedback === "approved" ? "bg-green-500" : "bg-red-500"
@@ -310,8 +411,8 @@ function PortalReferenceCard({
           )}
         </div>
       )}
-      {/* Action buttons */}
-      {!feedback && (
+      {/* Action buttons — only if approval is allowed and no feedback yet */}
+      {canApprove && !feedback && (
         <div className="absolute bottom-0 left-0 right-0 flex">
           <button
             className="flex-1 bg-green-600/90 text-white py-1.5 flex items-center justify-center gap-1 text-[10px] font-medium hover:bg-green-700 disabled:opacity-50"
@@ -329,7 +430,7 @@ function PortalReferenceCard({
           </button>
         </div>
       )}
-      {/* Feedback message */}
+      {/* Feedback status label */}
       {feedback && (
         <div className={`absolute bottom-0 left-0 right-0 py-1 text-center text-[10px] font-medium text-white ${
           feedback === "approved" ? "bg-green-600/90" : "bg-red-600/90"

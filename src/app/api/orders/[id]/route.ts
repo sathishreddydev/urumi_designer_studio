@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, outfits, payments, customers } from "@/lib/db/schema";
+import { orders, outfits, payments, customers, referenceImages, dependencies, productionLogs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 
@@ -56,5 +56,34 @@ export const PATCH = withPermission(
     eventBus.emit({ type: "order_updated", orderId: id, customerId: order.customerId, timestamp: Date.now() });
 
     return NextResponse.json(order);
+  }
+);
+
+export const DELETE = withPermission(
+  { resource: "order", action: "delete" },
+  async (_request, { params }) => {
+    const { id } = await params;
+
+    // Get all outfits for this order
+    const orderOutfits = await db.select({ id: outfits.id }).from(outfits).where(eq(outfits.orderId, id));
+    const outfitIds = orderOutfits.map((o) => o.id);
+
+    // Delete outfit-related data
+    for (const outfitId of outfitIds) {
+      await db.delete(referenceImages).where(eq(referenceImages.outfitId, outfitId));
+      await db.delete(dependencies).where(eq(dependencies.outfitId, outfitId));
+      await db.delete(productionLogs).where(eq(productionLogs.outfitId, outfitId));
+    }
+
+    // Delete outfits
+    await db.delete(outfits).where(eq(outfits.orderId, id));
+
+    // Delete payments
+    await db.delete(payments).where(eq(payments.orderId, id));
+
+    // Delete order
+    await db.delete(orders).where(eq(orders.id, id));
+
+    return NextResponse.json({ success: true });
   }
 );

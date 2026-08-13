@@ -67,3 +67,31 @@ export const PATCH = withPermission(
     return NextResponse.json(customer);
   }
 );
+
+export const DELETE = withPermission(
+  { resource: "customer", action: "delete" },
+  async (_request, { params }) => {
+    const { id } = await params;
+
+    // Check if customer has orders
+    const customerOrders = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(eq(orders.customerId, id));
+
+    if (customerOrders.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete customer with existing orders. Delete orders first." },
+        { status: 400 }
+      );
+    }
+
+    // Delete measurements
+    await db.delete(customerMeasurements).where(eq(customerMeasurements.customerId, id));
+
+    // Delete customer
+    await db.delete(customers).where(eq(customers.id, id));
+
+    return NextResponse.json({ success: true });
+  }
+);

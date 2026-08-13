@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { customers, orders, outfits, referenceImages, payments } from "@/lib/db/schema";
+import { customers, orders, outfits, referenceImages, payments, customerMeasurements } from "@/lib/db/schema";
 
 export async function GET(
   _request: Request,
@@ -20,6 +20,14 @@ export async function GET(
     if (!customer) {
       return NextResponse.json({ error: "Invalid portal link" }, { status: 404 });
     }
+
+    // Get latest measurements
+    const [latestMeasurement] = await db
+      .select()
+      .from(customerMeasurements)
+      .where(eq(customerMeasurements.customerId, customer.id))
+      .orderBy(desc(customerMeasurements.version))
+      .limit(1);
 
     // Get all orders for this customer
     const customerOrders = await db
@@ -78,6 +86,7 @@ export async function GET(
 
     return NextResponse.json({
       customer: { name: customer.name },
+      measurements: latestMeasurement ? latestMeasurement.values : null,
       orders: ordersWithDetails,
     });
   } catch (error) {
