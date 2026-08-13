@@ -1,10 +1,27 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { measurements } from "@/lib/db/schema";
+import { customerMeasurements } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { measurementSchema } from "@/lib/validations";
 
+// GET all measurement versions for a customer
+export const GET = withPermission(
+  { resource: "measurement", action: "read" },
+  async (_request, { params }) => {
+    const { id } = await params;
+
+    const allMeasurements = await db
+      .select()
+      .from(customerMeasurements)
+      .where(eq(customerMeasurements.customerId, id))
+      .orderBy(desc(customerMeasurements.version));
+
+    return NextResponse.json(allMeasurements);
+  }
+);
+
+// POST new measurement version for a customer
 export const POST = withPermission(
   { resource: "measurement", action: "create" },
   async (request, { params, session }) => {
@@ -16,32 +33,25 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Get the latest version
+    // Get the latest version for this customer
     const [latest] = await db
-      .select({ version: measurements.version })
-      .from(measurements)
-      .where(eq(measurements.outfitId, id))
-      .orderBy(desc(measurements.version))
+      .select({ version: customerMeasurements.version })
+      .from(customerMeasurements)
+      .where(eq(customerMeasurements.customerId, id))
+      .orderBy(desc(customerMeasurements.version))
       .limit(1);
 
     const [measurement] = await db
-      .insert(measurements)
+      .insert(customerMeasurements)
       .values({
-        outfitId: id,
+        customerId: id,
         template: parsed.data.template,
         values: parsed.data.values,
         notes: parsed.data.notes,
         version: (latest?.version || 0) + 1,
+        createdBy: session.id,
       })
       .returning();
-
-    // Auto-trigger: first measurement → WAITING_FOR_REFERENCES
-    const { onMeasurementSaved } = await import("@/lib/auto-triggers");
-    await onMeasurementSaved(id, session.id);
-
-    // Emit event
-    const { eventBus } = await import("@/lib/events");
-    eventBus.emit({ type: "outfit_updated", outfitId: id, userId: session.id, timestamp: Date.now() });
 
     return NextResponse.json(measurement, { status: 201 });
   }

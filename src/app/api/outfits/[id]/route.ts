@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { outfits, measurements, referenceImages, dependencies, productionLogs, orders, customers, users } from "@/lib/db/schema";
+import { outfits, referenceImages, dependencies, productionLogs, orders, customers, users, customerMeasurements } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 
@@ -21,8 +21,7 @@ export const GET = withPermission(
     }
 
     // Fetch all related data in parallel
-    const [outfitMeasurements, allReferences, outfitDependencies, logs, orderResult] = await Promise.all([
-      db.select().from(measurements).where(eq(measurements.outfitId, id)).orderBy(desc(measurements.version)),
+    const [allReferences, outfitDependencies, logs, orderResult] = await Promise.all([
       db.select().from(referenceImages).where(eq(referenceImages.outfitId, id)).orderBy(desc(referenceImages.createdAt)),
       db.select().from(dependencies).where(eq(dependencies.outfitId, id)),
       db.select().from(productionLogs).where(eq(productionLogs.outfitId, id)).orderBy(desc(productionLogs.createdAt)),
@@ -49,13 +48,25 @@ export const GET = withPermission(
       ? allReferences.filter((r) => r.status === "LOCKED")
       : allReferences;
 
+    // Fetch customer-level measurements (latest version)
+    let latestCustomerMeasurement = null;
+    if (order) {
+      const [cm] = await db
+        .select()
+        .from(customerMeasurements)
+        .where(eq(customerMeasurements.customerId, order.customerId))
+        .orderBy(desc(customerMeasurements.version))
+        .limit(1);
+      latestCustomerMeasurement = cm || null;
+    }
+
     return NextResponse.json({
       ...outfit,
       order: order ? { id: order.id, orderNumber: order.orderNumber, deliveryDate: order.deliveryDate, trialDate: order.trialDate } : null,
       customer,
       designer: designerUser,
       master: masterUser,
-      measurements: outfitMeasurements,
+      customerMeasurements: latestCustomerMeasurement,
       references: outfitReferences,
       dependencies: outfitDependencies,
       productionLogs: logs,

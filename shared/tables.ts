@@ -85,20 +85,20 @@ export const outfits = pgTable("outfits", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// ─── MEASUREMENTS ──────────────────────────────────────────────────────────────
-export const measurements = pgTable("measurements", {
+// ─── CUSTOMER MEASUREMENTS ─────────────────────────────────────────────────────
+export const customerMeasurements = pgTable("customer_measurements", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  outfitId: varchar("outfit_id")
-    .references(() => outfits.id)
+  customerId: varchar("customer_id")
+    .references(() => customers.id)
     .notNull(),
   template: text("template"),
   values: json("values").notNull().$type<Record<string, string>>(),
   version: integer("version").notNull().default(1),
   notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // ─── MEASUREMENT TEMPLATES ─────────────────────────────────────────────────────

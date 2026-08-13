@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { customers, orders, outfits, payments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { customers, orders, outfits, payments, customerMeasurements } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { customerSchema } from "@/lib/validations";
 
@@ -25,6 +25,13 @@ export const GET = withPermission(
       .from(orders)
       .where(eq(orders.customerId, id));
 
+    let allMeasurements: any[] = [];
+    allMeasurements = await db
+      .select()
+      .from(customerMeasurements)
+      .where(eq(customerMeasurements.customerId, id))
+      .orderBy(desc(customerMeasurements.version));
+
     const ordersWithOutfits = await Promise.all(
       customerOrders.map(async (order) => {
         const [orderOutfits, orderPayments] = await Promise.all([
@@ -36,7 +43,7 @@ export const GET = withPermission(
       })
     );
 
-    return NextResponse.json({ ...customer, orders: ordersWithOutfits });
+    return NextResponse.json({ ...customer, orders: ordersWithOutfits, measurements: allMeasurements });
   }
 );
 

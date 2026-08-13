@@ -20,6 +20,7 @@ import {
   X,
   Moon,
   Sun,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +36,7 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Orders", href: "/dashboard/orders", icon: <ShoppingBag className="h-5 w-5" /> },
     { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
     { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
+    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
     { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
     { label: "Users", href: "/dashboard/users", icon: <UserCircle className="h-5 w-5" /> },
   ],
@@ -49,11 +51,13 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
     { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
+    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
     { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   MASTER: [
     { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
+    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
     { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
   ],
 };

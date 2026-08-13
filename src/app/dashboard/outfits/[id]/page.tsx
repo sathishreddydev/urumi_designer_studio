@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
+import { toast } from "@/hooks/use-toast";
 
 const DEPENDENCY_TYPES = ["FABRIC", "LINING", "DYEING", "ACCESSORIES", "STONES", "CANVAS", "CUPS"];
 
@@ -54,8 +55,7 @@ export default function OutfitDetailPage() {
   const queryClient = useQueryClient();
   const { can, role } = usePermissions();
 
-  const [measurementValues, setMeasurementValues] = useState<Record<string, string>>({});
-  const [newField, setNewField] = useState("");
+  const [whatsappPrompt, setWhatsappPrompt] = useState<{ customerName: string; url: string } | null>(null);
 
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
@@ -95,13 +95,22 @@ export default function OutfitDetailPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
       queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
+      toast({ title: "Status updated", description: "Outfit transitioned successfully." });
 
-      // If customer should be notified (READY_FOR_DELIVERY), open WhatsApp
+      // If customer should be notified (READY_FOR_DELIVERY), show dialog
       if (data.notifyCustomer?.whatsappUrl) {
-        if (confirm(`Outfit is ready! Notify ${data.notifyCustomer.customerName} via WhatsApp?`)) {
-          window.open(data.notifyCustomer.whatsappUrl, "_blank");
-        }
+        setWhatsappPrompt({
+          customerName: data.notifyCustomer.customerName,
+          url: data.notifyCustomer.whatsappUrl,
+        });
       }
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Transition failed",
+        description: error.message || "Could not update outfit status.",
+      });
     },
   });
 
@@ -118,23 +127,10 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      toast({ title: "Updated", description: "Outfit details saved." });
     },
-  });
-
-  // Add measurement
-  const addMeasurementMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch(`/api/outfits/${params.id}/measurements`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to add");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-      setMeasurementValues({});
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Update failed", description: error.message });
     },
   });
 
@@ -151,6 +147,10 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      toast({ title: "Dependency raised", description: "Dependency added to this outfit." });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Failed", description: error.message });
     },
   });
 
@@ -284,7 +284,6 @@ export default function OutfitDetailPage() {
   const availableTransitions = transitions?.availableTransitions || [];
   const patternRefs = (outfit.references || []).filter((r: any) => r.type === "PATTERN");
   const maggamRefs = (outfit.references || []).filter((r: any) => r.type === "MAGGAM");
-  const latestMeasurement = outfit.measurements?.[0];
 
   return (
     <div className="space-y-4">
@@ -381,109 +380,21 @@ export default function OutfitDetailPage() {
           <TabsTrigger value="timeline" className="text-xs sm:text-sm">Timeline</TabsTrigger>
         </TabsList>
 
-        {/* Measurements */}
+        {/* Measurements (from customer profile — read-only) */}
         <TabsContent value="measurements" className="space-y-4 mt-4">
-          {can("create", "measurement") && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Add Measurements</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMeasurementValues({
-                        Bust: "", Waist: "", Hip: "", Shoulder: "",
-                        "Arm Length": "", "Neck Front": "", "Front Length": "", "Back Length": "",
-                      });
-                    }}
-                  >
-                    Blouse Template
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMeasurementValues({ Waist: "", Hip: "", Length: "", Flare: "" });
-                    }}
-                  >
-                    Lehenga Template
-                  </Button>
-                </div>
-
-                {Object.keys(measurementValues).length > 0 && (
-                  <div className="space-y-2">
-                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-                      {Object.entries(measurementValues).map(([key, value]) => (
-                        <div key={key} className="space-y-1">
-                          <Label className="text-xs">{key}</Label>
-                          <Input
-                            value={value}
-                            onChange={(e) =>
-                              setMeasurementValues((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                            placeholder="inches"
-                            className="h-8"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newField}
-                        onChange={(e) => setNewField(e.target.value)}
-                        placeholder="Add field name"
-                        className="h-8"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && newField.trim()) {
-                            setMeasurementValues((prev) => ({ ...prev, [newField.trim()]: "" }));
-                            setNewField("");
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          if (newField.trim()) {
-                            setMeasurementValues((prev) => ({ ...prev, [newField.trim()]: "" }));
-                            setNewField("");
-                          }
-                        }}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <LoadingButton
-                      size="sm"
-                      loading={addMeasurementMutation.isPending}
-                      loadingText="Saving..."
-                      onClick={() => addMeasurementMutation.mutate({ values: measurementValues })}
-                      disabled={Object.keys(measurementValues).length === 0}
-                    >
-                      Save Measurements
-                    </LoadingButton>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {latestMeasurement ? (
+          {outfit.customerMeasurements ? (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex justify-between">
-                  <span>Version {latestMeasurement.version}</span>
+                  <span>Customer Measurements (v{outfit.customerMeasurements.version})</span>
                   <span className="text-xs text-muted-foreground font-normal">
-                    {formatDate(latestMeasurement.createdAt)}
+                    {formatDate(outfit.customerMeasurements.createdAt)}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {Object.entries(latestMeasurement.values as Record<string, string>).map(
+                  {Object.entries(outfit.customerMeasurements.values as Record<string, string>).map(
                     ([key, value]) => (
                       <div key={key}>
                         <p className="text-xs text-muted-foreground">{key}</p>
@@ -492,12 +403,28 @@ export default function OutfitDetailPage() {
                     )
                   )}
                 </div>
+                {outfit.customer?.id && (
+                  <Link
+                    href={`/dashboard/customers/${outfit.customer.id}`}
+                    className="inline-block mt-3 text-xs text-primary hover:underline"
+                  >
+                    Update measurements on customer profile →
+                  </Link>
+                )}
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No measurements recorded
+                No measurements recorded for this customer.
+                {outfit.customer?.id && (
+                  <Link
+                    href={`/dashboard/customers/${outfit.customer.id}`}
+                    className="block mt-2 text-primary hover:underline"
+                  >
+                    Add measurements on customer profile →
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
@@ -731,6 +658,31 @@ export default function OutfitDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* WhatsApp Notification Dialog */}
+      <AlertDialog open={!!whatsappPrompt} onOpenChange={(open) => !open && setWhatsappPrompt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notify Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Outfit is ready! Would you like to notify {whatsappPrompt?.customerName} via WhatsApp?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Skip</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (whatsappPrompt?.url) {
+                  window.open(whatsappPrompt.url, "_blank");
+                }
+                setWhatsappPrompt(null);
+              }}
+            >
+              Send WhatsApp
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

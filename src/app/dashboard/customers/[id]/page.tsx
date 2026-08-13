@@ -1,13 +1,17 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   Phone,
@@ -18,10 +22,18 @@ import {
   Shirt,
   MessageCircle,
   Pencil,
+  Plus,
+  Ruler,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function CustomerDetailPage() {
   const params = useParams();
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const [measurementValues, setMeasurementValues] = useState<Record<string, string>>({});
+  const [newField, setNewField] = useState("");
+  const [showMeasurementForm, setShowMeasurementForm] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", params.id],
@@ -29,6 +41,27 @@ export default function CustomerDetailPage() {
       const res = await fetch(`/api/customers/${params.id}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
+    },
+  });
+
+  const addMeasurementMutation = useMutation({
+    mutationFn: async (data: { values: Record<string, string>; template?: string; notes?: string }) => {
+      const res = await fetch(`/api/customers/${params.id}/measurements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save measurements");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer", params.id] });
+      setMeasurementValues({});
+      setShowMeasurementForm(false);
+      toast({ title: "Saved", description: "Measurements recorded successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Failed", description: error.message });
     },
   });
 
@@ -118,6 +151,193 @@ export default function CustomerDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Measurements Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Ruler className="h-5 w-5" /> Measurements
+          </h2>
+          {can("create", "measurement") && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowMeasurementForm(!showMeasurementForm)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {customer.measurements?.length > 0 ? "Update" : "Add"}
+            </Button>
+          )}
+        </div>
+
+        {/* Add/Update Measurement Form */}
+        {showMeasurementForm && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {customer.measurements?.length > 0 ? "Update Measurements" : "Add Measurements"}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                This will create a new version. Previous measurements are preserved in history.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const latest = customer.measurements?.[0]?.values || {};
+                    setMeasurementValues({
+                      Bust: latest.Bust || "",
+                      Waist: latest.Waist || "",
+                      Hip: latest.Hip || "",
+                      Shoulder: latest.Shoulder || "",
+                      "Arm Length": latest["Arm Length"] || "",
+                      "Neck Front": latest["Neck Front"] || "",
+                      "Front Length": latest["Front Length"] || "",
+                      "Back Length": latest["Back Length"] || "",
+                    });
+                  }}
+                >
+                  Blouse Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const latest = customer.measurements?.[0]?.values || {};
+                    setMeasurementValues({
+                      Waist: latest.Waist || "",
+                      Hip: latest.Hip || "",
+                      Length: latest.Length || "",
+                      Flare: latest.Flare || "",
+                    });
+                  }}
+                >
+                  Lehenga Template
+                </Button>
+                {customer.measurements?.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMeasurementValues({ ...customer.measurements[0].values });
+                    }}
+                  >
+                    Copy Previous
+                  </Button>
+                )}
+              </div>
+
+              {Object.keys(measurementValues).length > 0 && (
+                <div className="space-y-2">
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {Object.entries(measurementValues).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <Label className="text-xs">{key}</Label>
+                        <Input
+                          value={value}
+                          onChange={(e) =>
+                            setMeasurementValues((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                          placeholder="inches"
+                          className="h-8"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newField}
+                      onChange={(e) => setNewField(e.target.value)}
+                      placeholder="Add custom field"
+                      className="h-8"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newField.trim()) {
+                          setMeasurementValues((prev) => ({ ...prev, [newField.trim()]: "" }));
+                          setNewField("");
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (newField.trim()) {
+                          setMeasurementValues((prev) => ({ ...prev, [newField.trim()]: "" }));
+                          setNewField("");
+                        }
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={addMeasurementMutation.isPending}
+                      onClick={() => addMeasurementMutation.mutate({ values: measurementValues })}
+                    >
+                      {addMeasurementMutation.isPending ? "Saving..." : "Save Measurements"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setShowMeasurementForm(false);
+                        setMeasurementValues({});
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Display Latest Measurements */}
+        {customer.measurements?.length > 0 ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex justify-between">
+                <span>Version {customer.measurements[0].version}</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {formatDate(customer.measurements[0].createdAt)}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {Object.entries(customer.measurements[0].values as Record<string, string>).map(
+                  ([key, value]) => (
+                    <div key={key}>
+                      <p className="text-xs text-muted-foreground">{key}</p>
+                      <p className="text-sm font-medium">{value || "—"}</p>
+                    </div>
+                  )
+                )}
+              </div>
+              {customer.measurements.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-3 border-t pt-2">
+                  {customer.measurements.length - 1} previous version(s) recorded
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              <Ruler className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+              No measurements recorded yet
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Separator />
 
       {/* New Order Button */}
       <div className="flex items-center justify-between">

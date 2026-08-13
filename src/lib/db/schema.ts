@@ -120,15 +120,16 @@ export const outfits = pgTable("outfits", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const measurements = pgTable("measurements", {
-  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("msr")),
-  outfitId: varchar("outfit_id", { length: 20 }).references(() => outfits.id).notNull(),
+// Customer-level measurements (body measurements versioned per customer)
+export const customerMeasurements = pgTable("customer_measurements", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("cms")),
+  customerId: varchar("customer_id", { length: 20 }).references(() => customers.id).notNull(),
   template: text("template"),
   values: json("values").notNull().$type<Record<string, string>>(),
   version: integer("version").notNull().default(1),
   notes: text("notes"),
+  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const measurementTemplates = pgTable("measurement_templates", {
@@ -203,7 +204,7 @@ export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type Outfit = typeof outfits.$inferSelect;
 export type NewOutfit = typeof outfits.$inferInsert;
-export type Measurement = typeof measurements.$inferSelect;
+export type CustomerMeasurement = typeof customerMeasurements.$inferSelect;
 export type ReferenceImage = typeof referenceImages.$inferSelect;
 export type Dependency = typeof dependencies.$inferSelect;
 export type Payment = typeof payments.$inferSelect;

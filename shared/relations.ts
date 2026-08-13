@@ -4,7 +4,7 @@ import {
   customers,
   orders,
   outfits,
-  measurements,
+  customerMeasurements,
   referenceImages,
   dependencies,
   payments,
@@ -22,6 +22,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 export const customersRelations = relations(customers, ({ many }) => ({
   orders: many(orders),
+  measurements: many(customerMeasurements),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -48,16 +49,19 @@ export const outfitsRelations = relations(outfits, ({ one, many }) => ({
     references: [users.id],
     relationName: "master",
   }),
-  measurements: many(measurements),
   references: many(referenceImages),
   dependencies: many(dependencies),
   productionLogs: many(productionLogs),
 }));
 
-export const measurementsRelations = relations(measurements, ({ one }) => ({
-  outfit: one(outfits, {
-    fields: [measurements.outfitId],
-    references: [outfits.id],
+export const customerMeasurementsRelations = relations(customerMeasurements, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerMeasurements.customerId],
+    references: [customers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [customerMeasurements.createdBy],
+    references: [users.id],
   }),
 }));
 

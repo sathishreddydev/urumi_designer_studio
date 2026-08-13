@@ -47,13 +47,11 @@ export async function onDesignerAssigned(outfitId: string, designerId: string) {
 }
 
 // ─── TRIGGER: First Measurement Saved ───────────────────────────────────────
-// DESIGN_IN_PROGRESS → WAITING_FOR_REFERENCES
+// (Measurements are now on customer profile — this trigger is deprecated)
+// If needed, the workflow can advance via manual transition instead.
 
-export async function onMeasurementSaved(outfitId: string, userId: string) {
-  const [outfit] = await db.select({ status: outfits.status }).from(outfits).where(eq(outfits.id, outfitId));
-  if (outfit?.status === "DESIGN_IN_PROGRESS") {
-    await advanceStatus(outfitId, "WAITING_FOR_REFERENCES", userId, "Measurement recorded");
-  }
+export async function onMeasurementSaved(_outfitId: string, _userId: string) {
+  // No-op — kept for backwards compatibility
 }
 
 // ─── TRIGGER: References Locked ─────────────────────────────────────────────
