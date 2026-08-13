@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { AlertTriangle, CheckCircle, Clock, Shirt, User } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const TYPE_COLORS: Record<string, string> = {
   FABRIC: "bg-orange-100 text-orange-700",
@@ -20,6 +21,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function BlockersPage() {
   const queryClient = useQueryClient();
+  const { can } = usePermissions();
 
   const { data: blockers, isLoading } = useQuery({
     queryKey: ["active-blockers"],
@@ -123,18 +125,20 @@ export default function BlockersPage() {
                   </div>
 
                   {/* Right: Action */}
-                  <LoadingButton
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800"
-                    loading={resolveMutation.isPending}
-                    loadingText="Resolving..."
-                    onClick={() =>
-                      resolveMutation.mutate({ outfitId: blocker.outfitId, depId: blocker.id })
-                    }
-                  >
-                    <CheckCircle className="h-3.5 w-3.5" /> Mark Resolved
-                  </LoadingButton>
+                  {can("update", "dependency") && blocker.status !== "AVAILABLE" && (
+                    <LoadingButton
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800"
+                      loading={resolveMutation.isPending}
+                      loadingText="Resolving..."
+                      onClick={() =>
+                        resolveMutation.mutate({ outfitId: blocker.outfitId, depId: blocker.id })
+                      }
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" /> Mark Resolved
+                    </LoadingButton>
+                  )}
                 </div>
               </CardContent>
             </Card>

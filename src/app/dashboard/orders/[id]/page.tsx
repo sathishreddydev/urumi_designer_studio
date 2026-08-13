@@ -116,6 +116,7 @@ export default function OrderDetailPage() {
   if (!order) return <p>Order not found</p>;
 
   const totalPaid = (order.payments || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const isCompleted = order.status === "Completed";
   const portalUrl = order.portalToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/${order.portalToken}`
     : null;
@@ -136,7 +137,7 @@ export default function OrderDetailPage() {
             {order.customer?.name} · {order.customer?.mobile}
           </p>
         </div>
-        {can("update", "order") && (
+        {can("update", "order") && !isCompleted && (
           <div className="flex gap-2">
             <Link href={`/dashboard/orders/${params.id}/invoice`}>
               <Button variant="outline" size="sm">Invoice</Button>
@@ -237,7 +238,7 @@ export default function OrderDetailPage() {
                   </div>
 
                   {/* Admin assignment controls */}
-                  {isAdmin && (
+                  {isAdmin && !isCompleted && (
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center border-t pt-3">
                       <div className="flex items-center gap-2 flex-1">
                         <UserCircle className="h-3 w-3 text-muted-foreground" />
@@ -276,7 +277,7 @@ export default function OrderDetailPage() {
         {/* Payments Tab */}
         {can("read", "payment") && (
           <TabsContent value="payments" className="space-y-3 mt-4">
-            {can("create", "payment") && (
+            {!isCompleted && can("create", "payment") && (
               <div className="flex justify-end">
                 <Button size="sm" onClick={() => setShowAddPayment(!showAddPayment)}>
                   <CreditCard className="h-3 w-3" /> Add Payment

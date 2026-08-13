@@ -285,6 +285,10 @@ export default function OutfitDetailPage() {
   const patternRefs = (outfit.references || []).filter((r: any) => r.type === "PATTERN");
   const maggamRefs = (outfit.references || []).filter((r: any) => r.type === "MAGGAM");
 
+  // Statuses where references/dependencies should no longer be editable
+  const lockedStatuses = ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"];
+  const isLocked = lockedStatuses.includes(outfit.status);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -436,9 +440,9 @@ export default function OutfitDetailPage() {
             title="Pattern References"
             type="PATTERN"
             references={patternRefs}
-            canUpload={can("upload", "reference")}
-            canSelect={can("select", "reference")}
-            canLock={can("lock", "reference")}
+            canUpload={!isLocked && can("upload", "reference")}
+            canSelect={!isLocked && can("select", "reference")}
+            canLock={!isLocked && can("lock", "reference")}
             isUploading={uploadRefMutation.isPending}
             onUpload={(file) => uploadRefMutation.mutate({ file, type: "PATTERN" })}
             onSelect={(ids) => selectRefsMutation.mutate(ids)}
@@ -453,9 +457,9 @@ export default function OutfitDetailPage() {
               title="Maggam References"
               type="MAGGAM"
               references={maggamRefs}
-              canUpload={can("upload", "reference")}
-              canSelect={can("select", "reference")}
-              canLock={can("lock", "reference")}
+              canUpload={!isLocked && can("upload", "reference")}
+              canSelect={!isLocked && can("select", "reference")}
+              canLock={!isLocked && can("lock", "reference")}
               isUploading={uploadRefMutation.isPending}
               onUpload={(file) => uploadRefMutation.mutate({ file, type: "MAGGAM" })}
               onSelect={(ids) => selectRefsMutation.mutate(ids)}
@@ -471,7 +475,7 @@ export default function OutfitDetailPage() {
         {/* Dependencies */}
         {can("read", "dependency") && (
           <TabsContent value="dependencies" className="space-y-4 mt-4">
-            {can("create", "dependency") && (
+            {!isLocked && can("create", "dependency") && (
               <Card>
                 <CardContent className="pt-4 pb-4">
                   <form
@@ -534,7 +538,7 @@ export default function OutfitDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {dep.status !== "AVAILABLE" && can("update", "dependency") && (
+                        {dep.status !== "AVAILABLE" && !isLocked && can("update", "dependency") && (
                           <Button
                             size="sm"
                             variant="outline"
