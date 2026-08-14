@@ -43,16 +43,18 @@ export default function EditUserPage() {
 
   const user = users?.find((u: any) => u.id === params.id);
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm<EditUserForm>({
+  const { register, handleSubmit, setValue, watch, reset, formState } = useForm<EditUserForm>({
     defaultValues: { name: "", phone: "", role: "", password: "", active: true },
   });
+
+  const currentRole = watch("role");
 
   useEffect(() => {
     if (user) {
       reset({
         name: user.name,
         phone: user.phone || "",
-        role: user.role?.toUpperCase() || "",
+        role: user.role || "",
         password: "",
         active: user.active,
       });
@@ -112,8 +114,8 @@ export default function EditUserPage() {
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Select value={watch("role")} onValueChange={(val) => setValue("role", val)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={currentRole} onValueChange={(val) => setValue("role", val, { shouldDirty: true })}>
+                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ADMIN">Admin</SelectItem>
                     <SelectItem value="RECEPTION">Reception</SelectItem>

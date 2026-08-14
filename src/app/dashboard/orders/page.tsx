@@ -111,6 +111,9 @@ export default function OrdersPage() {
                   <th className="text-left px-4 py-3 font-medium">Order</th>
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
+                  <th className="text-right px-4 py-3 font-medium">Estimated</th>
+                  <th className="text-right px-4 py-3 font-medium">Advance</th>
+                  <th className="text-right px-4 py-3 font-medium">Paid</th>
                   <th className="text-left px-4 py-3 font-medium">Date</th>
                   <th className="text-left px-4 py-3 font-medium">Delivery</th>
                 </tr>
@@ -125,6 +128,21 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={order.estimatedAmount ? "font-medium" : "text-muted-foreground"}>
+                        {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString("en-IN")}` : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={order.advanceAmount ? "text-blue-600 font-medium" : "text-muted-foreground"}>
+                        {order.advanceAmount ? `₹${Number(order.advanceAmount).toLocaleString("en-IN")}` : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={order.totalPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
+                        ₹{order.totalPaid?.toLocaleString("en-IN") || "0"}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(order.orderDate)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(order.deliveryDate)}</td>
@@ -149,12 +167,23 @@ export default function OrdersPage() {
                       </div>
                       <div className="text-right">
                         <Badge className={`text-[10px] ${getStatusColor(order.status)}`}>{order.status}</Badge>
-                        {order.deliveryDate && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5 justify-end">
-                            <Calendar className="h-2.5 w-2.5" /> {formatDate(order.deliveryDate)}
-                          </p>
-                        )}
                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-[11px]">
+                      {order.estimatedAmount && (
+                        <span className="text-muted-foreground">Est: ₹{Number(order.estimatedAmount).toLocaleString("en-IN")}</span>
+                      )}
+                      {order.advanceAmount && (
+                        <span className="text-blue-600">Adv: ₹{Number(order.advanceAmount).toLocaleString("en-IN")}</span>
+                      )}
+                      {order.totalPaid > 0 && (
+                        <span className="text-green-600">Paid: ₹{order.totalPaid?.toLocaleString("en-IN")}</span>
+                      )}
+                      {order.deliveryDate && (
+                        <span className="text-muted-foreground ml-auto flex items-center gap-0.5">
+                          <Calendar className="h-2.5 w-2.5" /> {formatDate(order.deliveryDate)}
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

@@ -51,13 +51,18 @@ export const GET = withPermission(
     // Fetch customer-level measurements (latest version)
     let latestCustomerMeasurement = null;
     if (order) {
-      const [cm] = await db
-        .select()
-        .from(customerMeasurements)
-        .where(eq(customerMeasurements.customerId, order.customerId))
-        .orderBy(desc(customerMeasurements.version))
-        .limit(1);
-      latestCustomerMeasurement = cm || null;
+      try {
+        const [cm] = await db
+          .select()
+          .from(customerMeasurements)
+          .where(eq(customerMeasurements.customerId, order.customerId))
+          .orderBy(desc(customerMeasurements.version))
+          .limit(1);
+        latestCustomerMeasurement = cm || null;
+      } catch {
+        // Table may not exist yet
+        latestCustomerMeasurement = null;
+      }
     }
 
     return NextResponse.json({
