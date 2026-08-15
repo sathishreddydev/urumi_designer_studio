@@ -3,10 +3,31 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Shirt,
+  Calendar,
+  UserCheck,
+  Loader2,
+  Sparkles,
+  CreditCard,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -14,13 +35,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Shirt } from "lucide-react";
-import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/hooks/use-permissions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const OUTFIT_TYPES = [
-  "Bridal Blouse", "Reception Blouse", "Lehenga", "Gown",
-  "Kurta", "Saree Blouse", "Anarkali", "Sharara", "Other",
+  "Bridal Blouse",
+  "Reception Blouse",
+  "Lehenga",
+  "Gown",
+  "Kurta",
+  "Saree Blouse",
+  "Anarkali",
+  "Sharara",
+  "Other",
 ];
 
 interface OutfitEntry {
@@ -42,18 +70,25 @@ export default function NewOrderPage() {
   const [customerId, setCustomerId] = useState(preselectedCustomerId);
   const [trialDate, setTrialDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [estimatedAmount, setEstimatedAmount] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [outfits, setOutfits] = useState<OutfitEntry[]>([
-    { name: "", type: "", occasion: "", price: "", maggamRequired: false, designerId: "" },
+    {
+      name: "",
+      type: "",
+      occasion: "",
+      price: "",
+      maggamRequired: false,
+      designerId: "",
+    },
   ]);
 
-  const { data: customers } = useQuery({
+  // Queries
+  const { data: customersData, isLoading: isLoadingCustomers } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
       const res = await fetch("/api/customers?limit=100");
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed to fetch customers");
       return res.json();
     },
   });
@@ -68,15 +103,26 @@ export default function NewOrderPage() {
     enabled: isAdmin,
   });
 
+  const customers = customersData?.customers || [];
   const designers = (staff || []).filter((u: any) => u.role === "DESIGNER");
-  const selectedCustomer = customers?.customers?.find((c: any) => c.id === customerId);
+  const selectedCustomer = customers.find((c: any) => c.id === customerId);
 
+  // Calculations
+  const estimatedTotal = outfits.reduce(
+    (s, o) => s + (Number(o.price) || 0),
+    0,
+  );
+  const advance = Number(advanceAmount) || 0;
+  const balanceDue = estimatedTotal - advance;
+
+  // Mutation
   const createMutation = useMutation({
     mutationFn: async () => {
       const validOutfits = outfits.filter((o) => o.name && o.type);
-      // Auto-calculate estimated total from outfit prices
-      const calculatedTotal = validOutfits.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
-      const finalEstimated = estimatedAmount ? Number(estimatedAmount) : (calculatedTotal > 0 ? calculatedTotal : undefined);
+      const calculatedTotal = validOutfits.reduce(
+        (sum, o) => sum + (Number(o.price) || 0),
+        0,
+      );
 
       // 1. Create order
       const orderRes = await fetch("/api/orders", {
@@ -86,7 +132,7 @@ export default function NewOrderPage() {
           customerId,
           trialDate: trialDate || undefined,
           deliveryDate: deliveryDate || undefined,
-          estimatedAmount: finalEstimated,
+          estimatedAmount: calculatedTotal > 0 ? calculatedTotal : undefined,
           advanceAmount: advanceAmount ? Number(advanceAmount) : undefined,
           notes: notes || undefined,
         }),
@@ -137,216 +183,408 @@ export default function NewOrderPage() {
   });
 
   function addOutfit() {
-    setOutfits([...outfits, { name: "", type: "", occasion: "", price: "", maggamRequired: false, designerId: "" }]);
+    setOutfits((prev) => [
+      ...prev,
+      {
+        name: "",
+        type: "",
+        occasion: "",
+        price: "",
+        maggamRequired: false,
+        designerId: "",
+      },
+    ]);
   }
 
   function removeOutfit(index: number) {
     if (outfits.length <= 1) return;
-    setOutfits(outfits.filter((_, i) => i !== index));
+    setOutfits((prev) => prev.filter((_, i) => i !== index));
   }
 
   function updateOutfit(index: number, field: keyof OutfitEntry, value: any) {
-    setOutfits(outfits.map((o, i) => (i === index ? { ...o, [field]: value } : o)));
+    setOutfits((prev) =>
+      prev.map((o, i) => (i === index ? { ...o, [field]: value } : o)),
+    );
   }
 
-  const canSubmit = customerId && outfits.some((o) => o.name && o.type);
+  const validOutfitCount = outfits.filter((o) => o.name && o.type).length;
+  const canSubmit = Boolean(customerId && validOutfitCount > 0);
+
+  const backUrl = preselectedCustomerId
+    ? `/dashboard/customers/${preselectedCustomerId}`
+    : "/dashboard/orders";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link href={preselectedCustomerId ? `/dashboard/customers/${preselectedCustomerId}` : "/dashboard/orders"}>
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <h1 className="text-2xl font-bold lg:text-3xl">New Order</h1>
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      {/* Top Header */}
+      <div className="flex items-center justify-between border-b pb-4">
+        <div className="flex items-center gap-3">
+          <Link href={backUrl}>
+            <Button variant="outline" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Create New Order
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Configure garments, schedules, and initial payment details.
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2">
+          <Link href={backUrl}>
+            <Button variant="ghost">Cancel</Button>
+          </Link>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!canSubmit || createMutation.isPending}
+          >
+            {createMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Save Order
+          </Button>
+        </div>
       </div>
 
-      {/* Customer Selection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Customer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {preselectedCustomerId && selectedCustomer ? (
-            <div className="rounded-md border p-3 bg-muted/50">
-              <p className="text-sm font-medium">{selectedCustomer.name}</p>
-              <p className="text-xs text-muted-foreground">{selectedCustomer.mobile}</p>
-            </div>
-          ) : (
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers?.customers?.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} - {c.mobile}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dates & Payment */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Schedule & Payment</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Trial Date</Label>
-              <Input type="date" value={trialDate} onChange={(e) => setTrialDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Delivery Date</Label>
-              <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">
-                Estimated Total (₹)
-                {outfits.some(o => o.price) && (
-                  <span className="text-muted-foreground font-normal ml-1">
-                    — auto: ₹{outfits.reduce((s, o) => s + (Number(o.price) || 0), 0).toLocaleString()}
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={estimatedAmount}
-                onChange={(e) => setEstimatedAmount(e.target.value)}
-                placeholder={outfits.some(o => o.price)
-                  ? `Auto: ${outfits.reduce((s, o) => s + (Number(o.price) || 0), 0)}`
-                  : "e.g., 25000"
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Advance Payment (₹)</Label>
-              <Input
-                type="number"
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                placeholder="e.g., 10000"
-              />
-            </div>
-          </div>
-          <div className="mt-3 space-y-1">
-            <Label className="text-xs">Notes</Label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Outfits */}
-      <Card>
-        <CardHeader className="pb-3">
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Outfits List (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Outfits ({outfits.length})</CardTitle>
-            <Button size="sm" variant="outline" onClick={addOutfit}>
-              <Plus className="h-3 w-3" /> Add More
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Shirt className="h-5 w-5 text-primary" />
+                Outfit Items ({outfits.length})
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Add one or multiple items to this customer order.
+              </p>
+            </div>
+            <Button size="sm" onClick={addOutfit} className="gap-1">
+              <Plus className="h-4 w-4" /> Add Outfit
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {outfits.map((outfit, index) => (
-            <div key={index} className="rounded-lg border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shirt className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Outfit {index + 1}</span>
+
+          <div className="space-y-4">
+            {outfits.map((outfit, index) => (
+              <Card key={index} className="relative overflow-hidden border">
+                <CardHeader className="bg-muted/30 pb-3 pt-3 flex flex-row items-center justify-between space-y-0">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="font-mono bg-background"
+                    >
+                      #{index + 1}
+                    </Badge>
+                    <CardTitle className="text-sm font-medium">
+                      {outfit.name || `Outfit Item ${index + 1}`}
+                    </CardTitle>
+                  </div>
+                  {outfits.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeOutfit(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Item Name */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">
+                        Item Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={outfit.name}
+                        onChange={(e) =>
+                          updateOutfit(index, "name", e.target.value)
+                        }
+                        placeholder="e.g., Heavy Silk Blouse"
+                      />
+                    </div>
+
+                    {/* Outfit Type */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">
+                        Type <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={outfit.type}
+                        onValueChange={(val) =>
+                          updateOutfit(index, "type", val)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select outfit type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OUTFIT_TYPES.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Price (₹)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">
+                          ₹
+                        </span>
+                        <Input
+                          type="number"
+                          className="pl-7"
+                          value={outfit.price}
+                          onChange={(e) =>
+                            updateOutfit(index, "price", e.target.value)
+                          }
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Occasion */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Occasion</Label>
+                      <Input
+                        value={outfit.occasion}
+                        onChange={(e) =>
+                          updateOutfit(index, "occasion", e.target.value)
+                        }
+                        placeholder="e.g., Reception, Sangeet"
+                      />
+                    </div>
+
+                    {/* Assign Designer (Admin Only) */}
+                    {isAdmin && (
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label className="text-xs font-semibold">
+                          Assigned Designer
+                        </Label>
+                        <Select
+                          value={outfit.designerId}
+                          onValueChange={(val) =>
+                            updateOutfit(index, "designerId", val)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Assign later..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {designers.map((d: any) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Maggam Work Checkbox */}
+                  <div className="flex items-center space-x-2 pt-1">
+                    <Checkbox
+                      id={`maggam-${index}`}
+                      checked={outfit.maggamRequired}
+                      onCheckedChange={(checked) =>
+                        updateOutfit(index, "maggamRequired", Boolean(checked))
+                      }
+                    />
+                    <label
+                      htmlFor={`maggam-${index}`}
+                      className="text-xs font-medium leading-none cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      Maggam / Hand Embroidery Work Required
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Customer & Payment Sidebar (5 cols) */}
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4">
+          {/* Customer Selection Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-primary" />
+                Customer Assignment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {preselectedCustomerId && selectedCustomer ? (
+                <div className="rounded-md border p-3 bg-muted/40 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {selectedCustomer.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedCustomer.mobile ||
+                        selectedCustomer.email ||
+                        "No contact info"}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">Preselected</Badge>
                 </div>
-                {outfits.length > 1 && (
-                  <Button variant="ghost" size="sm" onClick={() => removeOutfit(index)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                )}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Name *</Label>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">
+                    Select Customer *
+                  </Label>
+                  <Select
+                    value={customerId}
+                    onValueChange={(val) => setCustomerId(val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Search or select customer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingCustomers ? (
+                        <div className="flex items-center justify-center p-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
+                          Loading...
+                        </div>
+                      ) : (
+                        customers.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} ({c.mobile})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Schedule & Financial Summary Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                Schedule & Payment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Trial Date</Label>
                   <Input
-                    value={outfit.name}
-                    onChange={(e) => updateOutfit(index, "name", e.target.value)}
-                    placeholder="e.g., Bridal Blouse"
-                    className="h-9"
+                    type="date"
+                    value={trialDate}
+                    onChange={(e) => setTrialDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Type *</Label>
-                  <select
-                    value={outfit.type}
-                    onChange={(e) => updateOutfit(index, "type", e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  >
-                    <option value="">Select type</option>
-                    {OUTFIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Delivery Date</Label>
+                  <Input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                  />
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Financial Calculation Summary */}
+              <div className="space-y-3 bg-muted/30 p-3 rounded-lg border">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Estimated Total</span>
+                  <span className="font-semibold text-sm">
+                    ₹{estimatedTotal.toLocaleString()}
+                  </span>
+                </div>
+
                 <div className="space-y-1">
-                  <Label className="text-xs">Price (₹)</Label>
+                  <Label className="text-xs font-semibold flex items-center justify-between">
+                    <span>Advance Payment (₹)</span>
+                    <CreditCard className="h-3 w-3 text-muted-foreground" />
+                  </Label>
                   <Input
                     type="number"
-                    value={outfit.price}
-                    onChange={(e) => updateOutfit(index, "price", e.target.value)}
-                    placeholder="e.g., 15000"
-                    className="h-9"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="bg-background"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Occasion</Label>
-                  <Input
-                    value={outfit.occasion}
-                    onChange={(e) => updateOutfit(index, "occasion", e.target.value)}
-                    placeholder="Wedding"
-                    className="h-9"
-                  />
+
+                <Separator />
+
+                <div className="flex justify-between items-center text-xs pt-1">
+                  <span className="font-medium text-muted-foreground">
+                    Balance Due
+                  </span>
+                  <span
+                    className={`font-bold text-sm ${
+                      balanceDue < 0 ? "text-destructive" : "text-emerald-600"
+                    }`}
+                  >
+                    ₹{balanceDue > 0 ? balanceDue.toLocaleString() : 0}
+                  </span>
                 </div>
-                {isAdmin && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Assign Designer</Label>
-                    <select
-                      value={outfit.designerId}
-                      onChange={(e) => updateOutfit(index, "designerId", e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    >
-                      <option value="">Assign later</option>
-                      {designers.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                  </div>
-                )}
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id={`maggam-${index}`}
-                  checked={outfit.maggamRequired}
-                  onChange={(e) => updateOutfit(index, "maggamRequired", e.target.checked)}
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Order Notes</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Special instructions, design requests, etc."
+                  rows={3}
+                  className="resize-none"
                 />
-                <Label htmlFor={`maggam-${index}`} className="text-xs">Maggam Work Required</Label>
               </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
-      {/* Actions */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Link href={preselectedCustomerId ? `/dashboard/customers/${preselectedCustomerId}` : "/dashboard/orders"}>
-          <Button variant="outline" className="w-full">Cancel</Button>
-        </Link>
-        <Button
-          onClick={() => createMutation.mutate()}
-          disabled={!canSubmit || createMutation.isPending}
-        >
-          {createMutation.isPending ? "Creating..." : `Create Order with ${outfits.filter(o => o.name && o.type).length} Outfit(s)`}
-        </Button>
+              {/* Form Submission Button */}
+              <Button
+                onClick={() => createMutation.mutate()}
+                disabled={!canSubmit || createMutation.isPending}
+                className="w-full"
+                size="lg"
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Order...
+                  </>
+                ) : (
+                  `Create Order (${validOutfitCount} Item${
+                    validOutfitCount !== 1 ? "s" : ""
+                  })`
+                )}
+              </Button>
+
+              {createMutation.error && (
+                <p className="text-xs font-medium text-destructive text-center">
+                  {(createMutation.error as Error).message}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {createMutation.error && (
-        <p className="text-sm text-destructive">{createMutation.error.message}</p>
-      )}
     </div>
   );
 }
