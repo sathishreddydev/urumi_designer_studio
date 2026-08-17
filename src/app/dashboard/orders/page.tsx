@@ -114,81 +114,89 @@ export default function OrdersPage() {
                   <th className="text-right px-4 py-3 font-medium">Estimated</th>
                   <th className="text-right px-4 py-3 font-medium">Advance</th>
                   <th className="text-right px-4 py-3 font-medium">Paid</th>
-                  <th className="text-left px-4 py-3 font-medium">Date</th>
+                  <th className="text-right px-4 py-3 font-medium">Balance</th>
                   <th className="text-left px-4 py-3 font-medium">Delivery</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {data.orders.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
-                    <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm">{order.customerName}</p>
-                      <p className="text-xs text-muted-foreground">{order.customerMobile}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={order.estimatedAmount ? "font-medium" : "text-muted-foreground"}>
-                        {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString("en-IN")}` : "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={order.advanceAmount ? "text-blue-600 font-medium" : "text-muted-foreground"}>
+                {data.orders.map((order: any) => {
+                  const estimated = Number(order.estimatedAmount) || 0;
+                  const paid = order.totalPaid || 0;
+                  const balance = estimated - paid;
+                  return (
+                    <tr key={order.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
+                      <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm">{order.customerName}</p>
+                        <p className="text-xs text-muted-foreground">{order.customerMobile}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        {estimated > 0 ? `₹${estimated.toLocaleString("en-IN")}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right text-blue-600 font-medium">
                         {order.advanceAmount ? `₹${Number(order.advanceAmount).toLocaleString("en-IN")}` : "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={order.totalPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                        ₹{order.totalPaid?.toLocaleString("en-IN") || "0"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(order.orderDate)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(order.deliveryDate)}</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3 text-right text-green-600 font-medium">
+                        ₹{paid.toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={balance > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                          {estimated > 0 ? `₹${Math.max(0, balance).toLocaleString("en-IN")}` : "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDate(order.deliveryDate)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
-            {data.orders.map((order: any) => (
-              <Link key={order.id} href={`/dashboard/orders/${order.id}`}>
-                <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardContent className="pt-3 pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-sm">{order.orderNumber}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.customerName} · {formatDate(order.orderDate)}
-                        </p>
+            {data.orders.map((order: any) => {
+              const estimated = Number(order.estimatedAmount) || 0;
+              const paid = order.totalPaid || 0;
+              const balance = estimated - paid;
+              return (
+                <Link key={order.id} href={`/dashboard/orders/${order.id}`}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardContent className="pt-3 pb-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-sm">{order.orderNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {order.customerName}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={`text-[10px] ${getStatusColor(order.status)}`}>{order.status}</Badge>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className={`text-[10px] ${getStatusColor(order.status)}`}>{order.status}</Badge>
+                      <div className="flex items-center gap-3 mt-2 text-[11px]">
+                        {estimated > 0 && (
+                          <span className="text-muted-foreground">Est: ₹{estimated.toLocaleString("en-IN")}</span>
+                        )}
+                        {paid > 0 && (
+                          <span className="text-green-600">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                        )}
+                        {estimated > 0 && balance > 0 && (
+                          <span className="text-red-600">Bal: ₹{balance.toLocaleString("en-IN")}</span>
+                        )}
+                        {order.deliveryDate && (
+                          <span className="text-muted-foreground ml-auto flex items-center gap-0.5">
+                            <Calendar className="h-2.5 w-2.5" /> {formatDate(order.deliveryDate)}
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 mt-2 text-[11px]">
-                      {order.estimatedAmount && (
-                        <span className="text-muted-foreground">Est: ₹{Number(order.estimatedAmount).toLocaleString("en-IN")}</span>
-                      )}
-                      {order.advanceAmount && (
-                        <span className="text-blue-600">Adv: ₹{Number(order.advanceAmount).toLocaleString("en-IN")}</span>
-                      )}
-                      {order.totalPaid > 0 && (
-                        <span className="text-green-600">Paid: ₹{order.totalPaid?.toLocaleString("en-IN")}</span>
-                      )}
-                      {order.deliveryDate && (
-                        <span className="text-muted-foreground ml-auto flex items-center gap-0.5">
-                          <Calendar className="h-2.5 w-2.5" /> {formatDate(order.deliveryDate)}
-                        </span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
 
           <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={setPage} />

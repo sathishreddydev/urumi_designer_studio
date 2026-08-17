@@ -147,6 +147,7 @@ export default function OrderDetailPage() {
   if (!order) return <p>Order not found</p>;
 
   const totalPaid = (order.payments || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const orderTotal = (order.outfits || []).reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
   const isCompleted = order.status === "Completed";
   const portalUrl = order.portalToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/${order.portalToken}`
@@ -209,17 +210,11 @@ export default function OrderDetailPage() {
       {/* Payment Summary */}
       <Card>
         <CardContent className="pt-4 pb-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
+          <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-xs text-muted-foreground">Estimated</p>
               <p className="text-base font-bold">
-                {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString()}` : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Advance</p>
-              <p className="text-base font-bold text-blue-600">
-                {order.advanceAmount ? `₹${Number(order.advanceAmount).toLocaleString()}` : "—"}
+                {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString()}` : (orderTotal > 0 ? `₹${orderTotal.toLocaleString()}` : "—")}
               </p>
             </div>
             <div>
@@ -228,14 +223,15 @@ export default function OrderDetailPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Balance</p>
-              <p className={`text-base font-bold ${
-                order.estimatedAmount && (Number(order.estimatedAmount) - totalPaid) > 0
-                  ? "text-red-600" : "text-green-600"
-              }`}>
-                {order.estimatedAmount
-                  ? `₹${Math.max(0, Number(order.estimatedAmount) - totalPaid).toLocaleString()}`
-                  : "—"}
-              </p>
+              {(() => {
+                const estimated = Number(order.estimatedAmount) || orderTotal;
+                const bal = estimated - totalPaid;
+                return (
+                  <p className={`text-base font-bold ${bal > 0 ? "text-red-600" : "text-green-600"}`}>
+                    {estimated > 0 ? `₹${Math.max(0, bal).toLocaleString()}` : "—"}
+                  </p>
+                );
+              })()}
             </div>
           </div>
         </CardContent>

@@ -135,6 +135,16 @@ export const PATCH = withPermission(
       await onTrialDateSet(id, session.id);
     }
 
+    // If price changed, recalculate order's estimatedAmount
+    if (body.price !== undefined) {
+      const [outfitData] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
+      if (outfitData) {
+        const orderOutfits = await db.select({ price: outfits.price }).from(outfits).where(eq(outfits.orderId, outfitData.orderId));
+        const newTotal = orderOutfits.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+        await db.update(orders).set({ estimatedAmount: String(newTotal), updatedAt: new Date() }).where(eq(orders.id, outfitData.orderId));
+      }
+    }
+
     // Re-fetch to get updated status
     const [final] = await db.select().from(outfits).where(eq(outfits.id, id));
     return NextResponse.json(final);

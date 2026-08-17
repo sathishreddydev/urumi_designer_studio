@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, customers } from "@/lib/db/schema";
-import { eq, ilike, count, desc, and } from "drizzle-orm";
+import { orders, customers, payments } from "@/lib/db/schema";
+import { eq, ilike, count, desc, and, sum } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { eventBus } from "@/lib/events";
 import { orderSchema } from "@/lib/validations";
@@ -30,7 +30,7 @@ export const GET = withPermission(
       .limit(limit)
       .offset(offset);
 
-    // Enrich with customer names
+    // Enrich with customer names and payment totals
     const enriched = await Promise.all(
       ordersList.map(async (order) => {
         const [cust] = await db
@@ -38,10 +38,15 @@ export const GET = withPermission(
           .from(customers)
           .where(eq(customers.id, order.customerId))
           .limit(1);
+        const [paymentResult] = await db
+          .select({ totalPaid: sum(payments.amount) })
+          .from(payments)
+          .where(eq(payments.orderId, order.id));
         return {
           ...order,
           customerName: cust?.name || "",
           customerMobile: cust?.mobile || "",
+          totalPaid: paymentResult?.totalPaid ? Number(paymentResult.totalPaid) : 0,
         };
       })
     );

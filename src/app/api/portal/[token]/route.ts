@@ -92,6 +92,7 @@ export async function GET(
           deliveryDate: order.deliveryDate,
           trialDate: order.trialDate,
           estimatedAmount: order.estimatedAmount,
+          advanceAmount: order.advanceAmount,
           status: order.status,
           outfits: outfitsForPortal,
           payments: orderPayments,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sum } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { outfits } from "@/lib/db/schema";
+import { outfits, orders, payments } from "@/lib/db/schema";
 import { withAuth } from "@/lib/api-guard";
 import {
   validateTransition,
@@ -51,6 +51,34 @@ export const POST = withAuth(async (request, { params, session }) => {
       { error: result.error, availableTransitions: available },
       { status: 400 }
     );
+  }
+
+  // Block delivery if payment is not cleared
+  if (newStatus === "DELIVERED") {
+    const [outfitData] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
+    if (outfitData) {
+      // Get total of all outfit prices in this order
+      const orderOutfits = await db
+        .select({ price: outfits.price })
+        .from(outfits)
+        .where(eq(outfits.orderId, outfitData.orderId));
+      const orderTotal = orderOutfits.reduce((s, o) => s + (Number(o.price) || 0), 0);
+
+      // Get total payments
+      const [paymentResult] = await db
+        .select({ totalPaid: sum(payments.amount) })
+        .from(payments)
+        .where(eq(payments.orderId, outfitData.orderId));
+      const totalPaid = Number(paymentResult?.totalPaid) || 0;
+
+      if (orderTotal > 0 && totalPaid < orderTotal) {
+        const balance = orderTotal - totalPaid;
+        return NextResponse.json(
+          { error: `Payment not cleared. Balance ₹${balance.toLocaleString()} pending. Please collect full payment before delivery.` },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   // Execute the transition

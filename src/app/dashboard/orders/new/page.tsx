@@ -71,6 +71,7 @@ export default function NewOrderPage() {
   const [trialDate, setTrialDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceMethod, setAdvanceMethod] = useState("CASH");
   const [notes, setNotes] = useState("");
   const [outfits, setOutfits] = useState<OutfitEntry[]>([
     {
@@ -167,7 +168,7 @@ export default function NewOrderPage() {
           body: JSON.stringify({
             orderId: order.id,
             amount: Number(advanceAmount),
-            method: "CASH",
+            method: advanceMethod,
             notes: "Advance payment at order creation",
           }),
         });
@@ -337,7 +338,7 @@ export default function NewOrderPage() {
 
                     {/* Price */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Price (₹)</Label>
+                      <Label className="text-xs font-semibold">Estimated price (₹)</Label>
                       <div className="relative">
                         <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">
                           ₹
@@ -355,7 +356,7 @@ export default function NewOrderPage() {
                     </div>
 
                     {/* Occasion */}
-                    <div className="space-y-1.5">
+                    {/* <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Occasion</Label>
                       <Input
                         value={outfit.occasion}
@@ -364,11 +365,11 @@ export default function NewOrderPage() {
                         }
                         placeholder="e.g., Reception, Sangeet"
                       />
-                    </div>
+                    </div> */}
 
                     {/* Assign Designer (Admin Only) */}
                     {isAdmin && (
-                      <div className="space-y-1.5 sm:col-span-2">
+                      <div className="space-y-1.5">
                         <Label className="text-xs font-semibold">
                           Assigned Designer
                         </Label>
@@ -520,13 +521,25 @@ export default function NewOrderPage() {
                     <span>Advance Payment (₹)</span>
                     <CreditCard className="h-3 w-3 text-muted-foreground" />
                   </Label>
-                  <Input
-                    type="number"
-                    value={advanceAmount}
-                    onChange={(e) => setAdvanceAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="bg-background"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={advanceAmount}
+                      onChange={(e) => setAdvanceAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="bg-background flex-1"
+                    />
+                    <select
+                      value={advanceMethod}
+                      onChange={(e) => setAdvanceMethod(e.target.value)}
+                      className="flex h-9 rounded-md border border-input bg-background px-2 text-xs w-28"
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">Card</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                    </select>
+                  </div>
                 </div>
 
                 <Separator />

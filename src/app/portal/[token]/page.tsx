@@ -2,7 +2,13 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,30 +27,55 @@ import {
   ThumbsDown,
   Ruler,
   Search,
-  Filter,
+  AlertCircle,
+  Clock,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 const STATUS_ORDER = [
-  "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES",
-  "WAITING_FOR_DEPENDENCIES", "PRODUCTION_READY",
-  "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING",
-  "STITCHING", "PRODUCTION_COMPLETED",
-  "TRIAL", "ALTERATION", "QC",
-  "READY_FOR_DELIVERY", "DELIVERED",
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+  "PRODUCTION_READY",
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY",
+  "DELIVERED",
 ];
 
-const statusProgress: Record<string, number> = {
-  DRAFT: 5, DESIGN_IN_PROGRESS: 12, WAITING_FOR_REFERENCES: 18,
-  WAITING_FOR_DEPENDENCIES: 22, PRODUCTION_READY: 28,
-  PATTERN_DRAFTING: 38, MAGGAM_WORK: 48, MAGGAM_REVIEW: 55, FABRIC_CUTTING: 62,
-  STITCHING: 72, PRODUCTION_COMPLETED: 80,
-  TRIAL: 85, ALTERATION: 88, QC: 92,
-  READY_FOR_DELIVERY: 96, DELIVERED: 100,
+const STATUS_PROGRESS: Record<string, number> = {
+  DRAFT: 5,
+  DESIGN_IN_PROGRESS: 12,
+  WAITING_FOR_REFERENCES: 18,
+  WAITING_FOR_DEPENDENCIES: 22,
+  PRODUCTION_READY: 28,
+  PATTERN_DRAFTING: 38,
+  MAGGAM_WORK: 48,
+  MAGGAM_REVIEW: 55,
+  FABRIC_CUTTING: 62,
+  STITCHING: 72,
+  PRODUCTION_COMPLETED: 80,
+  TRIAL: 85,
+  ALTERATION: 88,
+  QC: 92,
+  READY_FOR_DELIVERY: 96,
+  DELIVERED: 100,
 };
 
-// Before these statuses: customer can approve/reject references and upload images
 const APPROVAL_ALLOWED_STATUSES = [
-  "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES",
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
 ];
 
 export default function CustomerPortalPage() {
@@ -65,7 +96,7 @@ export default function CustomerPortalPage() {
         }
         setData(await res.json());
       } catch {
-        setError("Failed to load");
+        setError("Failed to load your outfit records");
       } finally {
         setLoading(false);
       }
@@ -73,27 +104,24 @@ export default function CustomerPortalPage() {
     fetchData();
   }, [params.token]);
 
-  // Realtime: SSE for live updates
   useEffect(() => {
     if (!data) return;
-
     let eventSource: EventSource | null = null;
 
     function refetchData() {
       fetch(`/api/portal/${params.token}`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((newData) => { if (newData) setData(newData); });
+        .then((newData) => {
+          if (newData) setData(newData);
+        });
     }
 
     try {
       eventSource = new EventSource(`/api/portal/${params.token}/events`);
-
       eventSource.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data);
-          if (parsed.type === "update") {
-            refetchData();
-          }
+          if (parsed.type === "update") refetchData();
         } catch {}
       };
     } catch {}
@@ -103,7 +131,6 @@ export default function CustomerPortalPage() {
     };
   }, [!!data, params.token]);
 
-  // Filter outfits across all orders
   const filteredOrders = useMemo(() => {
     if (!data?.orders) return [];
 
@@ -111,18 +138,16 @@ export default function CustomerPortalPage() {
       .map((order: any) => {
         let outfits = order.outfits || [];
 
-        // Status filter
         if (statusFilter !== "all") {
           outfits = outfits.filter((o: any) => o.status === statusFilter);
         }
 
-        // Search filter
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           outfits = outfits.filter(
             (o: any) =>
               o.name?.toLowerCase().includes(q) ||
-              o.type?.toLowerCase().includes(q)
+              o.type?.toLowerCase().includes(q),
           );
         }
 
@@ -131,22 +156,25 @@ export default function CustomerPortalPage() {
       .filter((order: any) => order.outfits.length > 0);
   }, [data, searchQuery, statusFilter]);
 
-  // Unique outfit statuses for filter
   const allOutfitStatuses = useMemo(() => {
     if (!data?.orders) return [];
     const statuses = new Set<string>();
     data.orders.forEach((order: any) =>
-      (order.outfits || []).forEach((o: any) => statuses.add(o.status))
+      (order.outfits || []).forEach((o: any) => statuses.add(o.status)),
     );
     return STATUS_ORDER.filter((s) => statuses.has(s));
   }, [data]);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
-        <div className="space-y-3 text-center">
-          <Scissors className="h-8 w-8 text-primary mx-auto animate-pulse" />
-          <p className="text-muted-foreground">Loading your outfits...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="space-y-4 text-center">
+          <div className="relative flex justify-center">
+            <Scissors className="h-10 w-10 text-primary animate-bounce" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">
+            Fetching your custom order details...
+          </p>
         </div>
       </div>
     );
@@ -154,13 +182,15 @@ export default function CustomerPortalPage() {
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-primary/10">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8">
-            <Scissors className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-destructive font-medium">{error}</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Please contact the studio for a new link.
+      <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md text-center border-destructive/20 shadow-lg">
+          <CardContent className="pt-8 pb-8 space-y-3">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+            <h3 className="text-lg font-semibold">Access Error</h3>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <p className="text-xs text-muted-foreground">
+              Please contact the boutique studio team to request a fresh portal
+              link.
             </p>
           </CardContent>
         </Card>
@@ -168,230 +198,341 @@ export default function CustomerPortalPage() {
     );
   }
 
-  const totalOutfits = data.orders.reduce((s: number, o: any) => s + (o.outfits?.length || 0), 0);
-  const totalPaid = data.orders.reduce((s: number, o: any) => s + (o.totalPaid || 0), 0);
+  const totalOutfits = data.orders.reduce(
+    (s: number, o: any) => s + (o.outfits?.length || 0),
+    0,
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">
+    <div className="min-h-screen bg-neutral-50/50 dark:bg-background">
       {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto flex items-center gap-3 px-4 py-3 max-w-5xl">
-          <Scissors className="h-5 w-5 text-primary" />
-          <span className="font-bold text-sm">Designer Studio</span>
-          <span className="text-xs text-muted-foreground ml-auto">Customer Portal</span>
+      <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-20">
+        <div className="container mx-auto flex items-center justify-between px-4 py-3 max-w-6xl">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-primary/10 p-1.5 rounded-md">
+              <Scissors className="h-5 w-5 text-primary" />
+            </div>
+            <span className="font-semibold text-base tracking-tight">
+              Boutique Studio Portal
+            </span>
+          </div>
+          <Badge variant="outline" className="text-xs font-normal">
+            Customer Dashboard
+          </Badge>
         </div>
       </header>
 
-      <main className="container mx-auto max-w-5xl p-4 py-6">
-        {/* Desktop: Side-by-side layout */}
-        <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-6">
-          {/* Left Sidebar — Customer Info + Measurements (sticky on desktop) */}
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start mb-6 lg:mb-0">
-            {/* Customer greeting */}
-            <Card>
-              <CardContent className="pt-5 pb-5">
-                <h2 className="text-xl font-bold">Hello, {data.customer.name}!</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Track the progress of your outfits
-                </p>
-                <div className="grid grid-cols-3 gap-3 mt-4 text-center">
-                  <div>
-                    <p className="text-lg font-bold">{totalOutfits}</p>
-                    <p className="text-[10px] text-muted-foreground">Outfits</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-green-600">₹{totalPaid.toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">Paid</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{data.orders.length}</p>
-                    <p className="text-[10px] text-muted-foreground">Orders</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      <main className="container mx-auto max-w-6xl p-4 md:p-6 space-y-6">
+        {/* Top Greeting & Overview Banner */}
+        <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border border-primary/10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Welcome back, {data.customer.name}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Here is the real-time status of your tailored outfits and
+                reference approvals.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-4 py-2.5 rounded-lg border text-xs">
+              <div>
+                <span className="text-muted-foreground block">
+                  Active Orders
+                </span>
+                <span className="font-semibold text-sm">
+                  {data.orders.length}
+                </span>
+              </div>
+              <div className="h-8 w-px bg-border" />
+              <div>
+                <span className="text-muted-foreground block">
+                  Total Outfits
+                </span>
+                <span className="font-semibold text-sm">{totalOutfits}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* Measurements — read-only */}
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+          {/* Left Sidebar */}
+          <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+            {/* Measurements */}
             {data.measurements && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Ruler className="h-4 w-4" /> Your Measurements
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3 border-b">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Ruler className="h-4 w-4 text-primary" /> Profile
+                    Measurements
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    {Object.entries(data.measurements as Record<string, string>).map(
-                      ([key, value]) => (
-                        <div key={key} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground text-xs">{key}</span>
-                          <span className="font-medium text-xs">{value || "—"}</span>
-                        </div>
-                      )
-                    )}
+                <CardContent className="pt-4">
+                  <div className="space-y-2">
+                    {Object.entries(
+                      data.measurements as Record<string, string>,
+                    ).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between text-xs py-1 border-b border-dashed border-border/60 last:border-0"
+                      >
+                        <span className="text-muted-foreground capitalize">
+                          {key.replace(/([A-Z])/g, " $1").trim()}
+                        </span>
+                        <span className="font-medium font-mono text-foreground">
+                          {value || "—"}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             )}
-          </div>
+          </aside>
 
-          {/* Right Content — Orders & Outfits */}
-          <div className="space-y-4">
-            {/* Search & Filter */}
+          {/* Right Content */}
+          <div className="space-y-5">
+            {/* Search & Filter Controls */}
             {totalOutfits > 1 && (
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2.5">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search outfits..."
+                    placeholder="Search by outfit name or type..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-9 bg-card"
+                    className="pl-9 bg-card h-9 text-xs"
                   />
                 </div>
                 {allOutfitStatuses.length > 1 && (
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-card px-3 text-sm"
+                    className="h-9 rounded-md border border-input bg-card px-3 text-xs focus:ring-1 focus:ring-primary outline-none"
                   >
-                    <option value="all">All Status</option>
+                    <option value="all">All Statuses</option>
                     {allOutfitStatuses.map((status) => (
-                      <option key={status} value={status}>{formatStatus(status)}</option>
+                      <option key={status} value={status}>
+                        {formatStatus(status)}
+                      </option>
                     ))}
                   </select>
                 )}
               </div>
             )}
 
-            {/* No results */}
+            {/* Empty State */}
             {filteredOrders.length === 0 && (
-              <Card>
-                <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                  {searchQuery || statusFilter !== "all"
-                    ? "No outfits matching your search"
-                    : "No outfits yet. Check back soon!"}
+              <Card className="shadow-sm">
+                <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
+                  <Shirt className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                  <p className="font-medium">No matching outfits found</p>
+                  <p className="text-xs text-muted-foreground">
+                    Try clearing search terms or selecting a different status
+                    filter.
+                  </p>
                 </CardContent>
               </Card>
             )}
 
-            {/* Orders */}
+            {/* Orders List */}
             {filteredOrders.map((order: any) => {
               const orderBalance = order.estimatedAmount
                 ? Math.max(0, Number(order.estimatedAmount) - order.totalPaid)
                 : 0;
 
               return (
-                <Card key={order.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{order.orderNumber}</CardTitle>
-                      <Badge className={getStatusColor(order.status)} variant="secondary">
-                        {order.status}
+                <Card key={order.id} className="shadow-sm border">
+                  <CardHeader className="bg-card border-b pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <CardTitle className="text-base font-bold">
+                          Order #{order.orderNumber}
+                        </CardTitle>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {order.trialDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-primary" />{" "}
+                              Trial:{" "}
+                              <strong className="text-foreground">
+                                {formatDate(order.trialDate)}
+                              </strong>
+                            </span>
+                          )}
+                          {order.deliveryDate && (
+                            <span className="flex items-center gap-1">
+                              <Package className="h-3.5 w-3.5 text-primary" />{" "}
+                              Delivery:{" "}
+                              <strong className="text-foreground">
+                                {formatDate(order.deliveryDate)}
+                              </strong>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Badge
+                        className={getStatusColor(order.status)}
+                        variant="outline"
+                      >
+                        {formatStatus(order.status)}
                       </Badge>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {order.trialDate && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> Trial: {formatDate(order.trialDate)}
-                        </span>
-                      )}
-                      {order.deliveryDate && (
-                        <span className="flex items-center gap-1">
-                          <Package className="h-3 w-3" /> Delivery: {formatDate(order.deliveryDate)}
-                        </span>
-                      )}
-                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Outfits */}
-                    {order.outfits.map((outfit: any) => {
-                      const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status);
-                      const progress = statusProgress[outfit.status] || 0;
 
-                      return (
-                        <div key={outfit.id} className="rounded-lg border p-3 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <Shirt className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <p className="font-medium text-sm">{outfit.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {outfit.type}
-                                  {outfit.maggamRequired && " · Maggam"}
-                                </p>
+                  <CardContent className="pt-4 space-y-6">
+                    {/* Outfits Grid */}
+                    <div className="space-y-4">
+                      {order.outfits.map((outfit: any) => {
+                        const canApprove = APPROVAL_ALLOWED_STATUSES.includes(
+                          outfit.status,
+                        );
+                        const progress = STATUS_PROGRESS[outfit.status] || 0;
+
+                        return (
+                          <div
+                            key={outfit.id}
+                            className="rounded-lg border bg-card p-4 space-y-4 shadow-2xs"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
+                                  <Shirt className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">
+                                    {outfit.name}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                    <span>{outfit.type}</span>
+                                    {outfit.maggamRequired && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] px-1.5 py-0"
+                                      >
+                                        Maggam Work
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
+                              <Badge className={getStatusColor(outfit.status)}>
+                                {formatStatus(outfit.status)}
+                              </Badge>
                             </div>
-                            <Badge className={getStatusColor(outfit.status)}>
-                              {formatStatus(outfit.status)}
-                            </Badge>
-                          </div>
 
-                          {/* Progress bar */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Progress</span>
-                              <span>{progress}%</span>
+                            {/* Detailed Progress Bar */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> Status:{" "}
+                                  <strong className="text-foreground">
+                                    {formatStatus(outfit.status)}
+                                  </strong>
+                                </span>
+                                <span className="font-semibold font-mono">
+                                  {progress}%
+                                </span>
+                              </div>
+                              <Progress value={progress} className="h-2" />
                             </div>
-                            <Progress value={progress} className="h-2" />
-                          </div>
 
-                          {progress > 0 && progress < 100 && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Current: <span className="font-medium text-foreground">{formatStatus(outfit.status)}</span>
-                            </p>
-                          )}
-                          {progress === 100 && (
-                            <p className="text-[11px] text-green-600 font-medium">✓ Delivered</p>
-                          )}
-
-                          {/* References with zoom */}
-                          {outfit.references.length > 0 && (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                                {canApprove ? "Review & Approve References" : "Final References"}
-                              </p>
-                              <PortalReferences
-                                references={outfit.references}
-                                token={params.token as string}
-                                outfitId={outfit.id}
-                                canApprove={canApprove}
-                              />
-                              {!canApprove && (
-                                <p className="text-[10px] text-muted-foreground mt-1">
-                                  References are locked — production has started.
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Customer upload — only before production */}
-                          {canApprove && (
-                            <PortalUpload outfitId={outfit.id} token={params.token as string} />
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Payment summary */}
-                    {(order.totalPaid > 0 || order.estimatedAmount) && (
-                      <div className="border-t pt-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5 text-muted-foreground">
-                            <CreditCard className="h-3.5 w-3.5" /> Payments
-                          </span>
-                          <span className="font-semibold text-green-600">
-                            ₹{order.totalPaid.toLocaleString()}
-                          </span>
-                        </div>
-                        {order.estimatedAmount && (
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>Estimated: ₹{Number(order.estimatedAmount).toLocaleString()}</span>
-                            {orderBalance > 0 && (
-                              <span className="text-red-600 font-medium">
-                                Balance: ₹{orderBalance.toLocaleString()}
-                              </span>
+                            {/* Reference Images Section */}
+                            {outfit.references?.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    {canApprove
+                                      ? "Design References (Requires Approval)"
+                                      : "Confirmed References"}
+                                  </span>
+                                  {!canApprove && (
+                                    <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                                      Locked for production
+                                    </span>
+                                  )}
+                                </div>
+                                <PortalReferences
+                                  references={outfit.references}
+                                  token={params.token as string}
+                                  outfitId={outfit.id}
+                                  canApprove={canApprove}
+                                />
+                              </div>
                             )}
+
+                            {/* Upload Component for Early Stages */}
+                            {canApprove && (
+                              <div className="pt-2 border-t">
+                                <PortalUpload
+                                  outfitId={outfit.id}
+                                  token={params.token as string}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Financial Summary Footer */}
+                    {(order.totalPaid > 0 || order.estimatedAmount) && (
+                      <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-muted-foreground">
+                              Payment Summary
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {order.estimatedAmount && (
+                              <div>
+                                <span className="text-muted-foreground mr-1">
+                                  Total:
+                                </span>
+                                <span className="font-medium font-mono">
+                                  ₹{Number(order.estimatedAmount).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="h-3 w-px bg-border" />
+                            <div>
+                              <span className="text-muted-foreground mr-1">
+                                Paid:
+                              </span>
+                              <span className="font-semibold text-green-600 font-mono">
+                                ₹{order.totalPaid.toLocaleString()}
+                              </span>
+                            </div>
+                            {orderBalance > 0 && (
+                              <>
+                                <div className="h-3 w-px bg-border" />
+                                <div>
+                                  <span className="text-muted-foreground mr-1">
+                                    Balance:
+                                  </span>
+                                  <span className="font-semibold text-destructive font-mono">
+                                    ₹{orderBalance.toLocaleString()}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Individual payment records */}
+                        {order.payments && order.payments.length > 0 && (
+                          <div className="border-t pt-2 space-y-1.5">
+                            {order.payments.map((p: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between">
+                                <span className="text-muted-foreground">
+                                  {p.method} · {formatDate(p.createdAt)}
+                                </span>
+                                <span className="font-medium font-mono">
+                                  ₹{Number(p.amount).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -400,11 +541,6 @@ export default function CustomerPortalPage() {
                 </Card>
               );
             })}
-
-            {/* Footer */}
-            <div className="text-center text-xs text-muted-foreground py-4">
-              <p>Questions? Contact the studio directly.</p>
-            </div>
           </div>
         </div>
       </main>
@@ -412,7 +548,7 @@ export default function CustomerPortalPage() {
   );
 }
 
-// ─── PORTAL REFERENCES WITH ZOOM ────────────────────────────────────────────
+// ─── PORTAL REFERENCES ──────────────────────────────────────────────────
 
 function PortalReferences({
   references,
@@ -430,7 +566,7 @@ function PortalReferences({
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
         {references.map((ref: any, index: number) => (
           <PortalReferenceCard
             key={ref.id}
@@ -446,9 +582,12 @@ function PortalReferences({
         ))}
       </div>
 
-      {/* Full-screen image viewer with zoom */}
       <ImageViewer
-        images={references.map((r: any) => ({ id: r.id, url: r.url, filename: r.filename }))}
+        images={references.map((r: any) => ({
+          id: r.id,
+          url: r.url,
+          filename: r.filename,
+        }))}
         initialIndex={viewerIndex}
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
@@ -457,9 +596,113 @@ function PortalReferences({
   );
 }
 
-// ─── PORTAL UPLOAD COMPONENT ────────────────────────────────────────────────
+// ─── PORTAL REFERENCE CARD ─────────────────────────────────────────────
 
-function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) {
+function PortalReferenceCard({
+  reference,
+  token,
+  outfitId,
+  canApprove,
+  onImageClick,
+}: {
+  reference: any;
+  token: string;
+  outfitId: string;
+  canApprove: boolean;
+  onImageClick: () => void;
+}) {
+  const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
+    reference.customerFeedback || null,
+  );
+  const [loading, setLoading] = useState(false);
+
+  async function handleFeedback(action: "approved" | "rejected") {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/portal/${token}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          referenceId: reference.id,
+          outfitId,
+          feedback: action,
+        }),
+      });
+      if (res.ok) setFeedback(action);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="group relative rounded-lg overflow-hidden border bg-background shadow-2xs flex flex-col">
+      <div
+        className="relative aspect-square cursor-pointer overflow-hidden"
+        onClick={onImageClick}
+      >
+        <img
+          src={reference.url}
+          alt="Outfit Reference"
+          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+        />
+        {feedback && (
+          <div
+            className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${
+              feedback === "approved" ? "bg-green-600" : "bg-destructive"
+            }`}
+          >
+            {feedback === "approved" ? (
+              <ThumbsUp className="h-3 w-3 text-white" />
+            ) : (
+              <ThumbsDown className="h-3 w-3 text-white" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {canApprove && !feedback && (
+        <div className="grid grid-cols-2 gap-px bg-border text-[11px]">
+          <button
+            className="bg-card hover:bg-green-50 text-green-700 py-1.5 font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+            onClick={() => handleFeedback("approved")}
+            disabled={loading}
+          >
+            <ThumbsUp className="h-3 w-3" /> Approve
+          </button>
+          <button
+            className="bg-card hover:bg-red-50 text-destructive py-1.5 font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+            onClick={() => handleFeedback("rejected")}
+            disabled={loading}
+          >
+            <ThumbsDown className="h-3 w-3" /> Reject
+          </button>
+        </div>
+      )}
+
+      {feedback && (
+        <div
+          className={`py-1 text-center text-[10px] font-semibold text-white ${
+            feedback === "approved" ? "bg-green-600" : "bg-destructive"
+          }`}
+        >
+          {feedback === "approved" ? "Approved" : "Rejected"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PORTAL UPLOAD ──────────────────────────────────────────────────────
+
+function PortalUpload({
+  outfitId,
+  token,
+}: {
+  outfitId: string;
+  token: string;
+}) {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<string[]>([]);
 
@@ -484,7 +727,7 @@ function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) 
           setUploaded((prev) => [...prev, data.url]);
         }
       } catch {
-        // Ignore individual upload errors
+        // Handle upload errors per file
       }
     }
 
@@ -492,29 +735,43 @@ function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) 
   }
 
   return (
-    <div className="border-t pt-3">
-      <p className="text-xs font-medium text-muted-foreground mb-2">
-        Upload Inspiration Images
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+        <Sparkles className="h-3.5 w-3.5 text-primary" /> Share Inspiration
+        Photos
       </p>
 
       {uploaded.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5 mb-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {uploaded.map((url, i) => (
-            <div key={i} className="relative">
-              <img src={url} alt="" className="aspect-square rounded object-cover" />
+            <div
+              key={i}
+              className="relative h-12 w-12 rounded border overflow-hidden shrink-0"
+            >
+              <img
+                src={url}
+                alt="Uploaded reference"
+                className="object-cover w-full h-full"
+              />
               <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
-                <Check className="h-2.5 w-2.5 text-white" />
+                <Check className="h-2 w-2 text-white" />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <label>
-        <Button size="sm" variant="outline" className="w-full" disabled={uploading} asChild>
+      <label className="block">
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full text-xs h-8 border-dashed"
+          disabled={uploading}
+          asChild
+        >
           <span>
-            <Upload className="h-3.5 w-3.5" />
-            {uploading ? "Uploading..." : "Choose Images"}
+            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            {uploading ? "Uploading..." : "Upload Photos"}
           </span>
         </Button>
         <input
@@ -526,101 +783,6 @@ function PortalUpload({ outfitId, token }: { outfitId: string; token: string }) 
           disabled={uploading}
         />
       </label>
-      <p className="text-[10px] text-muted-foreground mt-1 text-center">
-        Share your inspiration photos. Our designer will review them.
-      </p>
-    </div>
-  );
-}
-
-// ─── PORTAL REFERENCE CARD ──────────────────────────────────────────────────
-
-function PortalReferenceCard({
-  reference,
-  token,
-  outfitId,
-  canApprove,
-  onImageClick,
-}: {
-  reference: any;
-  token: string;
-  outfitId: string;
-  canApprove: boolean;
-  onImageClick: () => void;
-}) {
-  const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
-    reference.customerFeedback || null
-  );
-  const [loading, setLoading] = useState(false);
-
-  async function handleFeedback(action: "approved" | "rejected") {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/portal/${token}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ referenceId: reference.id, outfitId, feedback: action }),
-      });
-      if (res.ok) {
-        setFeedback(action);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="relative rounded-lg overflow-hidden border">
-      <img
-        src={reference.url}
-        alt="Reference"
-        className="aspect-square w-full object-cover cursor-pointer"
-        onClick={onImageClick}
-      />
-
-      {/* Feedback indicator */}
-      {feedback && (
-        <div className={`absolute top-1 right-1 rounded-full p-1 ${
-          feedback === "approved" ? "bg-green-500" : "bg-red-500"
-        }`}>
-          {feedback === "approved" ? (
-            <ThumbsUp className="h-2.5 w-2.5 text-white" />
-          ) : (
-            <ThumbsDown className="h-2.5 w-2.5 text-white" />
-          )}
-        </div>
-      )}
-
-      {/* Action buttons — only before production and no feedback yet */}
-      {canApprove && !feedback && (
-        <div className="absolute bottom-0 left-0 right-0 flex">
-          <button
-            className="flex-1 bg-green-600/90 text-white py-1.5 flex items-center justify-center gap-1 text-[10px] font-medium hover:bg-green-700 disabled:opacity-50"
-            onClick={(e) => { e.stopPropagation(); handleFeedback("approved"); }}
-            disabled={loading}
-          >
-            <ThumbsUp className="h-3 w-3" /> Approve
-          </button>
-          <button
-            className="flex-1 bg-red-600/90 text-white py-1.5 flex items-center justify-center gap-1 text-[10px] font-medium hover:bg-red-700 disabled:opacity-50"
-            onClick={(e) => { e.stopPropagation(); handleFeedback("rejected"); }}
-            disabled={loading}
-          >
-            <ThumbsDown className="h-3 w-3" /> Reject
-          </button>
-        </div>
-      )}
-
-      {/* Feedback label */}
-      {feedback && (
-        <div className={`absolute bottom-0 left-0 right-0 py-1 text-center text-[10px] font-medium text-white ${
-          feedback === "approved" ? "bg-green-600/90" : "bg-red-600/90"
-        }`}>
-          {feedback === "approved" ? "✓ Approved" : "✗ Rejected"}
-        </div>
-      )}
     </div>
   );
 }
