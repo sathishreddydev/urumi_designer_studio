@@ -22,10 +22,21 @@ export const GET = withPermission(
       db.select().from(payments).where(eq(payments.orderId, id)),
     ]);
 
+    // Enrich outfits with their references
+    const outfitsWithRefs = await Promise.all(
+      orderOutfits.map(async (outfit) => {
+        const refs = await db
+          .select()
+          .from(referenceImages)
+          .where(eq(referenceImages.outfitId, outfit.id));
+        return { ...outfit, references: refs };
+      })
+    );
+
     return NextResponse.json({
       ...order,
       customer: customerResult[0] || null,
-      outfits: orderOutfits,
+      outfits: outfitsWithRefs,
       payments: orderPayments,
     });
   }

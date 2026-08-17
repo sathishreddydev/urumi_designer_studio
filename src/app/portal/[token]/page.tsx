@@ -647,6 +647,14 @@ function PortalReferenceCard({
           alt="Outfit Reference"
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
         />
+        {/* Reference type label */}
+        <span className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
+          reference.type === "FABRIC" ? "bg-indigo-600 text-white" :
+          reference.type === "MAGGAM" ? "bg-amber-600 text-white" :
+          "bg-slate-700 text-white"
+        }`}>
+          {reference.type === "FABRIC" ? "Customer Material" : reference.type === "MAGGAM" ? "Maggam" : "Pattern"}
+        </span>
         {feedback && (
           <div
             className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${

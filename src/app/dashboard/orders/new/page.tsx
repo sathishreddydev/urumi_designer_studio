@@ -14,6 +14,8 @@ import {
   Loader2,
   Sparkles,
   CreditCard,
+  ImagePlus,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   Select,
@@ -58,6 +59,7 @@ interface OutfitEntry {
   price: string;
   maggamRequired: boolean;
   designerId: string;
+  fabricImages: File[];
 }
 
 export default function NewOrderPage() {
@@ -81,6 +83,7 @@ export default function NewOrderPage() {
       price: "",
       maggamRequired: false,
       designerId: "",
+      fabricImages: [],
     },
   ]);
 
@@ -141,9 +144,9 @@ export default function NewOrderPage() {
       if (!orderRes.ok) throw new Error("Failed to create order");
       const order = await orderRes.json();
 
-      // 2. Create outfits with price
+      // 2. Create outfits with price and upload fabric images
       for (const outfit of validOutfits) {
-        await fetch("/api/outfits", {
+        const outfitRes = await fetch("/api/outfits", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -158,6 +161,28 @@ export default function NewOrderPage() {
             designerId: outfit.designerId || undefined,
           }),
         });
+
+        if (outfitRes.ok && outfit.fabricImages.length > 0) {
+          const createdOutfit = await outfitRes.json();
+          // Upload each fabric image
+          for (const file of outfit.fabricImages) {
+            const formData = new FormData();
+            formData.append("file", file);
+            const uploadRes = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+            if (uploadRes.ok) {
+              const { url, filename } = await uploadRes.json();
+              // Save as fabric reference for this outfit
+              await fetch(`/api/outfits/${createdOutfit.id}/references`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: "FABRIC", url, filename }),
+              });
+            }
+          }
+        }
       }
 
       // 3. Record advance as first payment if provided
@@ -193,6 +218,7 @@ export default function NewOrderPage() {
         price: "",
         maggamRequired: false,
         designerId: "",
+        fabricImages: [],
       },
     ]);
   }
@@ -205,6 +231,30 @@ export default function NewOrderPage() {
   function updateOutfit(index: number, field: keyof OutfitEntry, value: any) {
     setOutfits((prev) =>
       prev.map((o, i) => (i === index ? { ...o, [field]: value } : o)),
+    );
+  }
+
+  function handleFabricImageSelect(index: number, files: FileList | null) {
+    if (!files) return;
+    const newFiles = Array.from(files).filter((f) =>
+      ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(f.type)
+    );
+    setOutfits((prev) =>
+      prev.map((o, i) =>
+        i === index
+          ? { ...o, fabricImages: [...o.fabricImages, ...newFiles] }
+          : o
+      )
+    );
+  }
+
+  function removeFabricImage(outfitIndex: number, imageIndex: number) {
+    setOutfits((prev) =>
+      prev.map((o, i) =>
+        i === outfitIndex
+          ? { ...o, fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex) }
+          : o
+      )
     );
   }
 
@@ -412,6 +462,67 @@ export default function NewOrderPage() {
                       <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                       Maggam / Hand Embroidery Work Required
                     </label>
+                  </div>
+
+                  <Separator />
+
+                  {/* Fabric Images Upload */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <ImagePlus className="h-3.5 w-3.5 text-primary" />
+                      Customer Material Images
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload photos of the customer's fabric material (optional)
+                    </p>
+
+                    {/* Image Previews */}
+                    {outfit.fabricImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {outfit.fabricImages.map((file, imgIdx) => (
+                          <div
+                            key={imgIdx}
+                            className="relative group w-16 h-16 rounded-md overflow-hidden border"
+                          >
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Fabric ${imgIdx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeFabricImage(index, imgIdx)}
+                              className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-bl p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload Button */}
+                    <div>
+                      <label
+                        htmlFor={`fabric-upload-${index}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md cursor-pointer hover:bg-muted transition-colors"
+                      >
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {outfit.fabricImages.length > 0
+                          ? "Add More"
+                          : "Upload Material Photos"}
+                      </label>
+                      <input
+                        id={`fabric-upload-${index}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFabricImageSelect(index, e.target.files)
+                        }
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

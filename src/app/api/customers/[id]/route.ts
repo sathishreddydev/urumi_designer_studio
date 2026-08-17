@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { customers, orders, outfits, payments, customerMeasurements } from "@/lib/db/schema";
+import { customers, orders, outfits, payments, customerMeasurements, referenceImages } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { customerSchema } from "@/lib/validations";
@@ -39,7 +39,17 @@ export const GET = withPermission(
             .from(outfits).where(eq(outfits.orderId, order.id)),
           db.select().from(payments).where(eq(payments.orderId, order.id)),
         ]);
-        return { ...order, outfits: orderOutfits, payments: orderPayments };
+        // Enrich outfits with fabric references
+        const outfitsWithRefs = await Promise.all(
+          orderOutfits.map(async (outfit) => {
+            const refs = await db
+              .select()
+              .from(referenceImages)
+              .where(eq(referenceImages.outfitId, outfit.id));
+            return { ...outfit, references: refs };
+          })
+        );
+        return { ...order, outfits: outfitsWithRefs, payments: orderPayments };
       })
     );
 

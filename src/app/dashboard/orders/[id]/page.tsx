@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,19 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Copy, CreditCard, Shirt, UserCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Shirt, UserCircle, Trash2, ImageIcon } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/hooks/use-toast";
+import { ImageViewer } from "@/components/image-viewer";
 
 const OUTFIT_TYPES = [
   "Bridal Blouse", "Reception Blouse", "Lehenga", "Gown",
@@ -48,6 +41,9 @@ export default function OrderDetailPage() {
   const [showAddOutfit, setShowAddOutfit] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [viewerImages, setViewerImages] = useState<any[]>([]);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
@@ -274,6 +270,35 @@ export default function OrderDetailPage() {
                     </Badge>
                   </div>
 
+                  {/* Fabric Images Thumbnails */}
+                  {(() => {
+                    const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
+                    if (fabricRefs.length === 0) return null;
+                    return (
+                      <div className="mt-2 ml-6">
+                        <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                          <ImageIcon className="h-3 w-3" /> Customer Material ({fabricRefs.length})
+                        </p>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {fabricRefs.map((ref: any, idx: number) => (
+                            <div
+                              key={ref.id}
+                              className="h-10 w-10 rounded border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setViewerImages(fabricRefs.map((r: any) => ({ id: r.id, url: r.url, filename: r.filename, status: r.status })));
+                                setViewerIndex(idx);
+                                setViewerOpen(true);
+                              }}
+                            >
+                              <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Admin assignment controls */}
                   {isAdmin && !isCompleted && (
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center border-t pt-3">
@@ -412,6 +437,14 @@ export default function OrderDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Viewer */}
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 }

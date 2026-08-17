@@ -478,6 +478,23 @@ export default function CustomerDetailPage({
                                   <span className="text-muted-foreground">
                                     · {outfit.type}
                                   </span>
+                                  {/* Fabric image thumbnails */}
+                                  {(() => {
+                                    const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
+                                    if (fabricRefs.length === 0) return null;
+                                    return (
+                                      <div className="flex items-center gap-1 ml-1">
+                                        {fabricRefs.slice(0, 3).map((ref: any) => (
+                                          <div key={ref.id} className="h-5 w-5 rounded-sm overflow-hidden border border-border">
+                                            <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
+                                          </div>
+                                        ))}
+                                        {fabricRefs.length > 3 && (
+                                          <span className="text-[9px] text-muted-foreground">+{fabricRefs.length - 3}</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 <Badge
                                   className={`text-[10px] ${getStatusColor(

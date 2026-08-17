@@ -26,8 +26,9 @@ export const outfitStatusEnum = pgEnum("outfit_status", [
 ]);
 
 export const referenceTypeEnum = pgEnum("reference_type", [
-  "pattern",
-  "maggam",
+  "PATTERN",
+  "MAGGAM",
+  "FABRIC",
 ]);
 
 export const referenceStatusEnum = pgEnum("reference_status", [

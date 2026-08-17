@@ -352,6 +352,9 @@ export default function OutfitDetailPage() {
   const maggamRefs = (outfit.references || []).filter(
     (r: any) => r.type === "MAGGAM"
   );
+  const fabricRefs = (outfit.references || []).filter(
+    (r: any) => r.type === "FABRIC"
+  );
 
   const lockedStatuses = [
     "PRODUCTION_COMPLETED",
@@ -534,6 +537,13 @@ export default function OutfitDetailPage() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Customer Material */}
+          <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <CustomerMaterialSection
+              references={fabricRefs}
+            />
           </div>
         </div>
 
@@ -1188,5 +1198,57 @@ function AssignMasterSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+
+// ─── CUSTOMER MATERIAL SECTION (Simple display only) ────────────────────────
+
+function CustomerMaterialSection({
+  references,
+}: {
+  references: any[];
+}) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        Customer Material
+      </h3>
+
+      {references.length === 0 ? (
+        <div className="py-3 text-center text-xs text-muted-foreground border border-dashed rounded-lg">
+          No material images
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {references.map((ref: any, index: number) => (
+            <div
+              key={ref.id}
+              className="rounded-lg border overflow-hidden"
+            >
+              <img
+                src={ref.url}
+                alt="Customer material"
+                className="aspect-square w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                onClick={() => {
+                  setViewerIndex(index);
+                  setViewerOpen(true);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ImageViewer
+        images={references}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+    </div>
   );
 }
