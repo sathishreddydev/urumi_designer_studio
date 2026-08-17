@@ -112,7 +112,6 @@ export default function OrdersPage() {
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-right px-4 py-3 font-medium">Estimated</th>
-                  <th className="text-right px-4 py-3 font-medium">Advance</th>
                   <th className="text-right px-4 py-3 font-medium">Paid</th>
                   <th className="text-right px-4 py-3 font-medium">Balance</th>
                   <th className="text-left px-4 py-3 font-medium">Delivery</th>
@@ -135,9 +134,6 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
                         {estimated > 0 ? `₹${estimated.toLocaleString("en-IN")}` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-blue-600 font-medium">
-                        {order.advanceAmount ? `₹${Number(order.advanceAmount).toLocaleString("en-IN")}` : "—"}
                       </td>
                       <td className="px-4 py-3 text-right text-green-600 font-medium">
                         ₹{paid.toLocaleString("en-IN")}

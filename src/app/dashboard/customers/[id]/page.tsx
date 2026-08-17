@@ -495,23 +495,34 @@ export default function CustomerDetailPage({
                           </p>
                         )}
 
-                        <div className="pt-2 border-t flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-4">
-                            <span className="text-muted-foreground">
-                              Paid:{" "}
-                              <strong className="text-foreground font-semibold">
-                                ₹{orderPaid.toLocaleString()}
-                              </strong>
-                            </span>
-                            {order.estimatedAmount && orderBalance > 0 && (
-                              <span className="text-destructive font-medium">
-                                Bal: ₹{orderBalance.toLocaleString()}
+                        <div className="pt-2 border-t space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <span className="text-muted-foreground">
+                                Paid:{" "}
+                                <strong className="text-green-600 font-semibold">
+                                  ₹{orderPaid.toLocaleString()}
+                                </strong>
                               </span>
-                            )}
+                              {order.estimatedAmount && orderBalance > 0 && (
+                                <span className="text-destructive font-medium">
+                                  Bal: ₹{orderBalance.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-muted-foreground">
+                              {formatDate(order.orderDate)}
+                            </span>
                           </div>
-                          <span className="text-muted-foreground">
-                            Ordered: {formatDate(order.orderDate)}
-                          </span>
+                          {(order.payments || []).length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {(order.payments || []).map((p: any, idx: number) => (
+                                <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                                  {p.method} · ₹{Number(p.amount).toLocaleString()}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

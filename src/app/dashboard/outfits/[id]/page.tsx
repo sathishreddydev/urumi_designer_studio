@@ -12,7 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { ImageViewer } from "@/components/image-viewer";
 import {
   AlertDialog,
@@ -42,12 +47,27 @@ import {
   AlertTriangle,
   Clock,
   ArrowRight,
+  Ruler,
+  Calendar,
+  UserCheck,
+  Scissors,
+  FileText,
+  History,
+  Layers,
 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 
-const DEPENDENCY_TYPES = ["FABRIC", "LINING", "DYEING", "ACCESSORIES", "STONES", "CANVAS", "CUPS"];
+const DEPENDENCY_TYPES = [
+  "FABRIC",
+  "LINING",
+  "DYEING",
+  "ACCESSORIES",
+  "STONES",
+  "CANVAS",
+  "CUPS",
+];
 
 export default function OutfitDetailPage() {
   const params = useParams();
@@ -55,7 +75,10 @@ export default function OutfitDetailPage() {
   const queryClient = useQueryClient();
   const { can, role } = usePermissions();
 
-  const [whatsappPrompt, setWhatsappPrompt] = useState<{ customerName: string; url: string } | null>(null);
+  const [whatsappPrompt, setWhatsappPrompt] = useState<{
+    customerName: string;
+    url: string;
+  } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch outfit detail
@@ -81,7 +104,13 @@ export default function OutfitDetailPage() {
 
   // Transition mutation
   const transitionMutation = useMutation({
-    mutationFn: async ({ newStatus, notes }: { newStatus: string; notes?: string }) => {
+    mutationFn: async ({
+      newStatus,
+      notes,
+    }: {
+      newStatus: string;
+      notes?: string;
+    }) => {
       const res = await fetch(`/api/outfits/${params.id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,10 +124,14 @@ export default function OutfitDetailPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
-      toast({ title: "Status updated", description: "Outfit transitioned successfully." });
+      queryClient.invalidateQueries({
+        queryKey: ["outfit-transitions", params.id],
+      });
+      toast({
+        title: "Status updated",
+        description: "Outfit transitioned successfully.",
+      });
 
-      // If customer should be notified (READY_FOR_DELIVERY), show dialog
       if (data.notifyCustomer?.whatsappUrl) {
         setWhatsappPrompt({
           customerName: data.notifyCustomer.customerName,
@@ -131,7 +164,11 @@ export default function OutfitDetailPage() {
       toast({ title: "Updated", description: "Outfit details saved." });
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Update failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: error.message,
+      });
     },
   });
 
@@ -148,10 +185,17 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-      toast({ title: "Dependency raised", description: "Dependency added to this outfit." });
+      toast({
+        title: "Dependency raised",
+        description: "Dependency added to this outfit.",
+      });
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: error.message,
+      });
     },
   });
 
@@ -168,7 +212,9 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["outfit-transitions", params.id],
+      });
     },
   });
 
@@ -185,7 +231,9 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["outfit-transitions", params.id],
+      });
     },
   });
 
@@ -221,28 +269,15 @@ export default function OutfitDetailPage() {
     },
   });
 
-  // Select references
-  const selectRefsMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const res = await fetch(`/api/outfits/${params.id}/references`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "select", ids }),
-      });
-      if (!res.ok) throw new Error("Failed to select");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-    },
-  });
-
   // Upload reference
   const uploadRefMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type: string }) => {
       const formData = new FormData();
       formData.append("file", file);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
       if (!uploadRes.ok) throw new Error("Upload failed");
       const { url, filename } = await uploadRes.json();
 
@@ -271,10 +306,12 @@ export default function OutfitDetailPage() {
     },
   });
 
-  // Delete outfit (admin only)
+  // Delete outfit
   const deleteOutfitMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/outfits/${params.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/outfits/${params.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to delete");
@@ -286,15 +323,22 @@ export default function OutfitDetailPage() {
       router.push("/dashboard/outfits");
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: error.message,
+      });
     },
   });
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         <div className="h-8 w-64 animate-pulse rounded bg-muted" />
-        <div className="h-32 animate-pulse rounded bg-muted" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-4" />
+          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-8" />
+        </div>
       </div>
     );
   }
@@ -302,404 +346,543 @@ export default function OutfitDetailPage() {
   if (!outfit) return <p className="text-muted-foreground">Outfit not found</p>;
 
   const availableTransitions = transitions?.availableTransitions || [];
-  const patternRefs = (outfit.references || []).filter((r: any) => r.type === "PATTERN");
-  const maggamRefs = (outfit.references || []).filter((r: any) => r.type === "MAGGAM");
+  const patternRefs = (outfit.references || []).filter(
+    (r: any) => r.type === "PATTERN"
+  );
+  const maggamRefs = (outfit.references || []).filter(
+    (r: any) => r.type === "MAGGAM"
+  );
 
-  // Statuses where references/dependencies should no longer be editable
-  const lockedStatuses = ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"];
+  const lockedStatuses = [
+    "PRODUCTION_COMPLETED",
+    "TRIAL",
+    "ALTERATION",
+    "QC",
+    "READY_FOR_DELIVERY",
+    "DELIVERED",
+  ];
   const isLocked = lockedStatuses.includes(outfit.status);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/outfits">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold lg:text-2xl truncate">{outfit.name}</h1>
-            <Badge className={getStatusColor(outfit.status)}>{formatStatus(outfit.status)}</Badge>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/outfits">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold lg:text-2xl truncate">
+                {outfit.name}
+              </h1>
+              <Badge className={getStatusColor(outfit.status)}>
+                {formatStatus(outfit.status)}
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              {outfit.customer?.name && (
+                <span className="font-medium text-foreground">
+                  {outfit.customer.name}
+                </span>
+              )}
+              {outfit.customer?.name && " · "}
+              {outfit.type}
+              {outfit.maggamRequired && " · Maggam Required"}
+              {outfit.customer?.occasion && ` · ${outfit.customer.occasion}`}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {outfit.customer?.name && <span className="font-medium text-foreground">{outfit.customer.name}</span>}
-            {outfit.customer?.name && " · "}
-            {outfit.type}{outfit.maggamRequired && " · Maggam Required"}
-            {outfit.customer?.occasion && ` · ${outfit.customer.occasion}`}
-          </p>
         </div>
-        {can("delete", "outfit") && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
+
+        {/* Workflow Actions */}
+        <div className="flex items-center gap-2">
+          {availableTransitions.map((t: any) => (
+            <LoadingButton
+              key={t.status}
+              size="sm"
+              loading={transitionMutation.isPending}
+              onClick={() =>
+                transitionMutation.mutate({ newStatus: t.status })
+              }
+            >
+              <ArrowRight className="h-3 w-3 mr-1" /> {t.label}
+            </LoadingButton>
+          ))}
+          {can("delete", "outfit") && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Workflow Transitions */}
-      {availableTransitions.length > 0 && (
-        <Card>
-          <CardContent className="flex flex-wrap items-center gap-2 pt-4 pb-4">
-            <span className="text-sm font-medium text-muted-foreground">Next:</span>
-            {availableTransitions.map((t: any) => (
-              <LoadingButton
-                key={t.status}
-                size="sm"
-                loading={transitionMutation.isPending}
-                onClick={() => transitionMutation.mutate({ newStatus: t.status })}
-              >
-                <ArrowRight className="h-3 w-3" /> {t.label}
-              </LoadingButton>
-            ))}
-            {transitionMutation.error && (
-              <p className="w-full text-xs text-destructive mt-1">
-                {transitionMutation.error.message}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Main Split Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: Metadata & Measurements (Clean List Layout) */}
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-4">
+          {/* Key Outfit Details */}
+          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+              <Scissors className="h-4 w-4" /> Outfit Summary
+            </h2>
 
-      {/* Info Grid */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-muted-foreground">Trial Date</p>
-            <p className="text-sm font-medium">{formatDate(outfit.trialDate)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-muted-foreground">Delivery Date</p>
-            <p className="text-sm font-medium">{formatDate(outfit.deliveryDate)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-muted-foreground">Designer</p>
-            <p className="text-sm font-medium">{outfit.designer?.name || "Not assigned"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-muted-foreground">Master</p>
-            {(can("update", "outfit") && role !== "MASTER") ? (
-              <AssignMasterSelect
-                outfitId={outfit.id}
-                currentMasterId={outfit.masterId}
-                onAssign={(masterId) => updateMutation.mutate({ masterId })}
-              />
-            ) : (
-              <p className="text-sm font-medium">{outfit.masterId || "Not assigned"}</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Trial Date
+                </span>
+                <span className="font-medium">{formatDate(outfit.trialDate)}</span>
+              </div>
+              <Separator />
 
-      {/* Tabs */}
-      <Tabs defaultValue="measurements">
-        <TabsList className="w-full flex-wrap h-auto gap-1">
-          <TabsTrigger value="measurements" className="text-xs sm:text-sm">Measurements</TabsTrigger>
-          <TabsTrigger value="references" className="text-xs sm:text-sm">References</TabsTrigger>
-          {can("read", "dependency") && (
-            <TabsTrigger value="dependencies" className="text-xs sm:text-sm">Dependencies</TabsTrigger>
-          )}
-          {can("update", "outfit") && role !== "MASTER" && (
-            <TabsTrigger value="design" className="text-xs sm:text-sm">Design</TabsTrigger>
-          )}
-          <TabsTrigger value="timeline" className="text-xs sm:text-sm">Timeline</TabsTrigger>
-        </TabsList>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Delivery Date
+                </span>
+                <span className="font-medium">{formatDate(outfit.deliveryDate)}</span>
+              </div>
+              <Separator />
 
-        {/* Measurements (from customer profile — read-only) */}
-        <TabsContent value="measurements" className="space-y-4 mt-4">
-          {outfit.customerMeasurements ? (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex justify-between">
-                  <span>Customer Measurements (v{outfit.customerMeasurements.version})</span>
-                  <span className="text-xs text-muted-foreground font-normal">
-                    {formatDate(outfit.customerMeasurements.createdAt)}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {Object.entries(outfit.customerMeasurements.values as Record<string, string>).map(
-                    ([key, value]) => (
-                      <div key={key}>
-                        <p className="text-xs text-muted-foreground">{key}</p>
-                        <p className="text-sm font-medium">{value || "—"}</p>
-                      </div>
-                    )
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" /> Designer
+                </span>
+                <span className="font-medium">
+                  {outfit.designer?.name || "Not assigned"}
+                </span>
+              </div>
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" /> Master
+                </span>
+                <div className="w-1/2">
+                  {can("update", "outfit") && role !== "MASTER" ? (
+                    <AssignMasterSelect
+                      outfitId={outfit.id}
+                      currentMasterId={outfit.masterId}
+                      onAssign={(masterId) => updateMutation.mutate({ masterId })}
+                    />
+                  ) : (
+                    <span className="font-medium float-right">
+                      {outfit.masterId || "Not assigned"}
+                    </span>
                   )}
                 </div>
-                {outfit.customer?.id && (
-                  <Link
-                    href={`/dashboard/customers/${outfit.customer.id}`}
-                    className="inline-block mt-3 text-xs text-primary hover:underline"
-                  >
-                    Update measurements on customer profile →
-                  </Link>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No measurements recorded for this customer.
-                {outfit.customer?.id && (
-                  <Link
-                    href={`/dashboard/customers/${outfit.customer.id}`}
-                    className="block mt-2 text-primary hover:underline"
-                  >
-                    Add measurements on customer profile →
-                  </Link>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+              </div>
+            </div>
+          </div>
 
-        {/* References */}
-        <TabsContent value="references" className="space-y-6 mt-4">
-          <ReferenceSection
-            title="Pattern References"
-            type="PATTERN"
-            references={patternRefs}
-            canUpload={!isLocked && can("upload", "reference")}
-            canSelect={!isLocked && can("select", "reference")}
-            canLock={!isLocked && can("lock", "reference")}
-            isUploading={uploadRefMutation.isPending}
-            onUpload={(file) => uploadRefMutation.mutate({ file, type: "PATTERN" })}
-            onSelect={(ids) => selectRefsMutation.mutate(ids)}
-            onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
-            onUnlock={() => unlockRefsMutation.mutate({ type: "PATTERN" })}
-            onDelete={(refId) => deleteRefMutation.mutate(refId)}
-            onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-            onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
-          />
-          {outfit.maggamRequired && (
-            <ReferenceSection
-              title="Maggam References"
-              type="MAGGAM"
-              references={maggamRefs}
-              canUpload={!isLocked && can("upload", "reference")}
-              canSelect={!isLocked && can("select", "reference")}
-              canLock={!isLocked && can("lock", "reference")}
-              isUploading={uploadRefMutation.isPending}
-              onUpload={(file) => uploadRefMutation.mutate({ file, type: "MAGGAM" })}
-              onSelect={(ids) => selectRefsMutation.mutate(ids)}
-              onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
-              onUnlock={() => unlockRefsMutation.mutate({ type: "MAGGAM" })}
-              onDelete={(refId) => deleteRefMutation.mutate(refId)}
-              onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-              onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
-            />
-          )}
-        </TabsContent>
+          {/* Measurements List */}
+          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2">
+                <Ruler className="h-4 w-4" /> Measurements
+              </h2>
+              {outfit.customerMeasurements && (
+                <span className="text-xs text-muted-foreground">
+                  v{outfit.customerMeasurements.version}
+                </span>
+              )}
+            </div>
 
-        {/* Dependencies */}
-        {can("read", "dependency") && (
-          <TabsContent value="dependencies" className="space-y-4 mt-4">
-            {!isLocked && can("create", "dependency") && (
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = new FormData(e.currentTarget);
-                      addDependencyMutation.mutate({
-                        type: form.get("type"),
-                        notes: form.get("notes"),
-                      });
-                      e.currentTarget.reset();
-                    }}
-                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                  >
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs">Raise Dependency</Label>
-                      <Select name="type">
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DEPENDENCY_TYPES.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+            {outfit.customerMeasurements ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {Object.entries(
+                    outfit.customerMeasurements.values as Record<string, string>
+                  ).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex justify-between items-center border-b border-muted/50 pb-1"
+                    >
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {key.replace(/_/g, " ")}
+                      </span>
+                      <span className="font-semibold text-xs">{value || "—"}</span>
                     </div>
-                    <Input name="notes" placeholder="Notes" className="h-9 flex-1" />
-                    <LoadingButton size="sm" type="submit" loading={addDependencyMutation.isPending} loadingText="Raising...">
-                      Raise
-                    </LoadingButton>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+                  ))}
+                </div>
 
-            {(outfit.dependencies || []).length === 0 ? (
-              <Card>
-                <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                  <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                  No dependencies
-                </CardContent>
-              </Card>
+                {outfit.customer?.id && (
+                  <Link
+                    href={`/dashboard/customers/${outfit.customer.id}`}
+                    className="inline-block mt-2 text-xs text-primary hover:underline"
+                  >
+                    Edit on customer profile →
+                  </Link>
+                )}
+              </div>
             ) : (
-              <div className="space-y-2">
-                {(outfit.dependencies || []).map((dep: any) => (
-                  <Card key={dep.id}>
-                    <CardContent className="flex items-center justify-between pt-3 pb-3">
-                      <div className="flex items-center gap-2">
-                        {dep.status === "AVAILABLE" ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : dep.status === "BLOCKED" ? (
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-yellow-500" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">{dep.type.replace(/_/g, " ")}</p>
-                          {dep.notes && <p className="text-xs text-muted-foreground">{dep.notes}</p>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {dep.status !== "AVAILABLE" && !isLocked && can("update", "dependency") && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              fetch(`/api/outfits/${params.id}/dependencies`, {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ dependencyId: dep.id, status: "AVAILABLE" }),
-                              }).then(() => {
-                                queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
-                                queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
-                              });
-                            }}
-                          >
-                            Resolve
-                          </Button>
-                        )}
-                        <Badge variant={dep.status === "AVAILABLE" ? "default" : "secondary"}>
-                          {dep.status}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="py-4 text-center text-xs text-muted-foreground">
+                No measurements recorded.
+                {outfit.customer?.id && (
+                  <Link
+                    href={`/dashboard/customers/${outfit.customer.id}`}
+                    className="block mt-1 text-primary hover:underline"
+                  >
+                    Add measurements →
+                  </Link>
+                )}
               </div>
             )}
-          </TabsContent>
-        )}
+          </div>
+        </div>
 
-        {/* Design Notes — hidden from Master */}
-        {can("update", "outfit") && role !== "MASTER" && (
-          <TabsContent value="design" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Designer Notes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  defaultValue={outfit.designerNotes || ""}
-                  placeholder="Design notes, preferences, instructions..."
-                  rows={3}
-                  onBlur={(e) => {
-                    if (e.target.value !== (outfit.designerNotes || "")) {
-                      updateMutation.mutate({ designerNotes: e.target.value });
-                    }
-                  }}
-                />
-                <Textarea
-                  defaultValue={outfit.specialInstructions || ""}
-                  placeholder="Special production instructions..."
-                  rows={2}
-                  onBlur={(e) => {
-                    if (e.target.value !== (outfit.specialInstructions || "")) {
-                      updateMutation.mutate({ specialInstructions: e.target.value });
-                    }
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Trial & Alteration Notes */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Trial & Alteration</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Trial Notes</Label>
-                  <Textarea
-                    defaultValue={outfit.trialNotes || ""}
-                    placeholder="How was the trial? Fit feedback, customer comments..."
-                    rows={2}
-                    onBlur={(e) => {
-                      if (e.target.value !== (outfit.trialNotes || "")) {
-                        updateMutation.mutate({ trialNotes: e.target.value });
-                      }
-                    }}
-                  />
+        {/* RIGHT COLUMN: Accordion Workflow Sections */}
+        <div className="lg:col-span-8">
+          <Accordion
+            type="multiple"
+            defaultValue={["references", "dependencies", "design"]}
+            className="w-full space-y-4"
+          >
+            {/* References Section */}
+            <AccordionItem
+              value="references"
+              className="border rounded-lg bg-card px-4"
+            >
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="flex items-center gap-2 text-base font-semibold">
+                  <ImageIcon className="h-5 w-5 text-primary" />
+                  Visual References
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {(outfit.references || []).length}
+                  </Badge>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Alteration Notes</Label>
-                  <Textarea
-                    defaultValue={outfit.alterationNotes || ""}
-                    placeholder="What needs to be fixed? Sleeve length, waist adjustment..."
-                    rows={2}
-                    onBlur={(e) => {
-                      if (e.target.value !== (outfit.alterationNotes || "")) {
-                        updateMutation.mutate({ alterationNotes: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4 space-y-6">
+                <ReferenceSection
+                  title="Pattern References"
+                  type="PATTERN"
+                  references={patternRefs}
+                  canUpload={!isLocked && can("upload", "reference")}
+                  canSelect={!isLocked && can("select", "reference")}
+                  canLock={!isLocked && can("lock", "reference")}
+                  isUploading={uploadRefMutation.isPending}
+                  onUpload={(file) =>
+                    uploadRefMutation.mutate({ file, type: "PATTERN" })
+                  }
+                  onSelect={() => {}}
+                  onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
+                  onUnlock={() => unlockRefsMutation.mutate({ type: "PATTERN" })}
+                  onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                  onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+                  onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
+                />
 
-        {/* Timeline */}
-        <TabsContent value="timeline" className="space-y-3 mt-4">
-          {(outfit.productionLogs || []).length === 0 ? (
-            <Card>
-              <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                No activity yet
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {(outfit.productionLogs || []).map((log: any) => (
-                <div key={log.id} className="flex gap-3 items-start">
-                  <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  <div>
-                    <Badge className={getStatusColor(log.status)} variant="secondary">
-                      {formatStatus(log.status)}
+                {outfit.maggamRequired && (
+                  <ReferenceSection
+                    title="Maggam References"
+                    type="MAGGAM"
+                    references={maggamRefs}
+                    canUpload={!isLocked && can("upload", "reference")}
+                    canSelect={!isLocked && can("select", "reference")}
+                    canLock={!isLocked && can("lock", "reference")}
+                    isUploading={uploadRefMutation.isPending}
+                    onUpload={(file) =>
+                      uploadRefMutation.mutate({ file, type: "MAGGAM" })
+                    }
+                    onSelect={() => {}}
+                    onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
+                    onUnlock={() => unlockRefsMutation.mutate({ type: "MAGGAM" })}
+                    onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                    onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+                    onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
+                  />
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Dependencies Section */}
+            {can("read", "dependency") && (
+              <AccordionItem
+                value="dependencies"
+                className="border rounded-lg bg-card px-4"
+              >
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-2 text-base font-semibold">
+                    <Layers className="h-5 w-5 text-primary" />
+                    Material Dependencies
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {(outfit.dependencies || []).length}
                     </Badge>
-                    {log.notes && <p className="text-xs text-muted-foreground mt-0.5">{log.notes}</p>}
-                    <p className="text-xs text-muted-foreground">{formatDate(log.createdAt)}</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-4">
+                  {!isLocked && can("create", "dependency") && (
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const form = new FormData(e.currentTarget);
+                            addDependencyMutation.mutate({
+                              type: form.get("type"),
+                              notes: form.get("notes"),
+                            });
+                            e.currentTarget.reset();
+                          }}
+                          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                        >
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Raise Dependency</Label>
+                            <Select name="type">
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DEPENDENCY_TYPES.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input
+                            name="notes"
+                            placeholder="Notes"
+                            className="h-9 flex-1"
+                          />
+                          <LoadingButton
+                            size="sm"
+                            type="submit"
+                            loading={addDependencyMutation.isPending}
+                            loadingText="Raising..."
+                          >
+                            Raise
+                          </LoadingButton>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  )}
 
-      {/* WhatsApp Notification Dialog */}
-      <AlertDialog open={!!whatsappPrompt} onOpenChange={(open) => !open && setWhatsappPrompt(null)}>
+                  {(outfit.dependencies || []).length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground border rounded-lg">
+                      <CheckCircle className="h-5 w-5 mx-auto mb-1 text-green-500" />
+                      No dependencies raised
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {(outfit.dependencies || []).map((dep: any) => (
+                        <Card key={dep.id}>
+                          <CardContent className="flex items-center justify-between pt-3 pb-3">
+                            <div className="flex items-center gap-2">
+                              {dep.status === "AVAILABLE" ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : dep.status === "BLOCKED" ? (
+                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-yellow-500" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {dep.type.replace(/_/g, " ")}
+                                </p>
+                                {dep.notes && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {dep.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {dep.status !== "AVAILABLE" &&
+                                !isLocked &&
+                                can("update", "dependency") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      fetch(
+                                        `/api/outfits/${params.id}/dependencies`,
+                                        {
+                                          method: "PATCH",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            dependencyId: dep.id,
+                                            status: "AVAILABLE",
+                                          }),
+                                        }
+                                      ).then(() => {
+                                        queryClient.invalidateQueries({
+                                          queryKey: ["outfit", params.id],
+                                        });
+                                        queryClient.invalidateQueries({
+                                          queryKey: [
+                                            "outfit-transitions",
+                                            params.id,
+                                          ],
+                                        });
+                                      });
+                                    }}
+                                  >
+                                    Resolve
+                                  </Button>
+                                )}
+                              <Badge
+                                variant={
+                                  dep.status === "AVAILABLE"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {dep.status}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {/* Design & Fitting Notes */}
+            {can("update", "outfit") && role !== "MASTER" && (
+              <AccordionItem
+                value="design"
+                className="border rounded-lg bg-card px-4"
+              >
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-2 text-base font-semibold">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Design & Fitting Instructions
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-4">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                      Designer Instructions
+                    </Label>
+                    <Textarea
+                      defaultValue={outfit.designerNotes || ""}
+                      placeholder="Design notes, neck pattern preferences, embellishments..."
+                      rows={3}
+                      onBlur={(e) => {
+                        if (e.target.value !== (outfit.designerNotes || "")) {
+                          updateMutation.mutate({ designerNotes: e.target.value });
+                        }
+                      }}
+                    />
+                    <Textarea
+                      defaultValue={outfit.specialInstructions || ""}
+                      placeholder="Special tailoring instructions..."
+                      rows={2}
+                      onBlur={(e) => {
+                        if (
+                          e.target.value !== (outfit.specialInstructions || "")
+                        ) {
+                          updateMutation.mutate({
+                            specialInstructions: e.target.value,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                      Trial & Alterations
+                    </Label>
+                    <Textarea
+                      defaultValue={outfit.trialNotes || ""}
+                      placeholder="Fit feedback during trial..."
+                      rows={2}
+                      onBlur={(e) => {
+                        if (e.target.value !== (outfit.trialNotes || "")) {
+                          updateMutation.mutate({ trialNotes: e.target.value });
+                        }
+                      }}
+                    />
+                    <Textarea
+                      defaultValue={outfit.alterationNotes || ""}
+                      placeholder="Alteration fixes (e.g., shorten sleeves, tighten waist)..."
+                      rows={2}
+                      onBlur={(e) => {
+                        if (e.target.value !== (outfit.alterationNotes || "")) {
+                          updateMutation.mutate({
+                            alterationNotes: e.target.value,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {/* Timeline & Production History */}
+            <AccordionItem
+              value="timeline"
+              className="border rounded-lg bg-card px-4"
+            >
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="flex items-center gap-2 text-base font-semibold">
+                  <History className="h-5 w-5 text-primary" />
+                  Production Timeline
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4">
+                {(outfit.productionLogs || []).length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground border rounded-lg">
+                    No activity recorded yet
+                  </div>
+                ) : (
+                  <div className="space-y-3 pl-2">
+                    {(outfit.productionLogs || []).map((log: any) => (
+                      <div key={log.id} className="flex gap-3 items-start text-sm">
+                        <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        <div>
+                          <Badge
+                            className={getStatusColor(log.status)}
+                            variant="secondary"
+                          >
+                            {formatStatus(log.status)}
+                          </Badge>
+                          {log.notes && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {log.notes}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {formatDate(log.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </div>
+
+      {/* WhatsApp Dialog */}
+      <AlertDialog
+        open={!!whatsappPrompt}
+        onOpenChange={(open) => !open && setWhatsappPrompt(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Notify Customer</AlertDialogTitle>
             <AlertDialogDescription>
-              Outfit is ready! Would you like to notify {whatsappPrompt?.customerName} via WhatsApp?
+              Outfit is ready! Would you like to notify{" "}
+              {whatsappPrompt?.customerName} via WhatsApp?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -718,14 +901,15 @@ export default function OutfitDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Outfit Confirmation */}
+      {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Outfit</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{outfit.name}&quot;? This will permanently remove
-              all references, dependencies, and production logs for this outfit.
+              Are you sure you want to delete &quot;{outfit.name}&quot;? This
+              will permanently remove all references, dependencies, and
+              production logs for this outfit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -747,16 +931,11 @@ export default function OutfitDetailPage() {
 
 function ReferenceSection({
   title,
-  type,
   references,
   canUpload,
-  canSelect,
   canLock,
   isUploading,
   onUpload,
-  onSelect,
-  onLock,
-  onUnlock,
   onDelete,
   onLockSingle,
   onUnlockSingle,
@@ -795,7 +974,6 @@ function ReferenceSection({
         onLockSingle(refId);
       }
     } finally {
-      // Clear after a short delay to let the mutation settle
       setTimeout(() => setLoadingRefId(null), 600);
     }
   }
@@ -809,19 +987,25 @@ function ReferenceSection({
 
   return (
     <div className="space-y-3">
-      {/* Header — only title + upload */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <ImageIcon className="h-4 w-4" /> {title}
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          {title}
         </h3>
         {canUpload && (
           <label>
             {isUploading ? (
-              <LoadingButton size="sm" variant="outline" loading={true} loadingText="Uploading..." />
+              <LoadingButton
+                size="sm"
+                variant="outline"
+                loading={true}
+                loadingText="Uploading..."
+              />
             ) : (
               <>
                 <Button size="sm" variant="outline" asChild>
-                  <span><Plus className="h-3 w-3" /> Upload</span>
+                  <span>
+                    <Plus className="h-3 w-3 mr-1" /> Upload Image
+                  </span>
                 </Button>
                 <input
                   type="file"
@@ -842,13 +1026,11 @@ function ReferenceSection({
       </div>
 
       {references.length === 0 ? (
-        <Card>
-          <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            No references uploaded
-          </CardContent>
-        </Card>
+        <div className="py-4 text-center text-xs text-muted-foreground border border-dashed rounded-lg">
+          No references uploaded
+        </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {references.map((ref: any, index: number) => {
             const isLocked = ref.status === "LOCKED";
             const isLoading = loadingRefId === ref.id;
@@ -860,31 +1042,29 @@ function ReferenceSection({
                   isLocked
                     ? "border-green-500"
                     : ref.isCustomerUpload
-                    ? "border-dashed border-blue-200"
+                    ? "border-dashed border-blue-300"
                     : "border-transparent hover:border-muted-foreground/30"
                 }`}
               >
                 <img
                   src={ref.url}
                   alt=""
-                  className="aspect-square w-full object-cover cursor-pointer"
+                  className="aspect-square w-full object-cover cursor-pointer hover:scale-105 transition-transform"
                   onClick={() => openViewer(index)}
                 />
 
-                {/* Loading overlay */}
                 {isLoading && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   </div>
                 )}
 
-                {/* Top-right: Lock/Unlock toggle */}
                 {canLock && !isLoading && (
                   <button
-                    className={`absolute top-1 right-1 rounded-full p-1 ${
+                    className={`absolute top-1.5 right-1.5 rounded-full p-1.5 ${
                       isLocked
-                        ? "bg-green-600/90 text-white"
-                        : "bg-black/50 text-white hover:bg-black/70"
+                        ? "bg-green-600 text-white"
+                        : "bg-black/60 text-white hover:bg-black/80"
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -892,18 +1072,30 @@ function ReferenceSection({
                     }}
                     aria-label={isLocked ? "Unlock" : "Lock"}
                   >
-                    {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                    {isLocked ? (
+                      <Lock className="h-3 w-3" />
+                    ) : (
+                      <Unlock className="h-3 w-3" />
+                    )}
                   </button>
                 )}
 
-                {/* Bottom bar: label + delete */}
                 {!isLoading && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5 flex items-center justify-between">
-                    <span className={`text-[10px] font-medium ${
-                      isLocked ? "text-green-300" :
-                      ref.isCustomerUpload ? "text-yellow-300" : "text-gray-300"
-                    }`}>
-                      {ref.isCustomerUpload ? "Customer" : isLocked ? "Locked" : "Draft"}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 flex items-center justify-between">
+                    <span
+                      className={`text-[10px] font-medium ${
+                        isLocked
+                          ? "text-green-300"
+                          : ref.isCustomerUpload
+                          ? "text-yellow-300"
+                          : "text-gray-300"
+                      }`}
+                    >
+                      {ref.isCustomerUpload
+                        ? "Customer"
+                        : isLocked
+                        ? "Locked"
+                        : "Draft"}
                     </span>
                     {canUpload && !isLocked && !ref.isCustomerUpload && (
                       <button
@@ -925,7 +1117,6 @@ function ReferenceSection({
         </div>
       )}
 
-      {/* Image Viewer Lightbox */}
       <ImageViewer
         images={references}
         initialIndex={viewerIndex}
@@ -933,13 +1124,16 @@ function ReferenceSection({
         onClose={() => setViewerOpen(false)}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteRefId} onOpenChange={(open) => !open && setDeleteRefId(null)}>
+      <AlertDialog
+        open={!!deleteRefId}
+        onOpenChange={(open) => !open && setDeleteRefId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Reference</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this image? This action cannot be undone.
+              Are you sure you want to delete this image? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -961,11 +1155,9 @@ function ReferenceSection({
   );
 }
 
-
 // ─── ASSIGN MASTER SELECT ───────────────────────────────────────────────────
 
 function AssignMasterSelect({
-  outfitId,
   currentMasterId,
   onAssign,
 }: {
@@ -991,7 +1183,9 @@ function AssignMasterSelect({
     >
       <option value="">Select Master</option>
       {(staff || []).map((m: any) => (
-        <option key={m.id} value={m.id}>{m.name}</option>
+        <option key={m.id} value={m.id}>
+          {m.name}
+        </option>
       ))}
     </select>
   );
