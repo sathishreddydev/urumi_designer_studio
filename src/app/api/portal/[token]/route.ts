@@ -79,9 +79,12 @@ export async function GET(
                 type: r.type,
                 url: r.url,
                 filename: r.filename,
-                // Only show feedback if the reference is still in that state
-                // If admin unlocked it (DRAFT), reset feedback so customer can re-approve
-                customerFeedback: r.status === "LOCKED" && r.notes?.includes("Customer approved")
+                // Any LOCKED ref shows as "approved" in the portal — whether locked by
+                // admin, designer, or the customer themselves. The customer doesn't need
+                // to know who locked it, just that it's confirmed for production.
+                // DRAFT with a rejection note shows as "rejected" so the customer knows
+                // the designer saw their feedback and reset it for re-review.
+                customerFeedback: r.status === "LOCKED"
                   ? "approved"
                   : r.status === "DRAFT" && r.notes?.includes("Customer rejected")
                   ? "rejected"
