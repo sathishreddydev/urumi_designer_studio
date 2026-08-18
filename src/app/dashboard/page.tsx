@@ -72,20 +72,64 @@ export default function DashboardPage() {
   }
 
   if (stats.role === "DESIGNER") {
+    // Items that need the designer's attention right now
+    const actionRequired =
+      stats.waitingReferences +
+      stats.waitingDependencies +
+      stats.maggamReview +
+      stats.productionCompleted +
+      stats.trials +
+      stats.alterations +
+      stats.qc;
+
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Designer Dashboard</h1>
           <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard title="New Consultations" value={stats.newConsultations} icon={<Users className="h-4 w-4" />} />
-          <StatCard title="Pending Designs" value={stats.pendingDesigns} icon={<Shirt className="h-4 w-4" />} />
-          <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} />
-          <StatCard title="Waiting for Dependencies" value={stats.waitingDependencies} icon={<AlertTriangle className="h-4 w-4" />} />
-          <StatCard title="Production Released" value={stats.productionReleased} icon={<Scissors className="h-4 w-4" />} />
-          <StatCard title="Trials" value={stats.trials} icon={<CheckCircle className="h-4 w-4" />} />
+
+        {/* Needs attention */}
+        {actionRequired > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Needs Attention</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {stats.waitingReferences > 0 && (
+                <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.waitingDependencies > 0 && (
+                <StatCard title="Blocked (Dependencies)" value={stats.waitingDependencies} icon={<AlertTriangle className="h-4 w-4" />} href="/dashboard/blockers" highlight />
+              )}
+              {stats.maggamReview > 0 && (
+                <StatCard title="Maggam Review" value={stats.maggamReview} icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" highlight />
+              )}
+              {stats.productionCompleted > 0 && (
+                <StatCard title="Schedule Trial" value={stats.productionCompleted} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.trials > 0 && (
+                <StatCard title="Trials" value={stats.trials} icon={<Users className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.alterations > 0 && (
+                <StatCard title="Alterations" value={stats.alterations} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.qc > 0 && (
+                <StatCard title="QC" value={stats.qc} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline overview */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pipeline</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatCard title="Unstarted" value={stats.unstarted} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="In Design" value={stats.inDesign} icon={<Scissors className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="In Production" value={stats.productionReleased} icon={<Clock className="h-4 w-4" />} href="/dashboard/production" />
+            <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href="/dashboard/outfits" />
+          </div>
         </div>
+
         <DeadlineAlerts />
       </div>
     );

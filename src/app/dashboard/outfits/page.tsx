@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const ALL_STATUSES = [
 const LIMIT = 20;
 
 export default function OutfitsPage() {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -131,7 +133,7 @@ export default function OutfitsPage() {
                   const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
                   return (
-                    <tr key={outfit.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => window.location.href = `/dashboard/outfits/${outfit.id}`}>
+                    <tr key={outfit.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => router.push(`/dashboard/outfits/${outfit.id}`)}>
                       <td className="px-4 py-3">
                         <p className="font-medium">{outfit.name}</p>
                         <p className="text-xs text-muted-foreground">

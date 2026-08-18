@@ -56,12 +56,21 @@ export async function GET() {
     return NextResponse.json({
       role: session.role,
       name: session.name,
-      newConsultations: counts["DRAFT"] || 0,
-      pendingDesigns: counts["DESIGN_IN_PROGRESS"] || 0,
-      waitingReferences: counts["WAITING_FOR_REFERENCES"] || 0,
+      // Design phase
+      unstarted:           counts["DRAFT"] || 0,
+      inDesign:            counts["DESIGN_IN_PROGRESS"] || 0,
+      waitingReferences:   counts["WAITING_FOR_REFERENCES"] || 0,
       waitingDependencies: counts["WAITING_FOR_DEPENDENCIES"] || 0,
-      productionReleased: counts["PRODUCTION_READY"] || 0,
-      trials: counts["TRIAL"] || 0,
+      // Released to production
+      productionReleased:  counts["PRODUCTION_READY"] || 0,
+      // Post-production (designer handles these)
+      maggamReview:        counts["MAGGAM_REVIEW"] || 0,
+      productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
+      trials:              counts["TRIAL"] || 0,
+      alterations:         counts["ALTERATION"] || 0,
+      qc:                  counts["QC"] || 0,
+      // Done
+      readyForDelivery:    counts["READY_FOR_DELIVERY"] || 0,
     });
   }
 
