@@ -35,30 +35,28 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function StitchingMaggamPage() {
   const queryClient = useQueryClient();
-  const { role } = usePermissions();
+  const { role, session } = usePermissions();
   const [activeTab, setActiveTab] = useState<TabKey>("PATTERN_DRAFTING");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  // Fetch all outfits in stitching/maggam statuses
+  // Fetch all outfits in stitching/maggam statuses — single call, server handles MASTER scoping
   const { data, isLoading } = useQuery({
     queryKey: ["stitching-maggam-outfits"],
     queryFn: async () => {
-      const statuses = ["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING"];
-      const results = await Promise.all(
-        statuses.map(async (status) => {
-          const res = await fetch(`/api/outfits?status=${status}&limit=100`);
-          if (!res.ok) return [];
-          const d = await res.json();
-          return (d.outfits || []).map((o: any) => ({ ...o, status: status }));
-        })
-      );
-      return results.flat();
+      const res = await fetch("/api/outfits?status=production&limit=200");
+      if (!res.ok) return [];
+      const d = await res.json();
+      // Keep only the stitching/maggam subset
+      const STITCHING_STATUSES = new Set(["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING"]);
+      return (d.outfits || []).filter((o: any) => STITCHING_STATUSES.has(o.status));
     },
   });
 
   const transitionMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: string; newStatus: string }) => {
+      setPendingId(id);
       const res = await fetch(`/api/outfits/${id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,21 +71,18 @@ export default function StitchingMaggamPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stitching-maggam-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
-      toast({
-        title: "Status updated",
-        description: "Outfit moved to next stage successfully.",
-      });
+      toast({ title: "Status updated", description: "Outfit moved to next stage successfully." });
     },
     onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Transition failed",
-        description: error.message || "Could not update outfit status.",
-      });
+      toast({ variant: "destructive", title: "Transition failed", description: error.message });
     },
+    onSettled: () => setPendingId(null),
   });
 
-  const allOutfits = data || [];
+  const allOutfits = (data || []).filter((outfit: any) => {
+    if (role !== "MASTER") return true;
+    return !outfit.masterId || outfit.masterId === session?.id;
+  });
 
   // Counts per tab
   const counts = useMemo(() => {
@@ -106,7 +101,7 @@ export default function StitchingMaggamPage() {
 
   // Unique outfit types for filter dropdown
   const outfitTypes = useMemo(() => {
-    const types = new Set(allOutfits.map((o: any) => o.type).filter(Boolean));
+    const types = new Set<string>(allOutfits.map((o: any) => o.type as string).filter(Boolean));
     return Array.from(types).sort();
   }, [allOutfits]);
 
@@ -271,6 +266,7 @@ export default function StitchingMaggamPage() {
                   const isUrgent =
                     outfit.deliveryDate &&
                     new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+                  const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
@@ -308,16 +304,19 @@ export default function StitchingMaggamPage() {
                         {outfit.masterName || outfit.designerName || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {next ? (
+                        {next && isAssigned ? (
                           <LoadingButton
                             size="sm"
-                            loading={transitionMutation.isPending}
+                            loading={pendingId === outfit.id}
+                            disabled={transitionMutation.isPending && pendingId !== outfit.id}
                             onClick={() =>
                               transitionMutation.mutate({ id: outfit.id, newStatus: next })
                             }
                           >
                             {formatStatus(next)} <ArrowRight className="h-3 w-3" />
                           </LoadingButton>
+                        ) : next ? (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">Not assigned</Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -334,6 +333,7 @@ export default function StitchingMaggamPage() {
               const isUrgent =
                 outfit.deliveryDate &&
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+              const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
               return (
                 <Card key={outfit.id}>
@@ -378,18 +378,23 @@ export default function StitchingMaggamPage() {
                       </p>
                     )}
 
-                    {next && (
+                    {next && isAssigned ? (
                       <LoadingButton
                         size="sm"
                         className="w-full mt-1"
-                        loading={transitionMutation.isPending}
+                        loading={pendingId === outfit.id}
+                        disabled={transitionMutation.isPending && pendingId !== outfit.id}
                         onClick={() =>
                           transitionMutation.mutate({ id: outfit.id, newStatus: next })
                         }
                       >
                         {formatStatus(next)} <ArrowRight className="h-3 w-3" />
                       </LoadingButton>
-                    )}
+                    ) : next ? (
+                      <Badge variant="outline" className="w-full justify-center mt-1">
+                        Not assigned
+                      </Badge>
+                    ) : null}
                   </CardContent>
                 </Card>
               );

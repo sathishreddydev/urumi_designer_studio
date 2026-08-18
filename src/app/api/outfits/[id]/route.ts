@@ -43,9 +43,11 @@ export const GET = withPermission(
         : Promise.resolve(null),
     ]);
 
-    // Master can only see LOCKED references
+    // Master can only see LOCKED design references (PATTERN/MAGGAM).
+    // FABRIC refs are customer material photos — MASTER needs these to cut and stitch correctly,
+    // so they are always visible regardless of lock status.
     const outfitReferences = session.role === "MASTER"
-      ? allReferences.filter((r) => r.status === "LOCKED")
+      ? allReferences.filter((r) => r.status === "LOCKED" || r.type === "FABRIC")
       : allReferences;
 
     // Fetch customer-level measurements (latest version)
@@ -90,15 +92,19 @@ export const PATCH = withPermission(
       const [outfit] = await db
         .select({ masterId: outfits.masterId })
         .from(outfits)
-        .where(eq(outfits.id, id));
-      if (outfit?.masterId !== session.id) {
+        .where(eq(outfits.id, id))
+        .limit(1);
+      if (!outfit) {
+        return NextResponse.json({ error: "Outfit not found" }, { status: 404 });
+      }
+      if (outfit.masterId !== session.id) {
         return NextResponse.json({ error: "You are not assigned to this outfit" }, { status: 403 });
       }
     }
 
     const updateData: any = { updatedAt: new Date() };
 
-    // Fields Designer/Admin can update
+    // Fields Designer/Admin can update (not MASTER)
     if (session.role !== "MASTER") {
       if (body.designerNotes !== undefined) updateData.designerNotes = body.designerNotes;
       if (body.specialInstructions !== undefined) updateData.specialInstructions = body.specialInstructions;

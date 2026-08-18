@@ -503,7 +503,7 @@ export default function OutfitDetailPage() {
                     />
                   ) : (
                     <span className="font-medium float-right">
-                      {outfit.masterId || "Not assigned"}
+                      {outfit.master?.name || outfit.masterId || "Not assigned"}
                     </span>
                   )}
                 </div>
@@ -547,7 +547,8 @@ export default function OutfitDetailPage() {
                   ))}
                 </div>
 
-                {outfit.customer?.id && (
+                {/* Only non-MASTER roles can navigate to the customer profile to edit */}
+                {outfit.customer?.id && role !== "MASTER" && (
                   <Link
                     href={`/dashboard/customers/${outfit.customer.id}`}
                     className="inline-block mt-2 text-xs text-primary hover:underline"
@@ -559,7 +560,7 @@ export default function OutfitDetailPage() {
             ) : (
               <div className="py-4 text-center text-xs text-muted-foreground">
                 No measurements recorded.
-                {outfit.customer?.id && (
+                {outfit.customer?.id && role !== "MASTER" && (
                   <Link
                     href={`/dashboard/customers/${outfit.customer.id}`}
                     className="block mt-1 text-primary hover:underline"
@@ -589,7 +590,7 @@ export default function OutfitDetailPage() {
         <div className="lg:col-span-8">
           <Accordion
             type="multiple"
-            defaultValue={["references", "dependencies", "design"]}
+            defaultValue={role === "MASTER" ? ["references", "dependencies"] : ["references", "dependencies", "design"]}
             className="w-full space-y-4"
           >
             {/* References Section */}
@@ -600,57 +601,111 @@ export default function OutfitDetailPage() {
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-2 text-base font-semibold">
                   <ImageIcon className="h-5 w-5 text-primary" />
-                  Visual References
+                  {role === "MASTER" ? "Approved References" : "Visual References"}
                   <Badge variant="outline" className="ml-2 text-xs">
-                    {(outfit.references || []).length}
+                    {/* Count only PATTERN + MAGGAM refs — FABRIC lives in Customer Material */}
+                    {(outfit.references || []).filter((r: any) => r.type === "PATTERN" || r.type === "MAGGAM").length}
                   </Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-2 pb-4 space-y-6">
-                <ReferenceSection
-                  title="Pattern References"
-                  type="PATTERN"
-                  references={patternRefs}
-                  canUpload={!isLocked && can("upload", "reference")}
-                  canSelect={!isLocked && can("select", "reference")}
-                  canLock={!isLocked && can("lock", "reference")}
-                  isUploading={uploadingType === "PATTERN"}
-                  onUpload={(file) =>
-                    uploadRefMutation.mutate({ file, type: "PATTERN" })
-                  }
-                  onSelect={() => {}}
-                  onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
-                  onUnlock={() =>
-                    unlockRefsMutation.mutate({ type: "PATTERN" })
-                  }
-                  onDelete={(refId) => deleteRefMutation.mutate(refId)}
-                  onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-                  onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
-                />
+                {role === "MASTER" ? (
+                  // MASTER view — read-only, shows only LOCKED references (already filtered by API)
+                  <>
+                    {patternRefs.length === 0 && maggamRefs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                        No approved references yet. The designer will lock references before production starts.
+                      </p>
+                    ) : (
+                      <>
+                        {patternRefs.length > 0 && (
+                          <ReferenceSection
+                            title="Pattern References"
+                            type="PATTERN"
+                            references={patternRefs}
+                            canUpload={false}
+                            canSelect={false}
+                            canLock={false}
+                            isUploading={false}
+                            onUpload={() => {}}
+                            onSelect={() => {}}
+                            onLock={() => {}}
+                            onUnlock={() => {}}
+                            onDelete={() => {}}
+                            onLockSingle={() => {}}
+                            onUnlockSingle={() => {}}
+                          />
+                        )}
+                        {maggamRefs.length > 0 && (
+                          <ReferenceSection
+                            title="Maggam References"
+                            type="MAGGAM"
+                            references={maggamRefs}
+                            canUpload={false}
+                            canSelect={false}
+                            canLock={false}
+                            isUploading={false}
+                            onUpload={() => {}}
+                            onSelect={() => {}}
+                            onLock={() => {}}
+                            onUnlock={() => {}}
+                            onDelete={() => {}}
+                            onLockSingle={() => {}}
+                            onUnlockSingle={() => {}}
+                          />
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  // Designer / Admin view — full upload/lock controls
+                  <>
+                    <ReferenceSection
+                      title="Pattern References"
+                      type="PATTERN"
+                      references={patternRefs}
+                      canUpload={!isLocked && can("upload", "reference")}
+                      canSelect={!isLocked && can("select", "reference")}
+                      canLock={!isLocked && can("lock", "reference")}
+                      isUploading={uploadingType === "PATTERN"}
+                      onUpload={(file) =>
+                        uploadRefMutation.mutate({ file, type: "PATTERN" })
+                      }
+                      onSelect={() => {}}
+                      onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
+                      onUnlock={() =>
+                        unlockRefsMutation.mutate({ type: "PATTERN" })
+                      }
+                      onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                      onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+                      onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
+                    />
 
-                {outfit.maggamRequired && (
-                  <ReferenceSection
-                    title="Maggam References"
-                    type="MAGGAM"
-                    references={maggamRefs}
-                    canUpload={!isLocked && can("upload", "reference")}
-                    canSelect={!isLocked && can("select", "reference")}
-                    canLock={!isLocked && can("lock", "reference")}
-                    isUploading={uploadingType === "MAGGAM"}
-                    onUpload={(file) =>
-                      uploadRefMutation.mutate({ file, type: "MAGGAM" })
-                    }
-                    onSelect={() => {}}
-                    onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
-                    onUnlock={() =>
-                      unlockRefsMutation.mutate({ type: "MAGGAM" })
-                    }
-                    onDelete={(refId) => deleteRefMutation.mutate(refId)}
-                    onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-                    onUnlockSingle={(refId) =>
-                      unlockSingleMutation.mutate(refId)
-                    }
-                  />
+                    {outfit.maggamRequired && (
+                      <ReferenceSection
+                        title="Maggam References"
+                        type="MAGGAM"
+                        references={maggamRefs}
+                        canUpload={!isLocked && can("upload", "reference")}
+                        canSelect={!isLocked && can("select", "reference")}
+                        canLock={!isLocked && can("lock", "reference")}
+                        isUploading={uploadingType === "MAGGAM"}
+                        onUpload={(file) =>
+                          uploadRefMutation.mutate({ file, type: "MAGGAM" })
+                        }
+                        onSelect={() => {}}
+                        onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
+                        onUnlock={() =>
+                          unlockRefsMutation.mutate({ type: "MAGGAM" })
+                        }
+                        onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                        onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+                        onUnlockSingle={(refId) =>
+                          unlockSingleMutation.mutate(refId)
+                        }
+                      />
+                    )}
+                  </>
                 )}
               </AccordionContent>
             </AccordionItem>
@@ -997,46 +1052,55 @@ function CameraCaptureModal({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!open) {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
-      setStream(null);
       setError(null);
       return;
     }
+
+    let cancelled = false;
 
     async function startCamera() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setError("This browser does not support camera capture.");
         return;
       }
-
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
           audio: false,
         });
-        setStream(mediaStream);
+        if (cancelled) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
         }
       } catch {
-        setError(
-          "Camera access was blocked or unavailable. Please use Upload Image instead.",
-        );
+        if (!cancelled) {
+          setError(
+            "Camera access was blocked or unavailable. Please use Upload Image instead.",
+          );
+        }
       }
     }
 
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [open]);
@@ -1368,6 +1432,11 @@ function AssignMasterSelect({
   currentMasterId: string | null;
   onAssign: (masterId: string) => void;
 }) {
+  const { isAdmin, role } = usePermissions();
+
+  // Only ADMIN and DESIGNER can assign masters — guard the query
+  const canFetch = isAdmin || role === "DESIGNER";
+
   const { data: staff } = useQuery({
     queryKey: ["staff-masters"],
     queryFn: async () => {
@@ -1376,7 +1445,10 @@ function AssignMasterSelect({
       const users = await res.json();
       return users.filter((u: any) => u.role === "MASTER" && u.active);
     },
+    enabled: canFetch,
   });
+
+  if (!canFetch) return null;
 
   return (
     <select

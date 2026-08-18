@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,8 @@ const PRODUCTION_STATUSES = [
 
 export default function ProductionPage() {
   const queryClient = useQueryClient();
-  const { role } = usePermissions();
+  const { role, session } = usePermissions();
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["production-outfits"],
@@ -36,6 +38,7 @@ export default function ProductionPage() {
 
   const transitionMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: string; newStatus: string }) => {
+      setPendingId(id);
       const res = await fetch(`/api/outfits/${id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,6 +53,12 @@ export default function ProductionPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
     },
+    onError: (err: Error) => {
+      import("@/hooks/use-toast").then(({ toast }) =>
+        toast({ variant: "destructive", title: "Transition failed", description: err.message })
+      );
+    },
+    onSettled: () => setPendingId(null),
   });
 
   if (isLoading) {
@@ -61,7 +70,10 @@ export default function ProductionPage() {
     );
   }
 
-  const outfits = data || [];
+  const outfits = (data || []).filter((outfit: any) => {
+    if (role !== "MASTER") return true;
+    return !outfit.masterId || outfit.masterId === session?.id;
+  });
 
   return (
     <div className="space-y-4">
@@ -77,7 +89,7 @@ export default function ProductionPage() {
       {outfits.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No outfits in production
+            {role === "MASTER" ? "No assigned outfits in production" : "No outfits in production"}
           </CardContent>
         </Card>
       ) : (
@@ -98,6 +110,7 @@ export default function ProductionPage() {
                 {outfits.map((outfit: any) => {
                   const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
                   const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+                  const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
@@ -125,10 +138,11 @@ export default function ProductionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {next ? (
+                        {next && isAssigned ? (
                           <LoadingButton
                             size="sm"
-                            loading={transitionMutation.isPending}
+                            loading={pendingId === outfit.id}
+                            disabled={transitionMutation.isPending && pendingId !== outfit.id}
                             onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
                           >
                             {formatStatus(next)} <ArrowRight className="h-3 w-3" />
@@ -139,6 +153,8 @@ export default function ProductionPage() {
                               <AlertTriangle className="h-3 w-3" /> View Blocker
                             </LoadingButton>
                           </Link>
+                        ) : next && !isAssigned ? (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">Not assigned</Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -153,6 +169,7 @@ export default function ProductionPage() {
             {outfits.map((outfit: any) => {
               const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
               const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+              const isAssigned = role !== "MASTER" || outfit.masterId === undefined || outfit.masterName;
 
               return (
                 <Card key={outfit.id}>
@@ -185,11 +202,12 @@ export default function ProductionPage() {
                       </div>
                     )}
 
-                    {next ? (
+                    {next && isAssigned ? (
                       <LoadingButton
                         size="sm"
                         className="w-full mt-1"
-                        loading={transitionMutation.isPending}
+                        loading={pendingId === outfit.id}
+                        disabled={transitionMutation.isPending && pendingId !== outfit.id}
                         onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
                       >
                         {formatStatus(next)} <ArrowRight className="h-3 w-3" />
@@ -200,6 +218,8 @@ export default function ProductionPage() {
                           <AlertTriangle className="h-3 w-3" /> View Blocker
                         </LoadingButton>
                       </Link>
+                    ) : next && !isAssigned ? (
+                      <p className="text-xs text-muted-foreground ml-5">Not assigned to you</p>
                     ) : null}
                   </CardContent>
                 </Card>
