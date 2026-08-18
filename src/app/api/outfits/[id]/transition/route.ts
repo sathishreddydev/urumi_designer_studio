@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, sum } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { outfits, orders, payments } from "@/lib/db/schema";
 import { withAuth } from "@/lib/api-guard";
@@ -55,26 +55,42 @@ export const POST = withAuth(async (request, { params, session }) => {
 
   // Block delivery if payment is not cleared
   if (newStatus === "DELIVERED") {
-    const [outfitData] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
+    const [outfitData] = await db
+      .select({ orderId: outfits.orderId })
+      .from(outfits)
+      .where(eq(outfits.id, id));
+
     if (outfitData) {
-      // Get total of all outfit prices in this order
+      // Use live outfit price sum; fall back to order.estimatedAmount if prices not set
       const orderOutfits = await db
         .select({ price: outfits.price })
         .from(outfits)
         .where(eq(outfits.orderId, outfitData.orderId));
-      const orderTotal = orderOutfits.reduce((s, o) => s + (Number(o.price) || 0), 0);
+      const outfitTotal = orderOutfits.reduce((s, o) => s + (Number(o.price) || 0), 0);
 
-      // Get total payments
-      const [paymentResult] = await db
-        .select({ totalPaid: sum(payments.amount) })
+      let orderTotal = outfitTotal;
+      if (orderTotal === 0) {
+        // Fall back to estimatedAmount snapshot
+        const [ord] = await db
+          .select({ estimatedAmount: orders.estimatedAmount })
+          .from(orders)
+          .where(eq(orders.id, outfitData.orderId));
+        orderTotal = ord?.estimatedAmount ? Number(ord.estimatedAmount) : 0;
+      }
+
+      // Only count SETTLED payments
+      const settledPayments = await db
+        .select({ amount: payments.amount })
         .from(payments)
         .where(eq(payments.orderId, outfitData.orderId));
-      const totalPaid = Number(paymentResult?.totalPaid) || 0;
+      const totalPaid = settledPayments
+        .filter((p: any) => !p.status || p.status === "SETTLED")
+        .reduce((s, p) => s + Number(p.amount), 0);
 
       if (orderTotal > 0 && totalPaid < orderTotal) {
         const balance = orderTotal - totalPaid;
         return NextResponse.json(
-          { error: `Payment not cleared. Balance ₹${balance.toLocaleString()} pending. Please collect full payment before delivery.` },
+          { error: `Payment not cleared. ₹${balance.toLocaleString()} still pending. Collect full payment before marking as delivered.` },
           { status: 400 }
         );
       }

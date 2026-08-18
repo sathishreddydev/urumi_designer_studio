@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, outfits, payments, customers, referenceImages, dependencies, productionLogs } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { orders, outfits, payments, customers, referenceImages, dependencies, productionLogs, invoices } from "@/lib/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 
 export const GET = withPermission(
@@ -49,19 +49,38 @@ export const PATCH = withPermission(
     const { id } = await params;
     const body = await request.json();
 
+    // Allowed order-level statuses that staff can set manually
+    const ALLOWED_ORDER_STATUSES = [
+      "Active", "In Design", "Production Ready", "Waiting For Dependencies",
+      "In Production", "Trial/QC", "Ready For Delivery", "Completed",
+    ];
+
     const updateData: any = { updatedAt: new Date() };
-    if (body.deliveryDate) updateData.deliveryDate = new Date(body.deliveryDate);
-    if (body.trialDate) updateData.trialDate = new Date(body.trialDate);
-    if (body.status) updateData.status = body.status;
+    if (body.deliveryDate !== undefined)
+      updateData.deliveryDate = body.deliveryDate ? new Date(body.deliveryDate) : null;
+    if (body.trialDate !== undefined)
+      updateData.trialDate = body.trialDate ? new Date(body.trialDate) : null;
+    if (body.status) {
+      if (!ALLOWED_ORDER_STATUSES.includes(body.status)) {
+        return NextResponse.json({ error: "Invalid order status" }, { status: 400 });
+      }
+      updateData.status = body.status;
+    }
     if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.estimatedAmount !== undefined) updateData.estimatedAmount = body.estimatedAmount ? String(body.estimatedAmount) : null;
-    if (body.advanceAmount !== undefined) updateData.advanceAmount = body.advanceAmount ? String(body.advanceAmount) : null;
+    if (body.estimatedAmount !== undefined)
+      updateData.estimatedAmount = body.estimatedAmount ? String(body.estimatedAmount) : null;
+    if (body.advanceAmount !== undefined)
+      updateData.advanceAmount = body.advanceAmount ? String(body.advanceAmount) : null;
 
     const [order] = await db
       .update(orders)
       .set(updateData)
       .where(eq(orders.id, id))
       .returning();
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
 
     // Emit event
     const { eventBus } = await import("@/lib/events");
@@ -76,27 +95,53 @@ export const DELETE = withPermission(
   async (_request, { params, session }) => {
     const { id } = await params;
 
-    // Capture customerId before deletion for event
+    // Fetch order to validate it exists and capture customerId
     const [order] = await db
-      .select({ customerId: orders.customerId })
+      .select({ customerId: orders.customerId, status: orders.status })
       .from(orders)
       .where(eq(orders.id, id))
       .limit(1);
 
-    // Get all outfits for this order
-    const orderOutfits = await db.select({ id: outfits.id }).from(outfits).where(eq(outfits.orderId, id));
-    const outfitIds = orderOutfits.map((o) => o.id);
-
-    // Delete outfit-related data
-    for (const outfitId of outfitIds) {
-      await db.delete(referenceImages).where(eq(referenceImages.outfitId, outfitId));
-      await db.delete(dependencies).where(eq(dependencies.outfitId, outfitId));
-      await db.delete(productionLogs).where(eq(productionLogs.outfitId, outfitId));
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Delete outfits, payments, order
+    // Block deletion of orders that are in production or completed
+    const nonDeletableStatuses = [
+      "In Production", "Trial/QC", "Ready For Delivery", "Completed",
+    ];
+    if (nonDeletableStatuses.includes(order.status)) {
+      return NextResponse.json(
+        { error: `Cannot delete an order with status "${order.status}". Only Active, In Design, or Production Ready orders can be deleted.` },
+        { status: 409 }
+      );
+    }
+
+    // Get all outfits for this order
+    const orderOutfits = await db
+      .select({ id: outfits.id })
+      .from(outfits)
+      .where(eq(outfits.orderId, id));
+    const outfitIds = orderOutfits.map((o) => o.id);
+
+    // Delete in dependency order to avoid FK violations:
+    // 1. outfit children (references, dependencies, production logs)
+    if (outfitIds.length > 0) {
+      await db.delete(referenceImages).where(inArray(referenceImages.outfitId, outfitIds));
+      await db.delete(dependencies).where(inArray(dependencies.outfitId, outfitIds));
+      await db.delete(productionLogs).where(inArray(productionLogs.outfitId, outfitIds));
+    }
+
+    // 2. outfits themselves
     await db.delete(outfits).where(eq(outfits.orderId, id));
+
+    // 3. payments referencing this order
     await db.delete(payments).where(eq(payments.orderId, id));
+
+    // 4. invoices referencing this order (FK would block order deletion otherwise)
+    await db.delete(invoices).where(eq(invoices.orderId, id));
+
+    // 5. finally the order itself
     await db.delete(orders).where(eq(orders.id, id));
 
     // Notify all clients
@@ -104,7 +149,7 @@ export const DELETE = withPermission(
     eventBus.emit({
       type: "order_updated",
       orderId: id,
-      customerId: order?.customerId,
+      customerId: order.customerId,
       userId: session.id,
       timestamp: Date.now(),
     });
