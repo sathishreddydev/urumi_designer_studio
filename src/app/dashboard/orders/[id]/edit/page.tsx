@@ -60,13 +60,14 @@ const OUTFIT_TYPES = [
   "Other",
 ];
 
-// Statuses before production starts — outfit is fully editable
+// Statuses before production starts — outfit is fully editable.
+// Must match the UPPERCASE values stored in the DB (schema uses pgEnum with UPPERCASE).
 const EDITABLE_STATUSES = [
-  "draft",
-  "design_in_progress",
-  "waiting_for_references",
-  "waiting_for_dependencies",
-  "production_ready",
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+  "PRODUCTION_READY",
 ];
 
 interface OutfitEntry {
@@ -142,7 +143,7 @@ export default function EditOrderPage() {
           price: o.price ? String(Number(o.price)) : "",
           maggamRequired: o.maggamRequired || false,
           designerId: o.designerId || "",
-          status: o.status || "draft",
+          status: o.status || "DRAFT",
           isNew: false,
           isDeleted: false,
         })
@@ -195,7 +196,7 @@ export default function EditOrderPage() {
 
       // 2. Handle outfit changes
       for (const outfit of outfits) {
-        const isEditable = outfit.isNew || EDITABLE_STATUSES.includes(outfit.status || "draft");
+        const isEditable = outfit.isNew || EDITABLE_STATUSES.includes(outfit.status || "DRAFT");
 
         if (outfit.isDeleted && outfit.id && isEditable) {
           // Delete existing outfit (only if still editable)
@@ -358,7 +359,7 @@ export default function EditOrderPage() {
             {outfits.map((outfit, index) => {
               if (outfit.isDeleted) return null;
 
-              const isEditable = outfit.isNew || EDITABLE_STATUSES.includes(outfit.status || "draft");
+              const isEditable = outfit.isNew || EDITABLE_STATUSES.includes(outfit.status || "DRAFT");
 
               return (
                 <Card key={outfit.id || `new-${index}`} className={`relative overflow-hidden border ${!isEditable ? "opacity-80" : ""}`}>

@@ -176,6 +176,7 @@ export const payments = pgTable("payments", {
   status: paymentStatusEnum("status").notNull().default("SETTLED"),
   transactionRef: text("transaction_ref"),
   outfitId: varchar("outfit_id", { length: 20 }).references(() => outfits.id),
+  // invoiceId FK added after invoices table is defined — see bottom of file
   invoiceId: varchar("invoice_id", { length: 20 }),
   customerId: varchar("customer_id", { length: 20 }).references(() => customers.id),
   notes: text("notes"),
@@ -228,4 +229,7 @@ export type CustomerMeasurement = typeof customerMeasurements.$inferSelect;
 export type ReferenceImage = typeof referenceImages.$inferSelect;
 export type Dependency = typeof dependencies.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;
 export type ProductionLog = typeof productionLogs.$inferSelect;

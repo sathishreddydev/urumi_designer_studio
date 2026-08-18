@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   Plus,
@@ -59,17 +60,20 @@ function CameraCaptureModal({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!open) {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      // Stop any active stream when modal closes
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
-      setStream(null);
       setError(null);
       return;
     }
+
+    let cancelled = false;
 
     async function startCamera() {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -82,23 +86,34 @@ function CameraCaptureModal({
           video: { facingMode: "environment" },
           audio: false,
         });
-        setStream(mediaStream);
+
+        if (cancelled) {
+          // Modal closed before camera started — clean up immediately
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
         }
       } catch {
-        setError(
-          "Camera access was blocked or unavailable. Please use Upload Material Photos instead.",
-        );
+        if (!cancelled) {
+          setError(
+            "Camera access was blocked or unavailable. Please use Upload Material Photos instead.",
+          );
+        }
       }
     }
 
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [open]);
@@ -311,7 +326,7 @@ export default function NewOrderPage() {
 
       // 3. Record advance as first payment if provided
       if (advanceAmount && Number(advanceAmount) > 0) {
-        await fetch("/api/payments", {
+        const paymentRes = await fetch("/api/payments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -321,6 +336,10 @@ export default function NewOrderPage() {
             notes: "Advance payment at order creation",
           }),
         });
+        if (!paymentRes.ok) {
+          const err = await paymentRes.json().catch(() => ({}));
+          throw new Error(err.error || "Order created but advance payment failed — please add it manually from the order page.");
+        }
       }
 
       return order;
@@ -329,6 +348,13 @@ export default function NewOrderPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       router.push(`/dashboard/orders/${order.id}`);
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Order creation failed",
+        description: err.message,
+      });
     },
   });
 

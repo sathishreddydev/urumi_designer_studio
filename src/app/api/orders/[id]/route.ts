@@ -16,10 +16,11 @@ export const GET = withPermission(
     }
 
     // Batch: fetch customer, outfits, payments in parallel
+    // Only include SETTLED payments in the returned list for balance calculations
     const [customerResult, orderOutfits, orderPayments] = await Promise.all([
       db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1),
       db.select().from(outfits).where(eq(outfits.orderId, id)),
-      db.select().from(payments).where(eq(payments.orderId, id)),
+      db.select().from(payments).where(eq(payments.orderId, id)),  // all statuses returned so UI can show voided payments
     ]);
 
     // Enrich outfits with their references

@@ -24,10 +24,20 @@ export default function InvoicePage() {
   const createInvoice = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/orders/${params.id}/invoice`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to create invoice");
+      if (!res.ok) {
+        const err = await res.json();
+        // 409 means one already exists — just refetch to show it
+        if (res.status === 409) {
+          return null;
+        }
+        throw new Error(err.error || "Failed to create invoice");
+      }
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoice", params.id] }),
+    onError: (err: Error) => {
+      console.error("Invoice creation failed:", err.message);
+    },
   });
 
   if (isLoading) {
@@ -159,8 +169,10 @@ export default function InvoicePage() {
               </div>
               <div className="flex justify-between text-sm font-semibold">
                 <span>Balance Due</span>
-                <span className={balance > 0 ? "text-red-600" : "text-green-600"}>
-                  ₹{balance.toLocaleString()}
+                <span className={balance < 0 ? "text-amber-600" : balance > 0 ? "text-red-600" : "text-green-600"}>
+                  {balance < 0
+                    ? `₹${Math.abs(balance).toLocaleString()} (overpaid)`
+                    : `₹${balance.toLocaleString()}`}
                 </span>
               </div>
             </div>

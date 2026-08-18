@@ -38,7 +38,7 @@ export const DELETE = withPermission(
 
     const { eventBus } = await import("@/lib/events");
     eventBus.emit({
-      type: "payment_added",
+      type: "payment_deleted",
       orderId: payment.orderId,
       customerId: order?.customerId,
       timestamp: Date.now(),

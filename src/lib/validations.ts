@@ -32,6 +32,9 @@ export const outfitSchema = z.object({
   deliveryDate: z.string().optional(),
   trialDate: z.string().optional(),
   maggamRequired: z.boolean().default(false),
+  // price and designerId are part of the outfit payload and must be validated
+  price: z.number().nonnegative("Price must be 0 or positive").optional(),
+  designerId: z.string().optional(),
 });
 
 export const measurementSchema = z.object({

@@ -41,7 +41,7 @@ export const GET = withPermission(
         const [paymentResult] = await db
           .select({ totalPaid: sum(payments.amount) })
           .from(payments)
-          .where(eq(payments.orderId, order.id));
+          .where(and(eq(payments.orderId, order.id), eq(payments.status, "SETTLED")));
         return {
           ...order,
           customerName: cust?.name || "",

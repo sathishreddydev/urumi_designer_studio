@@ -130,8 +130,9 @@ export const POST = withPermission(
         deliveryDate: parsed.data.deliveryDate ? new Date(parsed.data.deliveryDate) : null,
         trialDate: parsed.data.trialDate ? new Date(parsed.data.trialDate) : null,
         maggamRequired: parsed.data.maggamRequired,
-        price: body.price ? String(body.price) : null,
-        designerId: body.designerId || null,
+        // Use validated values from parsed.data (not raw body)
+        price: parsed.data.price != null ? String(parsed.data.price) : null,
+        designerId: parsed.data.designerId || null,
       })
       .returning();
 

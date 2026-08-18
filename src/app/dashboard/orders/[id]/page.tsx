@@ -168,7 +168,9 @@ export default function OrderDetailPage() {
 
   if (!order) return <p>Order not found</p>;
 
-  const totalPaid = (order.payments || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const totalPaid = (order.payments || [])
+    .filter((p: any) => p.status === "SETTLED" || !p.status) // legacy rows without status count as settled
+    .reduce((s: number, p: any) => s + Number(p.amount), 0);
   const orderTotal = (order.outfits || []).reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
   const isCompleted = order.status === "Completed";
   const portalUrl = order.portalToken
@@ -179,7 +181,7 @@ export default function OrderDetailPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={`/dashboard/customers/${order.customer?.id || ""}`}>
+        <Link href={order.customer?.id ? `/dashboard/customers/${order.customer.id}` : "/dashboard/orders"}>
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <div className="min-w-0 flex-1">
@@ -253,9 +255,17 @@ export default function OrderDetailPage() {
               {(() => {
                 const estimated = Number(order.estimatedAmount) || orderTotal;
                 const bal = estimated - totalPaid;
+                if (estimated <= 0) return <p className="text-base font-bold">—</p>;
+                if (bal < 0) {
+                  return (
+                    <p className="text-base font-bold text-amber-600">
+                      ₹{Math.abs(bal).toLocaleString()} over
+                    </p>
+                  );
+                }
                 return (
                   <p className={`text-base font-bold ${bal > 0 ? "text-red-600" : "text-green-600"}`}>
-                    {estimated > 0 ? `₹${Math.max(0, bal).toLocaleString()}` : "—"}
+                    ₹{bal.toLocaleString()}
                   </p>
                 );
               })()}
