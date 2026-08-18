@@ -187,7 +187,7 @@ export default function CustomerPortalPage() {
             <h3 className="text-lg font-semibold">Access Error</h3>
             <p className="text-sm text-muted-foreground">{error}</p>
             <p className="text-xs text-muted-foreground">
-              Please contact the boutique studio team to request a fresh portal
+              Please contact the Urumi team to request a fresh portal
               link.
             </p>
           </CardContent>
@@ -211,7 +211,7 @@ export default function CustomerPortalPage() {
               <Scissors className="h-5 w-5 text-primary" />
             </div>
             <span className="font-semibold text-base tracking-tight">
-              Boutique Studio Portal
+              Urumi Portal
             </span>
           </div>
           <Badge variant="outline" className="text-xs font-normal">

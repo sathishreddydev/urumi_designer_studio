@@ -51,7 +51,7 @@ export default function InvoicePage() {
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-bold">Designer Studio</h2>
+                <h2 className="text-xl font-bold">Urumi</h2>
                 <p className="text-xs text-muted-foreground">Custom Outfit Design & Production</p>
               </div>
               <div className="text-right">
@@ -153,7 +153,7 @@ export default function InvoicePage() {
             {/* Footer */}
             <div className="pt-4 border-t text-center">
               <p className="text-xs text-muted-foreground">
-                Thank you for choosing Designer Studio!
+                Thank you for choosing Urumi!
               </p>
               {order.notes && (
                 <p className="text-xs text-muted-foreground mt-1 italic">Note: {order.notes}</p>

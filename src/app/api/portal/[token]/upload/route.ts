@@ -132,7 +132,7 @@ async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise
   const apiSecret = process.env.CLOUDINARY_API_SECRET!;
 
   const timestamp = Math.round(Date.now() / 1000);
-  const folder = "designer-studio/customer-uploads";
+  const folder = "urumi/customer-uploads";
 
   const crypto = await import("crypto");
   const signatureStr = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
