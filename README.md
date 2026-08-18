@@ -51,7 +51,7 @@ A production-ready Designer Studio / Bridal Boutique management application buil
    npm run dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000)
+6. Open [http://localhost:4000](http://localhost:4000)
 
 ### Default Credentials
 

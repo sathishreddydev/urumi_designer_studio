@@ -353,13 +353,13 @@ export default function OutfitDetailPage() {
 
   const availableTransitions = transitions?.availableTransitions || [];
   const patternRefs = (outfit.references || []).filter(
-    (r: any) => r.type === "PATTERN"
+    (r: any) => r.type === "PATTERN",
   );
   const maggamRefs = (outfit.references || []).filter(
-    (r: any) => r.type === "MAGGAM"
+    (r: any) => r.type === "MAGGAM",
   );
   const fabricRefs = (outfit.references || []).filter(
-    (r: any) => r.type === "FABRIC"
+    (r: any) => r.type === "FABRIC",
   );
 
   const materialLockedStatuses = [
@@ -429,9 +429,7 @@ export default function OutfitDetailPage() {
               key={t.status}
               size="sm"
               loading={transitionMutation.isPending}
-              onClick={() =>
-                transitionMutation.mutate({ newStatus: t.status })
-              }
+              onClick={() => transitionMutation.mutate({ newStatus: t.status })}
             >
               <ArrowRight className="h-3 w-3 mr-1" /> {t.label}
             </LoadingButton>
@@ -464,7 +462,9 @@ export default function OutfitDetailPage() {
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Trial Date
                 </span>
-                <span className="font-medium">{formatDate(outfit.trialDate)}</span>
+                <span className="font-medium">
+                  {formatDate(outfit.trialDate)}
+                </span>
               </div>
               <Separator />
 
@@ -472,7 +472,9 @@ export default function OutfitDetailPage() {
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Delivery Date
                 </span>
-                <span className="font-medium">{formatDate(outfit.deliveryDate)}</span>
+                <span className="font-medium">
+                  {formatDate(outfit.deliveryDate)}
+                </span>
               </div>
               <Separator />
 
@@ -495,7 +497,9 @@ export default function OutfitDetailPage() {
                     <AssignMasterSelect
                       outfitId={outfit.id}
                       currentMasterId={outfit.masterId}
-                      onAssign={(masterId) => updateMutation.mutate({ masterId })}
+                      onAssign={(masterId) =>
+                        updateMutation.mutate({ masterId })
+                      }
                     />
                   ) : (
                     <span className="font-medium float-right">
@@ -524,7 +528,10 @@ export default function OutfitDetailPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {Object.entries(
-                    outfit.customerMeasurements.values as Record<string, string>
+                    outfit.customerMeasurements.values as Record<
+                      string,
+                      string
+                    >,
                   ).map(([key, value]) => (
                     <div
                       key={key}
@@ -533,7 +540,9 @@ export default function OutfitDetailPage() {
                       <span className="text-xs text-muted-foreground capitalize">
                         {key.replace(/_/g, " ")}
                       </span>
-                      <span className="font-semibold text-xs">{value || "—"}</span>
+                      <span className="font-semibold text-xs">
+                        {value || "—"}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -611,7 +620,9 @@ export default function OutfitDetailPage() {
                   }
                   onSelect={() => {}}
                   onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
-                  onUnlock={() => unlockRefsMutation.mutate({ type: "PATTERN" })}
+                  onUnlock={() =>
+                    unlockRefsMutation.mutate({ type: "PATTERN" })
+                  }
                   onDelete={(refId) => deleteRefMutation.mutate(refId)}
                   onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
                   onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
@@ -631,10 +642,14 @@ export default function OutfitDetailPage() {
                     }
                     onSelect={() => {}}
                     onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
-                    onUnlock={() => unlockRefsMutation.mutate({ type: "MAGGAM" })}
+                    onUnlock={() =>
+                      unlockRefsMutation.mutate({ type: "MAGGAM" })
+                    }
                     onDelete={(refId) => deleteRefMutation.mutate(refId)}
                     onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-                    onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
+                    onUnlockSingle={(refId) =>
+                      unlockSingleMutation.mutate(refId)
+                    }
                   />
                 )}
               </AccordionContent>
@@ -752,7 +767,7 @@ export default function OutfitDetailPage() {
                                             dependencyId: dep.id,
                                             status: "AVAILABLE",
                                           }),
-                                        }
+                                        },
                                       ).then(() => {
                                         queryClient.invalidateQueries({
                                           queryKey: ["outfit", params.id],
@@ -811,7 +826,9 @@ export default function OutfitDetailPage() {
                       rows={3}
                       onBlur={(e) => {
                         if (e.target.value !== (outfit.designerNotes || "")) {
-                          updateMutation.mutate({ designerNotes: e.target.value });
+                          updateMutation.mutate({
+                            designerNotes: e.target.value,
+                          });
                         }
                       }}
                     />
@@ -883,7 +900,10 @@ export default function OutfitDetailPage() {
                 ) : (
                   <div className="space-y-3 pl-2">
                     {(outfit.productionLogs || []).map((log: any) => (
-                      <div key={log.id} className="flex gap-3 items-start text-sm">
+                      <div
+                        key={log.id}
+                        className="flex gap-3 items-start text-sm"
+                      >
                         <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                         <div>
                           <Badge
@@ -1006,7 +1026,9 @@ function CameraCaptureModal({
           await videoRef.current.play();
         }
       } catch {
-        setError("Camera access was blocked or unavailable. Please use Upload Image instead.");
+        setError(
+          "Camera access was blocked or unavailable. Please use Upload Image instead.",
+        );
       }
     }
 
@@ -1033,14 +1055,18 @@ function CameraCaptureModal({
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, width, height);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `camera-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-      onCapture(file);
-      onClose();
-    }, "image/jpeg", 0.9);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `camera-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        onCapture(file);
+        onClose();
+      },
+      "image/jpeg",
+      0.9,
+    );
   }
 
   if (!open) return null;
@@ -1181,10 +1207,15 @@ function ReferenceSection({
                     }}
                   />
                 </label>
-                <Button size="sm" variant="outline" onClick={() => setCameraOpen(true)}>
-                  <span>
-                    <Camera className="h-3 w-3 mr-1" /> Take Photo
-                  </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCameraOpen(true)}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+  <Camera className="h-3.5 w-3.5" />
+  Take Photo
+</span>
                 </Button>
                 <CameraCaptureModal
                   open={cameraOpen}
@@ -1214,8 +1245,8 @@ function ReferenceSection({
                   isLocked
                     ? "border-green-500"
                     : ref.isCustomerUpload
-                    ? "border-dashed border-blue-300"
-                    : "border-transparent hover:border-muted-foreground/30"
+                      ? "border-dashed border-blue-300"
+                      : "border-transparent hover:border-muted-foreground/30"
                 }`}
               >
                 <img
@@ -1259,15 +1290,15 @@ function ReferenceSection({
                         isLocked
                           ? "text-green-300"
                           : ref.isCustomerUpload
-                          ? "text-yellow-300"
-                          : "text-gray-300"
+                            ? "text-yellow-300"
+                            : "text-gray-300"
                       }`}
                     >
                       {ref.isCustomerUpload
                         ? "Customer"
                         : isLocked
-                        ? "Locked"
-                        : "Draft"}
+                          ? "Locked"
+                          : "Draft"}
                     </span>
                     {canUpload && !isLocked && !ref.isCustomerUpload && (
                       <button
@@ -1363,7 +1394,6 @@ function AssignMasterSelect({
   );
 }
 
-
 // ─── CUSTOMER MATERIAL SECTION (Simple display only) ────────────────────────
 
 function CustomerMaterialSection({
@@ -1429,9 +1459,14 @@ function CustomerMaterialSection({
                     }}
                   />
                 </label>
-                <Button size="sm" variant="outline" onClick={() => setCameraOpen(true)}>
-                  <span>
-                    <Camera className="h-3 w-3 mr-1" /> Take Photo
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCameraOpen(true)}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Camera className="h-3.5 w-3.5" />
+                    Take Photo
                   </span>
                 </Button>
                 <CameraCaptureModal
@@ -1508,7 +1543,8 @@ function CustomerMaterialSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Material</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove this customer material image? This action cannot be undone.
+              Are you sure you want to remove this customer material image? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

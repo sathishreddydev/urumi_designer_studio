@@ -2,12 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,7 +183,7 @@ export default function CustomerPortalPage() {
             <h3 className="text-lg font-semibold">Access Error</h3>
             <p className="text-sm text-muted-foreground">{error}</p>
             <p className="text-xs text-muted-foreground">
-              Please contact the Urumi team to request a fresh portal
+              Please contact the urumi by mounika team to request a fresh portal
               link.
             </p>
           </CardContent>
@@ -212,7 +207,7 @@ export default function CustomerPortalPage() {
               <Scissors className="h-5 w-5 text-primary" />
             </div>
             <span className="font-semibold text-base tracking-tight">
-              Urumi Portal
+              urumi by mounika Portal
             </span>
           </div>
           <Badge variant="outline" className="text-xs font-normal">
@@ -516,7 +511,10 @@ export default function CustomerPortalPage() {
                                   Total:
                                 </span>
                                 <span className="font-medium font-mono">
-                                  ₹{Number(order.estimatedAmount).toLocaleString()}
+                                  ₹
+                                  {Number(
+                                    order.estimatedAmount,
+                                  ).toLocaleString()}
                                 </span>
                               </div>
                             )}
@@ -548,7 +546,10 @@ export default function CustomerPortalPage() {
                         {order.payments && order.payments.length > 0 && (
                           <div className="border-t pt-2 space-y-1.5">
                             {order.payments.map((p: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between">
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between"
+                              >
                                 <span className="text-muted-foreground">
                                   {p.method} · {formatDate(p.createdAt)}
                                 </span>
@@ -672,12 +673,20 @@ function PortalReferenceCard({
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
         />
         {/* Reference type label */}
-        <span className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
-          reference.type === "FABRIC" ? "bg-indigo-600 text-white" :
-          reference.type === "MAGGAM" ? "bg-amber-600 text-white" :
-          "bg-slate-700 text-white"
-        }`}>
-          {reference.type === "FABRIC" ? "Customer Material" : reference.type === "MAGGAM" ? "Maggam" : "Pattern"}
+        <span
+          className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
+            reference.type === "FABRIC"
+              ? "bg-indigo-600 text-white"
+              : reference.type === "MAGGAM"
+                ? "bg-amber-600 text-white"
+                : "bg-slate-700 text-white"
+          }`}
+        >
+          {reference.type === "FABRIC"
+            ? "Customer Material"
+            : reference.type === "MAGGAM"
+              ? "Maggam"
+              : "Pattern"}
         </span>
         {feedback && (
           <div
@@ -772,7 +781,9 @@ function CameraCaptureModal({
           await videoRef.current.play();
         }
       } catch {
-        setError("Camera access was blocked or unavailable. Please use Upload instead.");
+        setError(
+          "Camera access was blocked or unavailable. Please use Upload instead.",
+        );
       }
     }
 
@@ -799,14 +810,18 @@ function CameraCaptureModal({
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, width, height);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `camera-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-      onCapture(file);
-      onClose();
-    }, "image/jpeg", 0.9);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `camera-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        onCapture(file);
+        onClose();
+      },
+      "image/jpeg",
+      0.9,
+    );
   }
 
   if (!open) return null;
@@ -936,7 +951,11 @@ function PortalUpload({
           >
             <span>
               <Upload className="h-3.5 w-3.5 mr-1.5" />
-              {uploading ? "Uploading..." : type === "FABRIC" ? "Upload Material" : "Upload Photos"}
+              {uploading
+                ? "Uploading..."
+                : type === "FABRIC"
+                  ? "Upload Material"
+                  : "Upload Photos"}
             </span>
           </Button>
           <input
@@ -956,8 +975,8 @@ function PortalUpload({
           disabled={uploading}
           onClick={() => setCameraOpen(true)}
         >
-          <span>
-            <Camera className="h-3.5 w-3.5 mr-1.5" />
+          <span className="inline-flex items-center gap-1.5">
+            <Camera className="h-3.5 w-3.5" />
             Take Photo
           </span>
         </Button>

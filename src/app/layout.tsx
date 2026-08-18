@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Urumi",
-  description: "Urumi - Custom Outfit Design & Production Workflow",
+  title: "urumi by mounika",
+  description: "urumi by mounika - Custom Outfit Design & Production Workflow",
 };
 
 export default function RootLayout({

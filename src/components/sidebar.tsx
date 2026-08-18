@@ -76,7 +76,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
         </Button>
         <div className="ml-3 flex items-center gap-2">
           <Scissors className="h-5 w-5 text-primary" />
-          <span className="font-bold">Urumi</span>
+          <span className="font-bold">urumi by mounika</span>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
         <div className="flex h-14 items-center justify-between border-b px-4 lg:h-16 lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
             <Scissors className="h-6 w-6 text-primary" />
-            <span className="text-lg font-bold">Urumi</span>
+            <span className="text-lg font-bold">urumi by mounika</span>
           </Link>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(false)}>
             <X className="h-5 w-5" />

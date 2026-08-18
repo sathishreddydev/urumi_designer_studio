@@ -16,6 +16,7 @@ import {
   CreditCard,
   ImagePlus,
   X,
+  Camera,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -92,7 +88,9 @@ function CameraCaptureModal({
           await videoRef.current.play();
         }
       } catch {
-        setError("Camera access was blocked or unavailable. Please use Upload Material Photos instead.");
+        setError(
+          "Camera access was blocked or unavailable. Please use Upload Material Photos instead.",
+        );
       }
     }
 
@@ -119,14 +117,18 @@ function CameraCaptureModal({
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, width, height);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `customer-material-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-      onCapture(file);
-      onClose();
-    }, "image/jpeg", 0.9);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `customer-material-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        onCapture(file);
+        onClose();
+      },
+      "image/jpeg",
+      0.9,
+    );
   }
 
   if (!open) return null;
@@ -359,14 +361,14 @@ export default function NewOrderPage() {
   function handleFabricImageSelect(index: number, files: FileList | null) {
     if (!files) return;
     const newFiles = Array.from(files).filter((f) =>
-      ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(f.type)
+      ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(f.type),
     );
     setOutfits((prev) =>
       prev.map((o, i) =>
         i === index
           ? { ...o, fabricImages: [...o.fabricImages, ...newFiles] }
-          : o
-      )
+          : o,
+      ),
     );
   }
 
@@ -374,9 +376,12 @@ export default function NewOrderPage() {
     setOutfits((prev) =>
       prev.map((o, i) =>
         i === outfitIndex
-          ? { ...o, fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex) }
-          : o
-      )
+          ? {
+              ...o,
+              fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex),
+            }
+          : o,
+      ),
     );
   }
 
@@ -510,7 +515,9 @@ export default function NewOrderPage() {
 
                     {/* Price */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Estimated price (₹)</Label>
+                      <Label className="text-xs font-semibold">
+                        Estimated price (₹)
+                      </Label>
                       <div className="relative">
                         <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">
                           ₹
@@ -655,18 +662,7 @@ export default function NewOrderPage() {
                         }}
                       >
                         <span className="inline-flex items-center gap-1.5">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-3.5 w-3.5"
-                          >
-                            <path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3l-1.5-2Z" />
-                            <circle cx="12" cy="12" r="3.5" />
-                          </svg>
+                          <Camera />
                           Take Photo
                         </span>
                       </Button>
@@ -683,7 +679,10 @@ export default function NewOrderPage() {
                         setOutfits((prev) =>
                           prev.map((o, i) =>
                             i === cameraIndex
-                              ? { ...o, fabricImages: [...o.fabricImages, file] }
+                              ? {
+                                  ...o,
+                                  fabricImages: [...o.fabricImages, file],
+                                }
                               : o,
                           ),
                         );
