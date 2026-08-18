@@ -5,9 +5,26 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { createToken } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
+import { loginLimiter, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting
+    const ip = getClientIp(request);
+    const { allowed, remaining, resetMs } = loginLimiter.check(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(resetMs / 1000)),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
 

@@ -5,12 +5,24 @@ import { customers, orders, outfits, referenceImages } from "@/lib/db/schema";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { sanitizeFilename } from "@/lib/utils";
+import { uploadLimiter, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    // Rate limiting
+    const ip = getClientIp(request);
+    const { allowed, resetMs } = uploadLimiter.check(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many uploads. Please wait before trying again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(resetMs / 1000)) } }
+      );
+    }
+
     const { token } = await params;
 
     // Validate portal token
@@ -70,7 +82,7 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     let url: string;
-    const filename = file.name;
+    const filename = sanitizeFilename(file.name);
 
     // Use Cloudinary if configured
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {

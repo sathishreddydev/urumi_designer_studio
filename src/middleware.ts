@@ -6,12 +6,41 @@ const publicPaths = ["/login", "/portal", "/api/auth/login", "/api/portal"];
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
 
+// Allowed origins for CORS (configure via env or hardcode for your deployment)
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : [];
+
+function setCorsHeaders(response: NextResponse, origin: string | null) {
+  // If no origins configured, skip CORS (same-origin only)
+  if (ALLOWED_ORIGINS.length === 0) return response;
+
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+    response.headers.set("Access-Control-Max-Age", "86400");
+  }
+
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const origin = request.headers.get("origin");
+
+  // Handle CORS preflight (OPTIONS)
+  if (request.method === "OPTIONS" && pathname.startsWith("/api")) {
+    const response = new NextResponse(null, { status: 204 });
+    return setCorsHeaders(response, origin);
+  }
 
   // Allow public paths
   if (publicPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (pathname.startsWith("/api")) setCorsHeaders(response, origin);
+    return response;
   }
 
   // Allow static files and uploads
@@ -32,7 +61,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!token && pathname.startsWith("/api") && !pathname.startsWith("/api/auth")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    setCorsHeaders(response, origin);
+    return response;
   }
 
   // Validate token if present (for dashboard and API routes)
@@ -46,11 +77,15 @@ export async function middleware(request: NextRequest) {
         response.cookies.delete("session-token");
         return response;
       }
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+      const response = NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+      setCorsHeaders(response, origin);
+      return response;
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (pathname.startsWith("/api")) setCorsHeaders(response, origin);
+  return response;
 }
 
 export const config = {

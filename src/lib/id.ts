@@ -24,3 +24,19 @@ export function generateId(): string {
 export function generatePrefixedId(prefix: string): string {
   return `${prefix}_${generateId()}`;
 }
+
+/**
+ * Generates a cryptographically secure portal token.
+ * Uses 32 bytes of randomness → 43-character base64url string.
+ * ~2^256 combinations — infeasible to brute-force.
+ */
+export function generatePortalToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  // Convert to base64url (URL-safe, no padding)
+  const base64 = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return base64;
+}

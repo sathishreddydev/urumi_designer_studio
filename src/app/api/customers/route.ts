@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { customers, orders } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { customerSchema } from "@/lib/validations";
-import { generateId } from "@/lib/id";
+import { generateId, generatePortalToken } from "@/lib/id";
 
 export const GET = withPermission(
   { resource: "customer", action: "read" },
@@ -60,7 +60,7 @@ export const POST = withPermission(
     try {
       const [customer] = await db.insert(customers).values({
         ...parsed.data,
-        portalToken: generateId(),
+        portalToken: generatePortalToken(),
       }).returning();
       return NextResponse.json(customer, { status: 201 });
     } catch (error: any) {

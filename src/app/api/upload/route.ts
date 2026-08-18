@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { sanitizeFilename } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     // Use Cloudinary if configured, otherwise local storage
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
       const url = await uploadToCloudinary(buffer, file.name);
-      return NextResponse.json({ url, filename: file.name });
+      return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
     }
 
     // Local storage fallback (development only)
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     await writeFile(filepath, buffer);
 
     const url = `/uploads/${filename}`;
-    return NextResponse.json({ url, filename });
+    return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });

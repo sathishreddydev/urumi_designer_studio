@@ -60,3 +60,33 @@ export function formatStatus(status: string): string {
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * Sanitize a filename to prevent path traversal, XSS, and special character issues.
+ * Strips directory components, removes dangerous characters, and truncates length.
+ */
+export function sanitizeFilename(filename: string): string {
+  // Extract only the basename (strip any path components like ../ or /)
+  let sanitized = filename.replace(/^.*[\\\/]/, "");
+
+  // Remove null bytes
+  sanitized = sanitized.replace(/\0/g, "");
+
+  // Remove characters that could cause issues (keep alphanumeric, dots, hyphens, underscores, spaces)
+  sanitized = sanitized.replace(/[^a-zA-Z0-9.\-_ ]/g, "");
+
+  // Prevent hidden files (starting with dot)
+  sanitized = sanitized.replace(/^\.+/, "");
+
+  // Collapse multiple dots to prevent extension spoofing (e.g. file.php.jpg)
+  sanitized = sanitized.replace(/\.{2,}/g, ".");
+
+  // Truncate to 200 characters max
+  if (sanitized.length > 200) {
+    const ext = sanitized.slice(sanitized.lastIndexOf("."));
+    sanitized = sanitized.slice(0, 200 - ext.length) + ext;
+  }
+
+  // Fallback if filename is empty after sanitization
+  return sanitized || "upload";
+}

@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages, payments, customerMeasurements } from "@/lib/db/schema";
+import { portalLimiter, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    // Rate limiting
+    const ip = getClientIp(_request);
+    const { allowed, resetMs } = portalLimiter.check(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(resetMs / 1000)) } }
+      );
+    }
+
     const { token } = await params;
 
     // Find customer by portal token
