@@ -48,11 +48,7 @@ export async function onDesignerAssigned(outfitId: string, designerId: string) {
 
 // ─── TRIGGER: First Measurement Saved ───────────────────────────────────────
 // (Measurements are now on customer profile — this trigger is deprecated)
-// If needed, the workflow can advance via manual transition instead.
-
-export async function onMeasurementSaved(_outfitId: string, _userId: string) {
-  // No-op — kept for backwards compatibility
-}
+// Removed: onMeasurementSaved is no longer needed since measurements moved to customer level.
 
 // ─── TRIGGER: References Locked ─────────────────────────────────────────────
 // WAITING_FOR_REFERENCES → PRODUCTION_READY

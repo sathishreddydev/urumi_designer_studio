@@ -11,6 +11,7 @@ export async function GET() {
   }
 
   const encoder = new TextEncoder();
+  let cleanup: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -37,17 +38,14 @@ export async function GET() {
         }
       });
 
-      // Cleanup on close
-      const cleanup = () => {
+      // Store cleanup for when the stream is cancelled
+      cleanup = () => {
         unsubscribe();
         clearInterval(keepAlive);
       };
-
-      // Store cleanup for when the stream is cancelled
-      (controller as any)._cleanup = cleanup;
     },
     cancel() {
-      // Stream cancelled by client
+      cleanup?.();
     },
   });
 

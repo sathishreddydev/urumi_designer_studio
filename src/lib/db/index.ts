@@ -11,7 +11,7 @@ if (!globalForDb.pool) {
     max: 20,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 3000,
-    ssl: false,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   });
 
   // Keep pool warm

@@ -164,6 +164,11 @@ export default function OrderDetailPage() {
           <p className="text-sm text-muted-foreground">
             {order.customer?.name} · {order.customer?.mobile}
           </p>
+          {portalUrl && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Portal: <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{portalUrl}</a>
+            </p>
+          )}
         </div>
         {can("update", "order") && !isCompleted && (
           <div className="flex gap-2">
@@ -244,6 +249,53 @@ export default function OrderDetailPage() {
 
         {/* Outfits Tab */}
         <TabsContent value="outfits" className="space-y-3 mt-4">
+          {/* Add Outfit Button */}
+          {!isCompleted && can("create", "outfit") && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setShowAddOutfit(!showAddOutfit)}>
+                <Shirt className="h-3 w-3" /> Add Outfit
+              </Button>
+            </div>
+          )}
+
+          {/* Add Outfit Form */}
+          {showAddOutfit && (
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = new FormData(e.currentTarget);
+                    addOutfitMutation.mutate({
+                      name: form.get("name"),
+                      type: form.get("type"),
+                      maggamRequired: form.get("maggamRequired") === "on",
+                    });
+                  }}
+                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                >
+                  <div className="space-y-1 flex-1">
+                    <Label className="text-xs">Outfit Name</Label>
+                    <Input name="name" placeholder="e.g. Bridal Blouse" className="h-9" required />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <Label className="text-xs">Type</Label>
+                    <select name="type" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm" required>
+                      {OUTFIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" name="maggamRequired" id="maggamRequired" className="h-4 w-4" />
+                    <Label htmlFor="maggamRequired" className="text-xs">Maggam</Label>
+                  </div>
+                  <LoadingButton size="sm" type="submit" loading={addOutfitMutation.isPending} loadingText="Adding...">
+                    Add
+                  </LoadingButton>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Outfits List */}
           {(order.outfits || []).length === 0 ? (
             <Card>

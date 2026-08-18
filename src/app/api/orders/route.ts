@@ -67,18 +67,30 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const [order] = await db
-      .insert(orders)
-      .values({
-        orderNumber: generateOrderNumber(),
-        customerId: parsed.data.customerId,
-        deliveryDate: parsed.data.deliveryDate ? new Date(parsed.data.deliveryDate) : null,
-        trialDate: parsed.data.trialDate ? new Date(parsed.data.trialDate) : null,
-        estimatedAmount: parsed.data.estimatedAmount ? String(parsed.data.estimatedAmount) : null,
-        advanceAmount: parsed.data.advanceAmount ? String(parsed.data.advanceAmount) : null,
-        notes: parsed.data.notes,
-      })
-      .returning();
+    let order: any;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        [order] = await db
+          .insert(orders)
+          .values({
+            orderNumber: generateOrderNumber(),
+            customerId: parsed.data.customerId,
+            deliveryDate: parsed.data.deliveryDate ? new Date(parsed.data.deliveryDate) : null,
+            trialDate: parsed.data.trialDate ? new Date(parsed.data.trialDate) : null,
+            estimatedAmount: parsed.data.estimatedAmount ? String(parsed.data.estimatedAmount) : null,
+            advanceAmount: parsed.data.advanceAmount ? String(parsed.data.advanceAmount) : null,
+            notes: parsed.data.notes,
+          })
+          .returning();
+        break;
+      } catch (err: any) {
+        retries--;
+        if (retries === 0 || !err.message?.includes("unique")) {
+          throw err;
+        }
+      }
+    }
 
     // Emit event
     eventBus.emit({ type: "order_updated", orderId: order.id, customerId: parsed.data.customerId, timestamp: Date.now() });

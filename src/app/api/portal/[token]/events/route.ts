@@ -40,6 +40,7 @@ export async function GET(
   }
 
   const encoder = new TextEncoder();
+  let cleanup: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -69,12 +70,14 @@ export async function GET(
         }
       });
 
-      (controller as any)._cleanup = () => {
+      cleanup = () => {
         unsubscribe();
         clearInterval(keepAlive);
       };
     },
-    cancel() {},
+    cancel() {
+      cleanup?.();
+    },
   });
 
   return new Response(stream, {

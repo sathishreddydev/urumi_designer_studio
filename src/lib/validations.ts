@@ -8,6 +8,7 @@ export const loginSchema = z.object({
 export const customerSchema = z.object({
   name: z.string().min(2, "Name is required"),
   mobile: z.string().min(10, "Valid mobile number required"),
+  whatsapp: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   occasion: z.string().optional(),

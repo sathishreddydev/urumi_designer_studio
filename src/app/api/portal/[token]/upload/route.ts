@@ -33,6 +33,18 @@ export async function POST(
       return NextResponse.json({ error: "File and outfitId are required" }, { status: 400 });
     }
 
+    // Validate file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: "Only image files (JPEG, PNG, WebP, GIF) are allowed" }, { status: 400 });
+    }
+
     // Validate outfit belongs to this customer
     const [outfit] = await db
       .select()

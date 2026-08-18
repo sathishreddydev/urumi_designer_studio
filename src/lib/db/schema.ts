@@ -34,7 +34,7 @@ export const outfitStatusEnum = pgEnum("outfit_status", [
   "DELIVERED",
 ]);
 
-export const referenceTypeEnum = pgEnum("reference_type", ["PATTERN", "MAGGAM"]);
+export const referenceTypeEnum = pgEnum("reference_type", ["PATTERN", "MAGGAM", "FABRIC"]);
 
 export const referenceStatusEnum = pgEnum("reference_status", ["DRAFT", "SELECTED", "LOCKED"]);
 

@@ -18,8 +18,9 @@ export function generateOrderNumber(): string {
   const now = new Date();
   const year = now.getFullYear().toString().slice(-2);
   const month = (now.getMonth() + 1).toString().padStart(2, "0");
-  const random = Math.floor(Math.random() * 9000 + 1000);
-  return `ORD-${year}${month}-${random}`;
+  const random = Math.floor(Math.random() * 90000 + 10000);
+  const suffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `ORD-${year}${month}-${random}${suffix}`;
 }
 
 export function getStatusColor(status: string): string {

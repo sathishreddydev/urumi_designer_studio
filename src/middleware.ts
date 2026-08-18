@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 const publicPaths = ["/login", "/portal", "/api/auth/login", "/api/portal"];
 
-export function middleware(request: NextRequest) {
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
@@ -30,6 +33,21 @@ export function middleware(request: NextRequest) {
 
   if (!token && pathname.startsWith("/api") && !pathname.startsWith("/api/auth")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Validate token if present (for dashboard and API routes)
+  if (token && (pathname.startsWith("/dashboard") || pathname.startsWith("/api"))) {
+    try {
+      await jwtVerify(token, JWT_SECRET);
+    } catch {
+      // Token is invalid or expired
+      if (pathname.startsWith("/dashboard")) {
+        const response = NextResponse.redirect(new URL("/login", request.url));
+        response.cookies.delete("session-token");
+        return response;
+      }
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+    }
   }
 
   return NextResponse.next();
