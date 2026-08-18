@@ -72,8 +72,15 @@ export const PATCH = withPermission(
 
 export const DELETE = withPermission(
   { resource: "order", action: "delete" },
-  async (_request, { params }) => {
+  async (_request, { params, session }) => {
     const { id } = await params;
+
+    // Capture customerId before deletion for event
+    const [order] = await db
+      .select({ customerId: orders.customerId })
+      .from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
 
     // Get all outfits for this order
     const orderOutfits = await db.select({ id: outfits.id }).from(outfits).where(eq(outfits.orderId, id));
@@ -86,14 +93,20 @@ export const DELETE = withPermission(
       await db.delete(productionLogs).where(eq(productionLogs.outfitId, outfitId));
     }
 
-    // Delete outfits
+    // Delete outfits, payments, order
     await db.delete(outfits).where(eq(outfits.orderId, id));
-
-    // Delete payments
     await db.delete(payments).where(eq(payments.orderId, id));
-
-    // Delete order
     await db.delete(orders).where(eq(orders.id, id));
+
+    // Notify all clients
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({
+      type: "order_updated",
+      orderId: id,
+      customerId: order?.customerId,
+      userId: session.id,
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ success: true });
   }

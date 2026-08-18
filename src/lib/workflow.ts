@@ -326,6 +326,20 @@ async function updateOrderStatus(outfitId: string) {
     .update(orders)
     .set({ status: orderStatus, updatedAt: new Date() })
     .where(eq(orders.id, outfit.orderId));
+
+  // Emit order_updated with customerId so customer pages refresh
+  const [order] = await db
+    .select({ customerId: orders.customerId })
+    .from(orders)
+    .where(eq(orders.id, outfit.orderId));
+
+  const { eventBus } = await import("./events");
+  eventBus.emit({
+    type: "order_updated",
+    orderId: outfit.orderId,
+    customerId: order?.customerId,
+    timestamp: Date.now(),
+  });
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────

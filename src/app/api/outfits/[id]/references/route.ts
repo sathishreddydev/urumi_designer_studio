@@ -97,7 +97,7 @@ export const PATCH = withPermission(
       // Move outfit back to WAITING_FOR_REFERENCES if it was at PRODUCTION_READY
       const { outfits: outfitsTable } = await import("@/lib/db/schema");
       const [outfit] = await db
-        .select({ status: outfitsTable.status })
+        .select({ status: outfitsTable.status, orderId: outfitsTable.orderId })
         .from(outfitsTable)
         .where(eq(outfitsTable.id, id));
 
@@ -106,6 +106,10 @@ export const PATCH = withPermission(
           .update(outfitsTable)
           .set({ status: "WAITING_FOR_REFERENCES" as any, updatedAt: new Date() })
           .where(eq(outfitsTable.id, id));
+
+        // Emit outfit_updated for status regression
+        const { eventBus } = await import("@/lib/events");
+        eventBus.emit({ type: "outfit_updated", outfitId: id, orderId: outfit.orderId, userId: session.id, timestamp: Date.now() });
       }
     }
 
@@ -126,7 +130,7 @@ export const PATCH = withPermission(
       const { id: oid } = await params;
       const { outfits: outfitsTable } = await import("@/lib/db/schema");
       const [outfit] = await db
-        .select({ status: outfitsTable.status })
+        .select({ status: outfitsTable.status, orderId: outfitsTable.orderId })
         .from(outfitsTable)
         .where(eq(outfitsTable.id, oid));
 
@@ -135,6 +139,10 @@ export const PATCH = withPermission(
           .update(outfitsTable)
           .set({ status: "WAITING_FOR_REFERENCES" as any, updatedAt: new Date() })
           .where(eq(outfitsTable.id, oid));
+
+        // Emit outfit_updated for status regression
+        const { eventBus } = await import("@/lib/events");
+        eventBus.emit({ type: "outfit_updated", outfitId: oid, orderId: outfit.orderId, userId: session.id, timestamp: Date.now() });
       }
     }
 

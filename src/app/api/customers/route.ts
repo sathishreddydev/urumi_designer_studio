@@ -49,7 +49,7 @@ export const GET = withPermission(
 
 export const POST = withPermission(
   { resource: "customer", action: "create" },
-  async (request) => {
+  async (request, { session }) => {
     const body = await request.json();
     const parsed = customerSchema.safeParse(body);
 
@@ -62,6 +62,11 @@ export const POST = withPermission(
         ...parsed.data,
         portalToken: generatePortalToken(),
       }).returning();
+
+      // Emit event for real-time updates
+      const { eventBus } = await import("@/lib/events");
+      eventBus.emit({ type: "customer_updated", customerId: customer.id, userId: session.id, timestamp: Date.now() });
+
       return NextResponse.json(customer, { status: 201 });
     } catch (error: any) {
       if (error.code === "23505") {

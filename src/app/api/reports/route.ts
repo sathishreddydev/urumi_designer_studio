@@ -33,8 +33,10 @@ export const GET = withPermission(
       // Outfits grouped by status
       db.select({ status: outfits.status, count: count() }).from(outfits).groupBy(outfits.status),
 
-      // Total revenue (sum of all payments)
-      db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` }).from(payments),
+      // Total revenue in period (sum of payments within the date window)
+      db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` })
+        .from(payments)
+        .where(gte(payments.createdAt, since)),
 
       // Orders in last N days
       db.select({ count: count() }).from(orders).where(gte(orders.createdAt, since)),

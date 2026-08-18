@@ -1,5 +1,8 @@
 import { eventBus, type AppEvent } from "@/lib/events";
 import { getSession } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { outfits } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +11,16 @@ export async function GET() {
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // For MASTER role, get their assigned outfit IDs for filtering
+  let masterOutfitIds: Set<string> | null = null;
+  if (session.role === "MASTER") {
+    const assigned = await db
+      .select({ id: outfits.id })
+      .from(outfits)
+      .where(eq(outfits.masterId, session.id));
+    masterOutfitIds = new Set(assigned.map((o) => o.id));
   }
 
   const encoder = new TextEncoder();
@@ -27,9 +40,17 @@ export async function GET() {
         }
       }, 30000);
 
-      // Subscribe to events
+      // Subscribe to events with role-based filtering
       const unsubscribe = eventBus.subscribe((event: AppEvent) => {
         try {
+          // MASTER role: only receive events for their assigned outfits
+          if (masterOutfitIds !== null) {
+            const isRelevant =
+              (event.outfitId && masterOutfitIds.has(event.outfitId)) ||
+              event.type === "dependency_updated"; // Masters need blocker updates
+            if (!isRelevant) return;
+          }
+
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         } catch {
           // Client disconnected

@@ -110,6 +110,15 @@ export async function POST(
       })
       .returning();
 
+    // Emit event so designers see the new upload in real-time
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({
+      type: "reference_updated",
+      outfitId,
+      customerId: customer.id,
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json(reference, { status: 201 });
   } catch (error) {
     console.error("Portal upload error:", error);

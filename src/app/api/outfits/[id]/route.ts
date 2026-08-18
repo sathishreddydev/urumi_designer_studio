@@ -147,14 +147,28 @@ export const PATCH = withPermission(
 
     // Re-fetch to get updated status
     const [final] = await db.select().from(outfits).where(eq(outfits.id, id));
+
+    // Emit event for any outfit update (field changes, assignments, etc.)
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({
+      type: "outfit_updated",
+      outfitId: id,
+      orderId: final?.orderId,
+      userId: session.id,
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json(final);
   }
 );
 
 export const DELETE = withPermission(
   { resource: "outfit", action: "delete" },
-  async (_request, { params }) => {
+  async (_request, { params, session }) => {
     const { id } = await params;
+
+    // Get orderId before deleting for event emission
+    const [outfit] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
 
     // Delete related data
     await db.delete(referenceImages).where(eq(referenceImages.outfitId, id));
@@ -163,6 +177,16 @@ export const DELETE = withPermission(
 
     // Delete outfit
     await db.delete(outfits).where(eq(outfits.id, id));
+
+    // Emit deletion event
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({
+      type: "outfit_deleted",
+      outfitId: id,
+      orderId: outfit?.orderId,
+      userId: session.id,
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ success: true });
   }

@@ -27,12 +27,16 @@ export function useRealtime() {
             queryClient.invalidateQueries({ queryKey: ["outfits"] });
             queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
             queryClient.invalidateQueries({ queryKey: ["order", data.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
             break;
 
           case "order_updated":
             queryClient.invalidateQueries({ queryKey: ["order", data.orderId] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
-            queryClient.invalidateQueries({ queryKey: ["customer", data.customerId] });
+            if (data.customerId) {
+              queryClient.invalidateQueries({ queryKey: ["customer", data.customerId] });
+            }
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
             break;
 
           case "dependency_updated":
@@ -43,10 +47,39 @@ export function useRealtime() {
 
           case "payment_added":
             queryClient.invalidateQueries({ queryKey: ["order", data.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            if (data.customerId) {
+              queryClient.invalidateQueries({ queryKey: ["customer", data.customerId] });
+            }
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
             break;
 
           case "reference_updated":
             queryClient.invalidateQueries({ queryKey: ["outfit", data.outfitId] });
+            queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
+            break;
+
+          case "customer_updated":
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
+            if (data.customerId) {
+              queryClient.invalidateQueries({ queryKey: ["customer", data.customerId] });
+            }
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            break;
+
+          case "outfit_deleted":
+            queryClient.invalidateQueries({ queryKey: ["outfits"] });
+            queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
+            if (data.orderId) {
+              queryClient.invalidateQueries({ queryKey: ["order", data.orderId] });
+            }
+            queryClient.invalidateQueries({ queryKey: ["active-blockers"] });
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            break;
+
+          case "customer_feedback":
+            queryClient.invalidateQueries({ queryKey: ["outfit", data.outfitId] });
+            queryClient.invalidateQueries({ queryKey: ["outfits"] });
             break;
 
           case "connected":
@@ -60,7 +93,6 @@ export function useRealtime() {
 
     es.onerror = () => {
       // Auto-reconnect is handled by EventSource natively
-      // It will retry after a few seconds
     };
 
     return () => {

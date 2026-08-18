@@ -59,7 +59,7 @@ export const GET = withPermission(
 
 export const PATCH = withPermission(
   { resource: "customer", action: "update" },
-  async (request, { params }) => {
+  async (request, { params, session }) => {
     const { id } = await params;
     const body = await request.json();
     const parsed = customerSchema.partial().safeParse(body);
@@ -74,13 +74,17 @@ export const PATCH = withPermission(
       .where(eq(customers.id, id))
       .returning();
 
+    // Emit event
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({ type: "customer_updated", customerId: id, userId: session.id, timestamp: Date.now() });
+
     return NextResponse.json(customer);
   }
 );
 
 export const DELETE = withPermission(
   { resource: "customer", action: "delete" },
-  async (_request, { params }) => {
+  async (_request, { params, session }) => {
     const { id } = await params;
 
     // Check if customer has orders
@@ -101,6 +105,10 @@ export const DELETE = withPermission(
 
     // Delete customer
     await db.delete(customers).where(eq(customers.id, id));
+
+    // Emit event
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({ type: "customer_updated", customerId: id, userId: session.id, timestamp: Date.now() });
 
     return NextResponse.json({ success: true });
   }

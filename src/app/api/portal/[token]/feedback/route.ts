@@ -83,5 +83,20 @@ export async function POST(
       .where(eq(referenceImages.id, referenceId));
   }
 
+  // Emit events so dashboard staff see customer feedback in real-time
+  const { eventBus } = await import("@/lib/events");
+  eventBus.emit({
+    type: "customer_feedback",
+    outfitId: outfitId || undefined,
+    customerId: customer.id,
+    timestamp: Date.now(),
+  });
+  eventBus.emit({
+    type: "reference_updated",
+    outfitId: outfitId || undefined,
+    customerId: customer.id,
+    timestamp: Date.now(),
+  });
+
   return NextResponse.json({ success: true, feedback });
 }

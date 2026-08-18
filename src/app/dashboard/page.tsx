@@ -1,7 +1,6 @@
-import { getSession } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { customers, orders, outfits } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeadlineAlerts } from "@/components/deadline-alerts";
 import { DashboardReports } from "@/components/dashboard-reports";
@@ -16,86 +15,44 @@ import {
   PackageCheck,
 } from "lucide-react";
 
-async function getAdminStats() {
-  const [{ total: totalCustomers }] = await db.select({ total: count() }).from(customers);
-  const [{ total: activeOrders }] = await db
-    .select({ total: count() })
-    .from(orders)
-    .where(eq(orders.status, "Active"));
+export default function DashboardPage() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/stats");
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+    refetchInterval: 60_000, // Also poll every 60s as backup
+  });
 
-  const statusCounts = await db
-    .select({ status: outfits.status, count: count() })
-    .from(outfits)
-    .groupBy(outfits.status);
+  if (isLoading || !stats) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-32 mt-2 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="h-4 w-20 animate-pulse rounded bg-muted mb-2" />
+                <div className="h-6 w-12 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const counts: Record<string, number> = {};
-  statusCounts.forEach((s) => { counts[s.status] = s.count; });
-
-  return {
-    customers: totalCustomers,
-    activeOrders,
-    totalOutfits: statusCounts.reduce((sum, s) => sum + s.count, 0),
-    productionReady: counts["PRODUCTION_READY"] || 0,
-    inProduction:
-      (counts["PATTERN_DRAFTING"] || 0) +
-      (counts["MAGGAM_WORK"] || 0) +
-      (counts["FABRIC_CUTTING"] || 0) +
-      (counts["STITCHING"] || 0),
-    pendingTrials: counts["TRIAL"] || 0,
-    readyForDelivery: counts["READY_FOR_DELIVERY"] || 0,
-    delivered: counts["DELIVERED"] || 0,
-  };
-}
-
-async function getDesignerStats(designerId: string) {
-  const statusCounts = await db
-    .select({ status: outfits.status, count: count() })
-    .from(outfits)
-    .where(eq(outfits.designerId, designerId))
-    .groupBy(outfits.status);
-
-  const counts: Record<string, number> = {};
-  statusCounts.forEach((s) => { counts[s.status] = s.count; });
-
-  return {
-    newConsultations: counts["DRAFT"] || 0,
-    pendingDesigns: counts["DESIGN_IN_PROGRESS"] || 0,
-    waitingReferences: counts["WAITING_FOR_REFERENCES"] || 0,
-    waitingDependencies: counts["WAITING_FOR_DEPENDENCIES"] || 0,
-    productionReleased: counts["PRODUCTION_READY"] || 0,
-    trials: counts["TRIAL"] || 0,
-  };
-}
-
-async function getMasterStats(masterId: string) {
-  const statusCounts = await db
-    .select({ status: outfits.status, count: count() })
-    .from(outfits)
-    .where(eq(outfits.masterId, masterId))
-    .groupBy(outfits.status);
-
-  const counts: Record<string, number> = {};
-  statusCounts.forEach((s) => { counts[s.status] = s.count; });
-
-  return {
-    patternDrafting: counts["PATTERN_DRAFTING"] || 0,
-    maggamWork: counts["MAGGAM_WORK"] || 0,
-    fabricCutting: counts["FABRIC_CUTTING"] || 0,
-    stitching: counts["STITCHING"] || 0,
-  };
-}
-
-export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) return null;
-
-  if (session.role === "ADMIN" || session.role === "RECEPTION") {
-    const stats = await getAdminStats();
+  if (stats.role === "ADMIN" || stats.role === "RECEPTION") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
+          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} />
@@ -113,13 +70,12 @@ export default async function DashboardPage() {
     );
   }
 
-  if (session.role === "DESIGNER") {
-    const stats = await getDesignerStats(session.id);
+  if (stats.role === "DESIGNER") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Designer Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
+          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatCard title="New Consultations" value={stats.newConsultations} icon={<Users className="h-4 w-4" />} />
@@ -127,20 +83,19 @@ export default async function DashboardPage() {
           <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} />
           <StatCard title="Waiting for Dependencies" value={stats.waitingDependencies} icon={<AlertTriangle className="h-4 w-4" />} />
           <StatCard title="Production Released" value={stats.productionReleased} icon={<Scissors className="h-4 w-4" />} />
-          <StatCard title="Trials Today" value={stats.trials} icon={<CheckCircle className="h-4 w-4" />} />
+          <StatCard title="Trials" value={stats.trials} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
         <DeadlineAlerts />
       </div>
     );
   }
 
-  if (session.role === "MASTER") {
-    const stats = await getMasterStats(session.id);
+  if (stats.role === "MASTER") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Production Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {session.name}</p>
+          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard title="Pattern Drafting" value={stats.patternDrafting} icon={<Scissors className="h-4 w-4" />} />

@@ -109,12 +109,38 @@ export default function OrderDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, orderId: params.id }),
       });
-      if (!res.ok) throw new Error("Failed to add payment");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add payment");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
       setShowAddPayment(false);
+      toast({ title: "Payment recorded", description: "Payment has been saved." });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: "Failed", description: err.message });
+    },
+  });
+
+  // Delete payment
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const res = await fetch(`/api/payments/${paymentId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to void payment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", params.id] });
+      toast({ title: "Payment voided" });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: "Failed", description: err.message });
     },
   });
 
@@ -416,7 +442,7 @@ export default function OrderDetailPage() {
                   >
                     <div className="space-y-1 flex-1">
                       <Label className="text-xs">Amount (₹)</Label>
-                      <Input name="amount" type="number" placeholder="5000" className="h-9" required />
+                      <Input name="amount" type="number" placeholder="5000" min="1" step="1" className="h-9" required />
                     </div>
                     <div className="space-y-1 flex-1">
                       <Label className="text-xs">Method</Label>
@@ -451,15 +477,41 @@ export default function OrderDetailPage() {
                         <div>
                           <p className="font-medium">{payment.method}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(payment.createdAt)}</p>
+                          {payment.notes && <p className="text-xs text-muted-foreground">{payment.notes}</p>}
                         </div>
-                        <p className="font-semibold">₹{Number(payment.amount).toLocaleString()}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="font-semibold">₹{Number(payment.amount).toLocaleString()}</p>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                              onClick={() => deletePaymentMutation.mutate(payment.id)}
+                              disabled={deletePaymentMutation.isPending}
+                              title="Void payment"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <Separator />
                     <div className="flex justify-between font-semibold text-sm">
-                      <span>Total</span>
+                      <span>Total Paid</span>
                       <span>₹{totalPaid.toLocaleString()}</span>
                     </div>
+                    {(() => {
+                      const estimated = Number(order.estimatedAmount) || orderTotal;
+                      if (estimated > 0 && totalPaid > estimated) {
+                        return (
+                          <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                            ⚠ Overpaid by ₹{(totalPaid - estimated).toLocaleString()}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </CardContent>
               </Card>
