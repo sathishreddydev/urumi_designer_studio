@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -52,6 +52,126 @@ const OUTFIT_TYPES = [
   "Other",
 ];
 
+function CameraCaptureModal({
+  open,
+  onClose,
+  onCapture,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCapture: (file: File) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      setStream(null);
+      setError(null);
+      return;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("This browser does not support camera capture.");
+        return;
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+        }
+      } catch {
+        setError("Camera access was blocked or unavailable. Please use Upload Material Photos instead.");
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [open]);
+
+  function handleCapture() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `customer-material-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+      onCapture(file);
+      onClose();
+    }, "image/jpeg", 0.9);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-3 shadow-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-900">Take Photo</h4>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+          >
+            Close
+          </button>
+        </div>
+
+        {error ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {error}
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="aspect-video w-full rounded-lg bg-black object-cover"
+          />
+        )}
+
+        <div className="mt-3 flex gap-2">
+          <Button className="flex-1" onClick={handleCapture} disabled={!!error}>
+            Capture
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface OutfitEntry {
   name: string;
   type: string;
@@ -75,6 +195,8 @@ export default function NewOrderPage() {
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceMethod, setAdvanceMethod] = useState("CASH");
   const [notes, setNotes] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraIndex, setCameraIndex] = useState<number | null>(null);
   const [outfits, setOutfits] = useState<OutfitEntry[]>([
     {
       name: "",
@@ -502,7 +624,7 @@ export default function NewOrderPage() {
                     )}
 
                     {/* Upload Button */}
-                    <div>
+                    <div className="flex flex-wrap items-center gap-2">
                       <label
                         htmlFor={`fabric-upload-${index}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md cursor-pointer hover:bg-muted transition-colors"
@@ -522,7 +644,52 @@ export default function NewOrderPage() {
                           handleFabricImageSelect(index, e.target.files)
                         }
                       />
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setCameraIndex(index);
+                          setCameraOpen(true);
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                          >
+                            <path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3l-1.5-2Z" />
+                            <circle cx="12" cy="12" r="3.5" />
+                          </svg>
+                          Take Photo
+                        </span>
+                      </Button>
                     </div>
+
+                    <CameraCaptureModal
+                      open={cameraOpen}
+                      onClose={() => {
+                        setCameraOpen(false);
+                        setCameraIndex(null);
+                      }}
+                      onCapture={(file) => {
+                        if (cameraIndex === null) return;
+                        setOutfits((prev) =>
+                          prev.map((o, i) =>
+                            i === cameraIndex
+                              ? { ...o, fabricImages: [...o.fabricImages, file] }
+                              : o,
+                          ),
+                        );
+                        setCameraIndex(null);
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>

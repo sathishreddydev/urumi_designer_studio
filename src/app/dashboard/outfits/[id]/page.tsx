@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -54,6 +54,7 @@ import {
   FileText,
   History,
   Layers,
+  Camera,
 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -80,6 +81,7 @@ export default function OutfitDetailPage() {
     url: string;
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
@@ -289,7 +291,11 @@ export default function OutfitDetailPage() {
       if (!res.ok) throw new Error("Failed to save reference");
       return res.json();
     },
+    onMutate: async ({ type }: { file: File; type: string }) => {
+      setUploadingType(type);
+    },
     onSettled: () => {
+      setUploadingType(null);
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
     },
   });
@@ -355,6 +361,23 @@ export default function OutfitDetailPage() {
   const fabricRefs = (outfit.references || []).filter(
     (r: any) => r.type === "FABRIC"
   );
+
+  const materialLockedStatuses = [
+    "PATTERN_DRAFTING",
+    "MAGGAM_WORK",
+    "MAGGAM_REVIEW",
+    "FABRIC_CUTTING",
+    "STITCHING",
+    "PRODUCTION_COMPLETED",
+    "TRIAL",
+    "ALTERATION",
+    "QC",
+    "READY_FOR_DELIVERY",
+    "DELIVERED",
+  ];
+  const canManageCustomerMaterial =
+    (role === "ADMIN" || role === "RECEPTION") &&
+    !materialLockedStatuses.includes(outfit.status);
 
   const lockedStatuses = [
     "PRODUCTION_COMPLETED",
@@ -543,6 +566,12 @@ export default function OutfitDetailPage() {
           <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <CustomerMaterialSection
               references={fabricRefs}
+              canUpload={canManageCustomerMaterial}
+              isUploading={uploadingType === "FABRIC"}
+              onUpload={(file) =>
+                uploadRefMutation.mutate({ file, type: "FABRIC" })
+              }
+              onDelete={(refId) => deleteRefMutation.mutate(refId)}
             />
           </div>
         </div>
@@ -576,7 +605,7 @@ export default function OutfitDetailPage() {
                   canUpload={!isLocked && can("upload", "reference")}
                   canSelect={!isLocked && can("select", "reference")}
                   canLock={!isLocked && can("lock", "reference")}
-                  isUploading={uploadRefMutation.isPending}
+                  isUploading={uploadingType === "PATTERN"}
                   onUpload={(file) =>
                     uploadRefMutation.mutate({ file, type: "PATTERN" })
                   }
@@ -596,7 +625,7 @@ export default function OutfitDetailPage() {
                     canUpload={!isLocked && can("upload", "reference")}
                     canSelect={!isLocked && can("select", "reference")}
                     canLock={!isLocked && can("lock", "reference")}
-                    isUploading={uploadRefMutation.isPending}
+                    isUploading={uploadingType === "MAGGAM"}
                     onUpload={(file) =>
                       uploadRefMutation.mutate({ file, type: "MAGGAM" })
                     }
@@ -937,6 +966,126 @@ export default function OutfitDetailPage() {
   );
 }
 
+function CameraCaptureModal({
+  open,
+  onClose,
+  onCapture,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCapture: (file: File) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      setStream(null);
+      setError(null);
+      return;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("This browser does not support camera capture.");
+        return;
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+        }
+      } catch {
+        setError("Camera access was blocked or unavailable. Please use Upload Image instead.");
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [open]);
+
+  function handleCapture() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `camera-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+      onCapture(file);
+      onClose();
+    }, "image/jpeg", 0.9);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-3 shadow-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-900">Take Photo</h4>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+          >
+            Close
+          </button>
+        </div>
+
+        {error ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {error}
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="aspect-video w-full rounded-lg bg-black object-cover"
+          />
+        )}
+
+        <div className="mt-3 flex gap-2">
+          <Button className="flex-1" onClick={handleCapture} disabled={!!error}>
+            Capture
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── REFERENCE SECTION COMPONENT ────────────────────────────────────────────
 
 function ReferenceSection({
@@ -969,6 +1118,7 @@ function ReferenceSection({
   const [viewerIndex, setViewerIndex] = useState(0);
   const [deleteRefId, setDeleteRefId] = useState<string | null>(null);
   const [loadingRefId, setLoadingRefId] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   function openViewer(index: number) {
     setViewerIndex(index);
@@ -1002,7 +1152,7 @@ function ReferenceSection({
           {title}
         </h3>
         {canUpload && (
-          <label>
+          <div className="flex items-center gap-2">
             {isUploading ? (
               <LoadingButton
                 size="sm"
@@ -1012,26 +1162,38 @@ function ReferenceSection({
               />
             ) : (
               <>
-                <Button size="sm" variant="outline" asChild>
+                <label>
+                  <Button size="sm" variant="outline" asChild>
+                    <span>
+                      <Plus className="h-3 w-3 mr-1" /> Upload Image
+                    </span>
+                  </Button>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files) {
+                        Array.from(files).forEach((file) => onUpload(file));
+                      }
+                    }}
+                  />
+                </label>
+                <Button size="sm" variant="outline" onClick={() => setCameraOpen(true)}>
                   <span>
-                    <Plus className="h-3 w-3 mr-1" /> Upload Image
+                    <Camera className="h-3 w-3 mr-1" /> Take Photo
                   </span>
                 </Button>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files) {
-                      Array.from(files).forEach((file) => onUpload(file));
-                    }
-                  }}
+                <CameraCaptureModal
+                  open={cameraOpen}
+                  onClose={() => setCameraOpen(false)}
+                  onCapture={(file) => onUpload(file)}
                 />
               </>
             )}
-          </label>
+          </div>
         )}
       </div>
 
@@ -1206,17 +1368,82 @@ function AssignMasterSelect({
 
 function CustomerMaterialSection({
   references,
+  canUpload,
+  isUploading,
+  onUpload,
+  onDelete,
 }: {
   references: any[];
+  canUpload: boolean;
+  isUploading?: boolean;
+  onUpload: (file: File) => void;
+  onDelete: (refId: string) => void;
 }) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [deleteRefId, setDeleteRefId] = useState<string | null>(null);
+  const [loadingRefId, setLoadingRefId] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+
+  async function handleDelete(refId: string) {
+    setLoadingRefId(refId);
+    setDeleteRefId(null);
+    onDelete(refId);
+    setTimeout(() => setLoadingRefId(null), 600);
+  }
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-        Customer Material
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          Customer Material
+        </h3>
+
+        {canUpload && (
+          <div className="flex items-center gap-2">
+            {isUploading ? (
+              <LoadingButton
+                size="sm"
+                variant="outline"
+                loading={true}
+                loadingText="Uploading..."
+              />
+            ) : (
+              <>
+                <label>
+                  <Button size="sm" variant="outline" asChild>
+                    <span>
+                      <Plus className="h-3 w-3 mr-1" /> Upload
+                    </span>
+                  </Button>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files) {
+                        Array.from(files).forEach((file) => onUpload(file));
+                      }
+                    }}
+                  />
+                </label>
+                <Button size="sm" variant="outline" onClick={() => setCameraOpen(true)}>
+                  <span>
+                    <Camera className="h-3 w-3 mr-1" /> Take Photo
+                  </span>
+                </Button>
+                <CameraCaptureModal
+                  open={cameraOpen}
+                  onClose={() => setCameraOpen(false)}
+                  onCapture={(file) => onUpload(file)}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {references.length === 0 ? (
         <div className="py-3 text-center text-xs text-muted-foreground border border-dashed rounded-lg">
@@ -1224,22 +1451,45 @@ function CustomerMaterialSection({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {references.map((ref: any, index: number) => (
-            <div
-              key={ref.id}
-              className="rounded-lg border overflow-hidden"
-            >
-              <img
-                src={ref.url}
-                alt="Customer material"
-                className="aspect-square w-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => {
-                  setViewerIndex(index);
-                  setViewerOpen(true);
-                }}
-              />
-            </div>
-          ))}
+          {references.map((ref: any, index: number) => {
+            const isLoading = loadingRefId === ref.id;
+
+            return (
+              <div
+                key={ref.id}
+                className="relative rounded-lg border overflow-hidden"
+              >
+                <img
+                  src={ref.url}
+                  alt="Customer material"
+                  className="aspect-square w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => {
+                    setViewerIndex(index);
+                    setViewerOpen(true);
+                  }}
+                />
+
+                {isLoading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+
+                {canUpload && !isLoading && (
+                  <button
+                    className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteRefId(ref.id);
+                    }}
+                    aria-label="Delete material"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1249,6 +1499,33 @@ function CustomerMaterialSection({
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
       />
+
+      <AlertDialog
+        open={!!deleteRefId}
+        onOpenChange={(open) => !open && setDeleteRefId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Material</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this customer material image? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteRefId) {
+                  handleDelete(deleteRefId);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

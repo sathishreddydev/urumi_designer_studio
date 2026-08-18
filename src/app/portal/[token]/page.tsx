@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Card,
@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
+  Camera,
 } from "lucide-react";
 
 const STATUS_ORDER = [
@@ -386,6 +387,12 @@ export default function CustomerPortalPage() {
                           outfit.status,
                         );
                         const progress = STATUS_PROGRESS[outfit.status] || 0;
+                        const designRefs = (outfit.references || []).filter(
+                          (ref: any) => ref.type !== "FABRIC",
+                        );
+                        const fabricRefs = (outfit.references || []).filter(
+                          (ref: any) => ref.type === "FABRIC",
+                        );
 
                         return (
                           <div
@@ -435,8 +442,8 @@ export default function CustomerPortalPage() {
                               <Progress value={progress} className="h-2" />
                             </div>
 
-                            {/* Reference Images Section */}
-                            {outfit.references?.length > 0 && (
+                            {/* Design Reference Images Section */}
+                            {designRefs.length > 0 && (
                               <div className="space-y-2 pt-2 border-t">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-semibold text-muted-foreground">
@@ -451,7 +458,7 @@ export default function CustomerPortalPage() {
                                   )}
                                 </div>
                                 <PortalReferences
-                                  references={outfit.references}
+                                  references={designRefs}
                                   token={params.token as string}
                                   outfitId={outfit.id}
                                   canApprove={canApprove}
@@ -459,12 +466,31 @@ export default function CustomerPortalPage() {
                               </div>
                             )}
 
-                            {/* Upload Component for Early Stages */}
+                            {/* Customer Material Section */}
+                            {fabricRefs.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    Customer Material
+                                  </span>
+                                </div>
+                                <PortalReferences
+                                  references={fabricRefs}
+                                  token={params.token as string}
+                                  outfitId={outfit.id}
+                                  canApprove={false}
+                                />
+                              </div>
+                            )}
+
+                            {/* Upload Components for Early Stages */}
                             {canApprove && (
-                              <div className="pt-2 border-t">
+                              <div className="pt-2 border-t space-y-3">
                                 <PortalUpload
                                   outfitId={outfit.id}
                                   token={params.token as string}
+                                  type="PATTERN"
+                                  title="Share Inspiration Photos"
                                 />
                               </div>
                             )}
@@ -668,7 +694,7 @@ function PortalReferenceCard({
         )}
       </div>
 
-      {canApprove && !feedback && (
+      {reference.type !== "FABRIC" && canApprove && !feedback && (
         <div className="grid grid-cols-2 gap-px bg-border text-[11px]">
           <button
             className="bg-card hover:bg-green-50 text-green-700 py-1.5 font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
@@ -687,7 +713,13 @@ function PortalReferenceCard({
         </div>
       )}
 
-      {feedback && (
+      {reference.type === "FABRIC" && (
+        <div className="py-1 text-center text-[10px] font-semibold text-indigo-700 bg-indigo-50">
+          Read only
+        </div>
+      )}
+
+      {feedback && reference.type !== "FABRIC" && (
         <div
           className={`py-1 text-center text-[10px] font-semibold text-white ${
             feedback === "approved" ? "bg-green-600" : "bg-destructive"
@@ -700,28 +732,155 @@ function PortalReferenceCard({
   );
 }
 
+function CameraCaptureModal({
+  open,
+  onClose,
+  onCapture,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCapture: (file: File) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      setStream(null);
+      setError(null);
+      return;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("This browser does not support camera capture.");
+        return;
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+        }
+      } catch {
+        setError("Camera access was blocked or unavailable. Please use Upload instead.");
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [open]);
+
+  function handleCapture() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `camera-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+      onCapture(file);
+      onClose();
+    }, "image/jpeg", 0.9);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-3 shadow-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-900">Take Photo</h4>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+          >
+            Close
+          </button>
+        </div>
+
+        {error ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {error}
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="aspect-video w-full rounded-lg bg-black object-cover"
+          />
+        )}
+
+        <div className="mt-3 flex gap-2">
+          <Button className="flex-1" onClick={handleCapture} disabled={!!error}>
+            Capture
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PORTAL UPLOAD ──────────────────────────────────────────────────────
 
 function PortalUpload({
   outfitId,
   token,
+  type,
+  title,
 }: {
   outfitId: string;
   token: string;
+  type: "PATTERN" | "FABRIC";
+  title: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<string[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
-  async function handleUpload(files: FileList | null) {
+  async function handleUpload(files: FileList | File | null) {
     if (!files) return;
     setUploading(true);
 
-    for (const file of Array.from(files)) {
+    const imageFiles = files instanceof File ? [files] : Array.from(files);
+
+    for (const file of imageFiles) {
       try {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("outfitId", outfitId);
-        formData.append("type", "PATTERN");
+        formData.append("type", type);
 
         const res = await fetch(`/api/portal/${token}/upload`, {
           method: "POST",
@@ -743,8 +902,7 @@ function PortalUpload({
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-        <Sparkles className="h-3.5 w-3.5 text-primary" /> Share Inspiration
-        Photos
+        <Sparkles className="h-3.5 w-3.5 text-primary" /> {title}
       </p>
 
       {uploaded.length > 0 && (
@@ -767,28 +925,48 @@ function PortalUpload({
         </div>
       )}
 
-      <label className="block">
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full text-xs h-8 border-dashed"
+            disabled={uploading}
+            asChild
+          >
+            <span>
+              <Upload className="h-3.5 w-3.5 mr-1.5" />
+              {uploading ? "Uploading..." : type === "FABRIC" ? "Upload Material" : "Upload Photos"}
+            </span>
+          </Button>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={(e) => handleUpload(e.target.files)}
+            disabled={uploading}
+          />
+        </label>
+
         <Button
           size="sm"
           variant="outline"
           className="w-full text-xs h-8 border-dashed"
           disabled={uploading}
-          asChild
+          onClick={() => setCameraOpen(true)}
         >
           <span>
-            <Upload className="h-3.5 w-3.5 mr-1.5" />
-            {uploading ? "Uploading..." : "Upload Photos"}
+            <Camera className="h-3.5 w-3.5 mr-1.5" />
+            Take Photo
           </span>
         </Button>
-        <input
-          type="file"
-          className="hidden"
-          accept="image/*"
-          multiple
-          onChange={(e) => handleUpload(e.target.files)}
-          disabled={uploading}
+        <CameraCaptureModal
+          open={cameraOpen}
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => handleUpload(file)}
         />
-      </label>
+      </div>
     </div>
   );
 }

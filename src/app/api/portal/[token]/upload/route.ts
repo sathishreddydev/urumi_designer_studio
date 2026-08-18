@@ -39,10 +39,16 @@ export async function POST(
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const outfitId = formData.get("outfitId") as string;
-    const type = (formData.get("type") as string) || "PATTERN";
+    const rawType = (formData.get("type") as string) || "PATTERN";
+    const allowedReferenceTypes = ["PATTERN", "MAGGAM", "FABRIC"] as const;
+    const type = allowedReferenceTypes.includes(rawType as any) ? (rawType as typeof allowedReferenceTypes[number]) : null;
 
     if (!file || !outfitId) {
       return NextResponse.json({ error: "File and outfitId are required" }, { status: 400 });
+    }
+
+    if (!type) {
+      return NextResponse.json({ error: "Invalid reference type" }, { status: 400 });
     }
 
     // Validate file size (max 5MB)
@@ -102,7 +108,7 @@ export async function POST(
       .insert(referenceImages)
       .values({
         outfitId,
-        type: type as "PATTERN" | "MAGGAM",
+        type,
         url,
         filename,
         uploadedBy: "customer",
