@@ -342,7 +342,7 @@ export default function CustomerDetailPage({
         {/* ========================================================= */}
         {/* LEFT COLUMN: ORDERS & TRACKING                            */}
         {/* ========================================================= */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -553,7 +553,7 @@ export default function CustomerDetailPage({
         {/* ========================================================= */}
         {/* RIGHT COLUMN: CUSTOMER INFO & MEASUREMENTS                */}
         {/* ========================================================= */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
               <div>

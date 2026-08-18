@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeadlineAlerts } from "@/components/deadline-alerts";
 import { DashboardReports } from "@/components/dashboard-reports";
@@ -97,12 +98,42 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold sm:text-3xl">Production Dashboard</h1>
           <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard title="Pattern Drafting" value={stats.patternDrafting} icon={<Scissors className="h-4 w-4" />} />
-          <StatCard title="Maggam Work" value={stats.maggamWork} icon={<Shirt className="h-4 w-4" />} />
-          <StatCard title="Fabric Cutting" value={stats.fabricCutting} icon={<Clock className="h-4 w-4" />} />
-          <StatCard title="Stitching" value={stats.stitching} icon={<CheckCircle className="h-4 w-4" />} />
+
+        {/* Summary row */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatCard
+            title="Ready for Me"
+            value={stats.productionReady}
+            icon={<Scissors className="h-4 w-4" />}
+            href="/dashboard/production"
+            highlight={stats.productionReady > 0}
+          />
+          <StatCard
+            title="Active Work"
+            value={stats.totalActive}
+            icon={<Clock className="h-4 w-4" />}
+            href="/dashboard/stitching-maggam"
+          />
+          <StatCard
+            title="Done / QC Pending"
+            value={stats.productionCompleted}
+            icon={<CheckCircle className="h-4 w-4" />}
+            href="/dashboard/production"
+          />
         </div>
+
+        {/* Stage breakdown */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Stage Breakdown</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatCard title="Pattern Drafting"  value={stats.patternDrafting}  icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+            <StatCard title="Maggam Work"       value={stats.maggamWork}       icon={<Shirt className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
+            <StatCard title="Maggam Review"     value={stats.maggamReview}     icon={<Clock className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
+            <StatCard title="Fabric Cutting"    value={stats.fabricCutting}    icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+            <StatCard title="Stitching"         value={stats.stitching}        icon={<Shirt className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
+          </div>
+        </div>
+
         <DeadlineAlerts />
       </div>
     );
@@ -111,16 +142,33 @@ export default function DashboardPage() {
   return null;
 }
 
-function StatCard({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
-  return (
-    <Card>
+function StatCard({
+  title,
+  value,
+  icon,
+  href,
+  highlight,
+}: {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  href?: string;
+  highlight?: boolean;
+}) {
+  const card = (
+    <Card className={highlight ? "border-primary/50 bg-primary/5" : undefined}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-4 sm:pb-2">
         <CardTitle className="text-xs font-medium sm:text-sm">{title}</CardTitle>
-        <div className="text-muted-foreground">{icon}</div>
+        <div className={highlight ? "text-primary" : "text-muted-foreground"}>{icon}</div>
       </CardHeader>
       <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-        <div className="text-xl font-bold sm:text-2xl">{value}</div>
+        <div className={`text-xl font-bold sm:text-2xl ${highlight ? "text-primary" : ""}`}>{value}</div>
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} className="block hover:opacity-80 transition-opacity">{card}</Link>;
+  }
+  return card;
 }

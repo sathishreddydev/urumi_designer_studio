@@ -78,10 +78,24 @@ export async function GET() {
     return NextResponse.json({
       role: session.role,
       name: session.name,
+      // Queued — ready and waiting for this master to start
+      productionReady: counts["PRODUCTION_READY"] || 0,
+      // Active production stages
       patternDrafting: counts["PATTERN_DRAFTING"] || 0,
       maggamWork: counts["MAGGAM_WORK"] || 0,
+      maggamReview: counts["MAGGAM_REVIEW"] || 0,
       fabricCutting: counts["FABRIC_CUTTING"] || 0,
       stitching: counts["STITCHING"] || 0,
+      // Done — waiting for designer QC
+      productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
+      // Total active (everything except completed)
+      totalActive:
+        (counts["PRODUCTION_READY"] || 0) +
+        (counts["PATTERN_DRAFTING"] || 0) +
+        (counts["MAGGAM_WORK"] || 0) +
+        (counts["MAGGAM_REVIEW"] || 0) +
+        (counts["FABRIC_CUTTING"] || 0) +
+        (counts["STITCHING"] || 0),
     });
   }
 
