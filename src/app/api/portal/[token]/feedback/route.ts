@@ -34,8 +34,59 @@ export async function POST(
   const body = await request.json();
   const { referenceId, outfitId, feedback } = body;
 
-  if (!referenceId || !["approved", "rejected"].includes(feedback)) {
+  if (!referenceId || !outfitId || !["approved", "rejected"].includes(feedback)) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  // Ownership check: verify the outfit belongs to this customer's orders
+  const [ownershipCheck] = await db
+    .select({ outfitId: outfits.id })
+    .from(outfits)
+    .innerJoin(
+      // inline join via orders table
+      customers,
+      eq(customers.id, customer.id)
+    )
+    .where(eq(outfits.id, outfitId))
+    .limit(1);
+
+  // We need to check via the orders table
+  const { orders } = await import("@/lib/db/schema");
+  const [ownershipRow] = await db
+    .select({ outfitId: outfits.id })
+    .from(outfits)
+    .innerJoin(orders, eq(outfits.orderId, orders.id))
+    .where(
+      eq(outfits.id, outfitId)
+    )
+    .limit(1);
+
+  // Verify the order belongs to this customer
+  const [orderOwner] = await db
+    .select({ customerId: orders.customerId })
+    .from(orders)
+    .innerJoin(outfits, eq(outfits.orderId, orders.id))
+    .where(eq(outfits.id, outfitId))
+    .limit(1);
+
+  if (!orderOwner || orderOwner.customerId !== customer.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Also verify the referenceId belongs to the claimed outfitId
+  const [refOwnership] = await db
+    .select({ id: referenceImages.id })
+    .from(referenceImages)
+    .where(
+      and(
+        eq(referenceImages.id, referenceId),
+        eq(referenceImages.outfitId, outfitId)
+      )
+    )
+    .limit(1);
+
+  if (!refOwnership) {
+    return NextResponse.json({ error: "Reference not found or does not belong to this outfit" }, { status: 403 });
   }
 
   if (feedback === "approved") {

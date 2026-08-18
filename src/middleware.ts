@@ -4,7 +4,11 @@ import { jwtVerify } from "jose";
 
 const publicPaths = ["/login", "/portal", "/api/auth/login", "/api/portal"];
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
+// Fail fast at startup if JWT_SECRET is not configured
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required but not set");
+}
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 // Allowed origins for CORS (configure via env or hardcode for your deployment)
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS

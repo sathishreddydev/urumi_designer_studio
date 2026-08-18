@@ -47,7 +47,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     material: ["create", "read", "update"],
     production: ["read", "update", "transition", "view_progress"],
     dependency: ["create", "read", "update"],
-    payment: ["create", "read"],
+    payment: ["create", "read", "delete"],   // ADMIN can void payments
     portal: ["create", "read"],
     user: ["create", "read", "update", "delete"],
   },
@@ -60,7 +60,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     material: [],
     production: ["read", "view_progress"],
     dependency: [],
-    payment: ["create", "read"],
+    payment: ["create", "read"],             // RECEPTION can record but not void
     portal: ["create", "read"],
     user: [],
   },
