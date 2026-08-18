@@ -49,7 +49,7 @@ export default function InvoicePage() {
         </div>
         <div className="flex gap-2">
           {!invoice && (
-            <Button variant="secondary" size="sm" onClick={() => createInvoice.mutate()} disabled={createInvoice.isLoading}>
+            <Button variant="secondary" size="sm" onClick={() => createInvoice.mutate()} disabled={createInvoice.isPending}>
               Generate Invoice
             </Button>
           )}
