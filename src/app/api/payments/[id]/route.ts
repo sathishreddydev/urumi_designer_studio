@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 
 export const DELETE = withPermission(
-  { resource: "payment", action: "create" }, // same permission level as create
+  { resource: "payment", action: "delete" },
   async (_request, { params, session }) => {
     const { id } = await params;
 

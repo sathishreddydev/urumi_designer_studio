@@ -23,6 +23,15 @@ export function generateOrderNumber(): string {
   return `ORD-${year}${month}-${random}${suffix}`;
 }
 
+export function generateInvoiceNumber(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, "0");
+  const day = now.getDate().toString().padStart(2, "0");
+  const random = Math.floor(Math.random() * 9000 + 1000);
+  return `INV-${year}${month}${day}-${random}`;
+}
+
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     DRAFT: "bg-gray-100 text-gray-700",

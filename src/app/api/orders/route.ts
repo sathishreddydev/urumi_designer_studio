@@ -95,16 +95,10 @@ export const POST = withPermission(
     // Emit event
     eventBus.emit({ type: "order_updated", orderId: order.id, customerId: parsed.data.customerId, timestamp: Date.now() });
 
-    // If an advance amount was provided, record it as a payment immediately
-    if (parsed.data.advanceAmount && parsed.data.advanceAmount > 0) {
-      await db.insert(payments).values({
-        orderId: order.id,
-        amount: String(parsed.data.advanceAmount),
-        method: "CASH", // default; can be overridden in follow-up
-        notes: "Advance payment at order creation",
-      });
-      eventBus.emit({ type: "payment_added", orderId: order.id, customerId: parsed.data.customerId, timestamp: Date.now() });
-    }
+    // Note: advance payments should be recorded explicitly via the /api/payments
+    // endpoint to avoid duplicate records and to allow the client to provide
+    // payment `method` and `notes`. Previous behaviour auto-inserted a payment
+    // here which caused duplicates when the client also created the payment.
 
     return NextResponse.json(order, { status: 201 });
   }

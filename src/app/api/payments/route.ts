@@ -15,10 +15,6 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    if (!body.orderId) {
-      return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
-    }
-
     // Validate the order actually exists and get customerId for event
     const [order] = await db
       .select({ id: orders.id, customerId: orders.customerId })
@@ -33,9 +29,14 @@ export const POST = withPermission(
     const [payment] = await db
       .insert(payments)
       .values({
-        orderId: body.orderId,
+        orderId: parsed.data.orderId,
         amount: String(parsed.data.amount),
         method: parsed.data.method,
+        status: parsed.data.status || "SETTLED",
+        transactionRef: parsed.data.transactionRef || null,
+        outfitId: parsed.data.outfitId || null,
+        invoiceId: parsed.data.invoiceId || null,
+        customerId: order.customerId,
         notes: parsed.data.notes,
       })
       .returning();

@@ -433,13 +433,25 @@ export default function OrderDetailPage() {
                       e.preventDefault();
                       const form = new FormData(e.currentTarget);
                       addPaymentMutation.mutate({
-                        amount: Number(form.get("amount")),
-                        method: form.get("method"),
-                        notes: form.get("notes"),
+                          amount: Number(form.get("amount")),
+                          method: form.get("method"),
+                          notes: form.get("notes"),
+                          outfitId: form.get("outfitId") || undefined,
+                          transactionRef: form.get("transactionRef") || undefined,
                       });
                     }}
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
                   >
+                      <div className="space-y-1 w-full sm:w-56">
+                        <Label className="text-xs">Apply To Outfit</Label>
+                        <select name="outfitId" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                          <option value="">Whole Order</option>
+                          {(order.outfits || []).map((o: any) => (
+                            <option key={o.id} value={o.id}>{o.name} — ₹{Number(o.price || 0).toLocaleString()}</option>
+                          ))}
+                        </select>
+                      </div>
+
                     <div className="space-y-1 flex-1">
                       <Label className="text-xs">Amount (₹)</Label>
                       <Input name="amount" type="number" placeholder="5000" min="1" step="1" className="h-9" required />
@@ -452,6 +464,10 @@ export default function OrderDetailPage() {
                         <option value="CARD">Card</option>
                         <option value="BANK_TRANSFER">Bank Transfer</option>
                       </select>
+                    </div>
+                    <div className="space-y-1 flex-1">
+                      <Label className="text-xs">Transaction / Ref</Label>
+                      <Input name="transactionRef" placeholder="Txn ref / UPI ID" className="h-9" />
                     </div>
                     <Input name="notes" placeholder="Notes" className="h-9 flex-1" />
                     <LoadingButton size="sm" type="submit" loading={addPaymentMutation.isPending} loadingText="Saving...">
@@ -477,6 +493,10 @@ export default function OrderDetailPage() {
                         <div>
                           <p className="font-medium">{payment.method}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(payment.createdAt)}</p>
+                          {payment.transactionRef && <p className="text-xs text-muted-foreground">Ref: {payment.transactionRef}</p>}
+                          {payment.outfitId && (
+                            <p className="text-xs text-muted-foreground">For: {(order.outfits || []).find((o: any) => o.id === payment.outfitId)?.name || "Outfit"}</p>
+                          )}
                           {payment.notes && <p className="text-xs text-muted-foreground">{payment.notes}</p>}
                         </div>
                         <div className="flex items-center gap-3">

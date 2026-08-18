@@ -41,8 +41,13 @@ export const measurementSchema = z.object({
 });
 
 export const paymentSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
   amount: z.number().positive("Amount must be positive"),
   method: z.enum(["CASH", "CARD", "UPI", "BANK_TRANSFER"]),
+  status: z.enum(["PENDING", "SETTLED", "FAILED", "REFUNDED"]).optional(),
+  transactionRef: z.string().optional(),
+  outfitId: z.string().optional(),
+  invoiceId: z.string().optional(),
   notes: z.string().optional(),
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Download, Printer } from "lucide-react";
@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 
 export default function InvoicePage() {
   const params = useParams();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoice", params.id],
@@ -20,13 +21,22 @@ export default function InvoicePage() {
     },
   });
 
+  const createInvoice = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/orders/${params.id}/invoice`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to create invoice");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoice", params.id] }),
+  });
+
   if (isLoading) {
     return <div className="h-40 animate-pulse rounded-lg bg-muted" />;
   }
 
   if (!data) return <p>Invoice not found</p>;
 
-  const { order, outfits, payments, totalPaid, balance } = data;
+  const { order, outfits, payments, totalPaid, balance, invoice } = data;
 
   return (
     <div className="space-y-4">
@@ -38,6 +48,11 @@ export default function InvoicePage() {
           <h1 className="text-2xl font-bold">Invoice</h1>
         </div>
         <div className="flex gap-2">
+          {!invoice && (
+            <Button variant="secondary" size="sm" onClick={() => createInvoice.mutate()} disabled={createInvoice.isLoading}>
+              Generate Invoice
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> Print
           </Button>

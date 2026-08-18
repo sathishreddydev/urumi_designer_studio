@@ -51,6 +51,7 @@ export const dependencyTypeEnum = pgEnum("dependency_type", [
 export const dependencyStatusEnum = pgEnum("dependency_status", ["PENDING", "AVAILABLE", "BLOCKED"]);
 
 export const paymentMethodEnum = pgEnum("payment_method", ["CASH", "CARD", "UPI", "BANK_TRANSFER"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["PENDING", "SETTLED", "FAILED", "REFUNDED"]);
 
 // ─── TABLES ─────────────────────────────────────────────────────────────────
 // IDs are generated in application code using short alphanumeric strings.
@@ -172,7 +173,25 @@ export const payments = pgTable("payments", {
   orderId: varchar("order_id", { length: 20 }).references(() => orders.id).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   method: paymentMethodEnum("method").notNull(),
+  status: paymentStatusEnum("status").notNull().default("SETTLED"),
+  transactionRef: text("transaction_ref"),
+  outfitId: varchar("outfit_id", { length: 20 }).references(() => outfits.id),
+  invoiceId: varchar("invoice_id", { length: 20 }),
+  customerId: varchar("customer_id", { length: 20 }).references(() => customers.id),
   notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const invoices = pgTable("invoices", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("inv")),
+  orderId: varchar("order_id", { length: 20 }).references(() => orders.id).notNull(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  dueDate: timestamp("due_date"),
+  total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0"),
+  status: text("status").notNull().default("DRAFT"),
+  pdfUrl: text("pdf_url"),
+  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
