@@ -339,7 +339,7 @@ export default function OutfitDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-4">
         <div className="h-8 w-64 animate-pulse rounded bg-muted" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="h-96 animate-pulse rounded bg-muted lg:col-span-4" />
@@ -390,7 +390,7 @@ export default function OutfitDetailPage() {
   const isLocked = lockedStatuses.includes(outfit.status);
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
         <div className="flex items-center gap-3">

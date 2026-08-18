@@ -291,7 +291,7 @@ export default function EditOrderPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -300,7 +300,7 @@ export default function EditOrderPage() {
   if (!order) return <p>Order not found</p>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Top Header */}
       <div className="flex items-center justify-between border-b pb-4">
         <div className="flex items-center gap-3">

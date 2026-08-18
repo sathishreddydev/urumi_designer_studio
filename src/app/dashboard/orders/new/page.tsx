@@ -419,7 +419,7 @@ export default function NewOrderPage() {
     : "/dashboard/orders";
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Top Header */}
       <div className="flex items-center justify-between border-b pb-4">
         <div className="flex items-center gap-3">
