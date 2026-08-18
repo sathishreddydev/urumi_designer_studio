@@ -4,9 +4,31 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, Download, Printer, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import type { InvoicePDFData } from "@/components/invoice-pdf";
+
+// ─── PDF download helper ─────────────────────────────────────────────────────
+// Loaded dynamically so @react-pdf/renderer never runs during SSR
+async function downloadInvoicePDF(data: InvoicePDFData) {
+  // Dynamic import to keep bundle lean and avoid SSR issues
+  const { pdf } = await import("@react-pdf/renderer");
+  const { InvoicePDFDocument } = await import("@/components/invoice-pdf");
+
+  const blob = await pdf(<InvoicePDFDocument data={data} />).toBlob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${data.invoiceNumber}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function InvoicePage() {
   const params = useParams();
@@ -21,78 +43,160 @@ export default function InvoicePage() {
     },
   });
 
-  const createInvoice = useMutation({
+  const generateMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/orders/${params.id}/invoice`, { method: "POST" });
+      if (res.status === 409) return null; // already exists — just refetch
       if (!res.ok) {
         const err = await res.json();
-        // 409 means one already exists — just refetch to show it
-        if (res.status === 409) {
-          return null;
-        }
-        throw new Error(err.error || "Failed to create invoice");
+        throw new Error(err.error || "Failed to generate invoice");
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoice", params.id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoice", params.id] });
+      toast({ title: "Invoice generated", description: "Invoice has been created and saved." });
+    },
     onError: (err: Error) => {
-      console.error("Invoice creation failed:", err.message);
+      toast({ variant: "destructive", title: "Failed", description: err.message });
     },
   });
 
-  if (isLoading) {
-    return <div className="h-40 animate-pulse rounded-lg bg-muted" />;
+  const [isDownloading, setIsDownloading] = React.useState(false);
+
+  async function handleDownload() {
+    if (!data) return;
+    setIsDownloading(true);
+    try {
+      const pdfData: InvoicePDFData = {
+        invoiceNumber: data.invoice?.invoiceNumber ?? `INV-${data.order.orderNumber}`,
+        issuedAt: data.invoice?.issuedAt ?? new Date().toISOString(),
+        order: data.order,
+        outfits: data.outfits,
+        payments: data.payments,
+        totalPaid: data.totalPaid,
+        outfitTotal: data.outfitTotal,
+        balance: data.balance,
+      };
+      await downloadInvoicePDF(pdfData);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Download failed", description: (e as Error).message });
+    } finally {
+      setIsDownloading(false);
+    }
   }
 
-  if (!data) return <p>Invoice not found</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-[600px] animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
+  }
 
-  const { order, outfits, payments, totalPaid, balance, invoice } = data;
+  if (!data) return <p className="text-muted-foreground">Invoice not found</p>;
+
+  const { order, outfits, payments, totalPaid, outfitTotal, balance, invoice } = data;
+  const settledPayments = (payments || []).filter((p: any) => !p.status || p.status === "SETTLED");
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl mx-auto space-y-4 pb-12">
+      {/* ── Toolbar ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href={`/dashboard/orders/${params.id}`}>
-            <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Invoice</h1>
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Invoice
+            </h1>
+            {invoice && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {invoice.invoiceNumber} · Issued {formatDate(invoice.issuedAt)}
+              </p>
+            )}
+          </div>
         </div>
+
         <div className="flex gap-2">
-          {!invoice && (
-            <Button variant="secondary" size="sm" onClick={() => createInvoice.mutate()} disabled={createInvoice.isPending}>
+          {!invoice ? (
+            <Button
+              size="sm"
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+            >
+              {generateMutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Generate Invoice
             </Button>
+          ) : (
+            <Badge variant="outline" className="text-xs px-2 py-1">
+              {invoice.status}
+            </Badge>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Download className="h-4 w-4" />}
+            {isDownloading ? "Generating…" : "Download PDF"}
+          </Button>
+
           <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4" /> Print
+            <Printer className="h-4 w-4" />
+            Print
           </Button>
         </div>
       </div>
 
-      {/* Invoice Card — printable area */}
+      {!invoice && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-400">
+          This invoice hasn't been saved yet. Click <strong>Generate Invoice</strong> to lock it in — or use <strong>Download PDF</strong> / <strong>Print</strong> directly without saving.
+        </div>
+      )}
+
+      {/* ── Printable Invoice ── */}
       <div id="invoice-content" className="print:m-0 print:p-0">
-        <Card className="max-w-2xl mx-auto print:shadow-none print:border-none">
-          <CardContent className="p-6 sm:p-8 space-y-6">
+        <Card className="print:shadow-none print:border-none">
+          <CardContent className="p-6 sm:p-10 space-y-8">
+
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-bold">urumi by mounika</h2>
-                <p className="text-xs text-muted-foreground">Custom Outfit Design & Production</p>
+                <h2 className="text-2xl font-extrabold tracking-tight">urumi by mounika</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Custom Outfit Design &amp; Production</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold">INVOICE</p>
-                <p className="text-sm text-muted-foreground">{order.orderNumber}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(order.orderDate)}</p>
+                <p className="text-2xl font-extrabold tracking-widest text-primary">INVOICE</p>
+                {invoice ? (
+                  <>
+                    <p className="text-sm font-mono text-muted-foreground mt-1">{invoice.invoiceNumber}</p>
+                    <p className="text-xs text-muted-foreground">Issued: {formatDate(invoice.issuedAt)}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">{order.orderNumber}</p>
+                )}
               </div>
             </div>
 
-            <hr />
+            <Separator />
 
-            {/* Customer Details */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Bill To / Dates */}
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Bill To</p>
-                <p className="font-semibold">{order.customerName}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  Bill To
+                </p>
+                <p className="font-semibold text-base">{order.customerName}</p>
                 <p className="text-sm text-muted-foreground">{order.customerMobile}</p>
                 {order.customerEmail && (
                   <p className="text-sm text-muted-foreground">{order.customerEmail}</p>
@@ -102,12 +206,16 @@ export default function InvoicePage() {
                 )}
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground font-medium">Dates</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  Order Details
+                </p>
+                <p className="text-sm">Order: <span className="font-medium">{order.orderNumber}</span></p>
+                <p className="text-sm text-muted-foreground">Date: {formatDate(order.orderDate)}</p>
                 {order.trialDate && (
-                  <p className="text-sm">Trial: {formatDate(order.trialDate)}</p>
+                  <p className="text-sm text-muted-foreground">Trial: {formatDate(order.trialDate)}</p>
                 )}
                 {order.deliveryDate && (
-                  <p className="text-sm">Delivery: {formatDate(order.deliveryDate)}</p>
+                  <p className="text-sm text-muted-foreground">Delivery: {formatDate(order.deliveryDate)}</p>
                 )}
               </div>
             </div>
@@ -116,81 +224,114 @@ export default function InvoicePage() {
             <div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium">#</th>
-                    <th className="text-left py-2 font-medium">Outfit</th>
-                    <th className="text-left py-2 font-medium">Type</th>
-                    <th className="text-right py-2 font-medium">Status</th>
+                  <tr className="border-b-2 border-foreground/20">
+                    <th className="text-left py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-8">#</th>
+                    <th className="text-left py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Item</th>
+                    <th className="text-left py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Type</th>
+                    <th className="text-left py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Status</th>
+                    <th className="text-right py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price</th>
                   </tr>
                 </thead>
                 <tbody>
                   {outfits.map((outfit: any, i: number) => (
-                    <tr key={outfit.id} className="border-b">
-                      <td className="py-2">{i + 1}</td>
-                      <td className="py-2 font-medium">{outfit.name}</td>
-                      <td className="py-2 text-muted-foreground">{outfit.type}</td>
-                      <td className="py-2 text-right text-xs">{outfit.status}</td>
+                    <tr key={outfit.id} className="border-b border-border/50">
+                      <td className="py-3 text-muted-foreground">{i + 1}</td>
+                      <td className="py-3 font-medium">{outfit.name}</td>
+                      <td className="py-3 text-muted-foreground hidden sm:table-cell">{outfit.type}</td>
+                      <td className="py-3 hidden sm:table-cell">
+                        <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
+                          {formatStatus(outfit.status)}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-right font-medium">
+                        {outfit.price ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
+                      </td>
                     </tr>
                   ))}
+                  {/* Subtotal row */}
+                  {outfitTotal > 0 && (
+                    <tr className="border-t-2 border-foreground/20">
+                      <td colSpan={4} className="pt-3 pb-1 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Subtotal
+                      </td>
+                      <td className="pt-3 pb-1 text-right font-bold">
+                        ₹{outfitTotal.toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
-            {/* Payment Summary */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Estimated Amount</span>
-                <span className="font-medium">
-                  {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString()}` : "—"}
-                </span>
-              </div>
-              {order.advanceAmount && (
-                <div className="flex justify-between text-sm">
-                  <span>Advance Paid</span>
-                  <span>₹{Number(order.advanceAmount).toLocaleString()}</span>
-                </div>
-              )}
-              <hr />
-              {payments.length > 0 && (
-                <>
-                  <p className="text-xs font-medium text-muted-foreground">Payments</p>
-                  {payments.map((p: any) => (
-                    <div key={p.id} className="flex justify-between text-sm text-muted-foreground">
-                      <span>{p.method} — {formatDate(p.createdAt)}</span>
-                      <span>₹{Number(p.amount).toLocaleString()}</span>
+            {/* Payment History */}
+            {settledPayments.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Payment History
+                </p>
+                <div className="space-y-2">
+                  {settledPayments.map((p: any) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm">
+                      <div>
+                        <span className="font-medium">{p.method}</span>
+                        <span className="text-muted-foreground"> — {formatDate(p.createdAt)}</span>
+                        {p.transactionRef && (
+                          <span className="text-xs text-muted-foreground ml-2">· Ref: {p.transactionRef}</span>
+                        )}
+                      </div>
+                      <span className="font-semibold">₹{Number(p.amount).toLocaleString()}</span>
                     </div>
                   ))}
-                  <hr />
-                </>
-              )}
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Total Paid</span>
-                <span className="text-green-600">₹{totalPaid.toLocaleString()}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Balance Due</span>
-                <span className={balance < 0 ? "text-amber-600" : balance > 0 ? "text-red-600" : "text-green-600"}>
+            )}
+
+            {/* Totals */}
+            <div className="space-y-2">
+              <Separator />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Paid</span>
+                <span className="font-semibold text-green-600">₹{totalPaid.toLocaleString()}</span>
+              </div>
+
+              {/* Balance */}
+              <div className={`flex justify-between items-center rounded-lg px-4 py-3 ${
+                balance < 0
+                  ? "bg-amber-50 dark:bg-amber-950/20"
+                  : balance === 0
+                  ? "bg-green-50 dark:bg-green-950/20"
+                  : "bg-red-50 dark:bg-red-950/20"
+              }`}>
+                <span className="font-bold text-base">
+                  {balance < 0 ? "Overpaid (Credit Due)" : "Balance Due"}
+                </span>
+                <span className={`font-extrabold text-lg ${
+                  balance < 0
+                    ? "text-amber-600"
+                    : balance === 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}>
                   {balance < 0
-                    ? `₹${Math.abs(balance).toLocaleString()} (overpaid)`
+                    ? `₹${Math.abs(balance).toLocaleString()}`
                     : `₹${balance.toLocaleString()}`}
                 </span>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="pt-4 border-t text-center">
-              <p className="text-xs text-muted-foreground">
-                Thank you for choosing urumi by mounika!
-              </p>
+            <div className="pt-2 border-t text-center space-y-1">
+              <p className="text-sm font-medium">Thank you for choosing urumi by mounika!</p>
               {order.notes && (
-                <p className="text-xs text-muted-foreground mt-1 italic">Note: {order.notes}</p>
+                <p className="text-xs text-muted-foreground italic">Note: {order.notes}</p>
               )}
             </div>
+
           </CardContent>
         </Card>
       </div>
 
-      {/* Print styles */}
+      {/* Print styles — only show the invoice card */}
       <style jsx global>{`
         @media print {
           body * { visibility: hidden; }
@@ -201,3 +342,6 @@ export default function InvoicePage() {
     </div>
   );
 }
+
+// React import needed for JSX in downloadInvoicePDF
+import React from "react";

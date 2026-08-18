@@ -35,13 +35,14 @@ export const GET = withAuth(async (_request, { params }) => {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Get outfits
+  // Get outfits — include price for line items
   const orderOutfits = await db
     .select({
       id: outfits.id,
       name: outfits.name,
       type: outfits.type,
       status: outfits.status,
+      price: outfits.price,
     })
     .from(outfits)
     .where(eq(outfits.orderId, id));
@@ -81,15 +82,18 @@ export const GET = withAuth(async (_request, { params }) => {
     .filter((p) => p.status === "SETTLED")
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
-  const estimatedAmount = order.estimatedAmount ? Number(order.estimatedAmount) : 0;
+  // Use live outfit sum as the source of truth for the invoice total
+  const outfitTotal = orderOutfits.reduce((s, o) => s + Number(o.price || 0), 0);
+  const invoiceTotal = outfitTotal > 0 ? outfitTotal : (order.estimatedAmount ? Number(order.estimatedAmount) : 0);
   // Show real balance — negative means overpaid (credit due)
-  const balance = estimatedAmount > 0 ? estimatedAmount - totalPaid : 0;
+  const balance = invoiceTotal > 0 ? invoiceTotal - totalPaid : 0;
 
   return NextResponse.json({
     order,
     outfits: orderOutfits,
     payments: orderPayments,
     totalPaid,
+    outfitTotal: invoiceTotal,
     balance,
     invoice: persistedInvoice || null,
   });
@@ -117,10 +121,11 @@ export const POST = withPermission(
       );
     }
 
-    // compute total — prefer estimatedAmount, otherwise sum outfit prices
+    // compute total — always use live outfit price sum (source of truth)
     const orderOutfits = await db.select({ price: outfits.price }).from(outfits).where(eq(outfits.orderId, id));
     const outfitTotal = orderOutfits.reduce((s, o) => s + Number(o.price || 0), 0);
-    const total = order.estimatedAmount ? Number(order.estimatedAmount) : outfitTotal;
+    // fall back to estimatedAmount snapshot only if no outfit prices set
+    const total = outfitTotal > 0 ? outfitTotal : (order.estimatedAmount ? Number(order.estimatedAmount) : 0);
 
     // generate invoice
     const invoiceNumber = generateInvoiceNumber();
