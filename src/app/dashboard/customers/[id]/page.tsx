@@ -38,9 +38,69 @@ import {
   Search,
   IndianRupee,
   X,
+  ChevronDown,
+  ChevronUp,
+  History,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 
+// Body measurements grouped into sections.
+// Each section has a number, title, and ordered fields.
+const BODY_MEASUREMENT_SECTIONS = [
+  {
+    num: "01",
+    title: "UPPER BODY",
+    fields: [
+      "Shoulder Length",
+      "Upper Bust",
+      "Bust",
+      "Lower Bust",
+      "Waist",
+      "Lower Waist",
+      "Hip",
+    ],
+  },
+  {
+    num: "02",
+    title: "APEX & SLEEVES",
+    fields: [
+      "Apex Point",
+      "Apex Down",
+      "Apex Gap",
+      "Sleeve Length",
+      "Sleeve Loose",
+      "Armhole",
+      "Neck Front",
+      "Neck Back",
+    ],
+  },
+  {
+    num: "03",
+    title: "BOTTOM (PANT)",
+    fields: [
+      "Pant Length",
+      "Pant Waist",
+      "Hip / Seat",
+      "Crotch (Rise)",
+      "Thigh",
+      "Knee",
+      "Ankle",
+      "Bottom Loose",
+    ],
+  },
+] as const;
+
+// Flat map of all body fields for default values & snapshot lookup
+const ALL_BODY_FIELDS: string[] = BODY_MEASUREMENT_SECTIONS.flatMap(
+  (s) => s.fields as unknown as string[]
+);
+
+// Keep for "Copy Previous" backfill only
+const BODY_MEASUREMENT_FIELDS: Record<string, string> = Object.fromEntries(
+  ALL_BODY_FIELDS.map((f) => [f, ""])
+);
+
+// Keep legacy templates only for "Copy Previous" migration — new saves always use body fields.
 const MEASUREMENT_TEMPLATES: Record<string, Record<string, string>> = {
   Blouse: {
     Bust: "",
@@ -108,11 +168,10 @@ export default function CustomerDetailPage({
   const queryClient = useQueryClient();
   const { can } = usePermissions();
 
-  const [measurementValues, setMeasurementValues] = useState<
-    Record<string, string>
-  >({});
+  const [measurementValues, setMeasurementValues] = useState<Record<string, string>>({});
   const [newField, setNewField] = useState("");
   const [showMeasurementForm, setShowMeasurementForm] = useState(false);
+  const [showPrevVersions, setShowPrevVersions] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
@@ -128,10 +187,9 @@ export default function CustomerDetailPage({
 
   useEffect(() => {
     if (customer && customer.measurements?.length === 0) {
-      setMeasurementValues({ ...MEASUREMENT_TEMPLATES.Blouse });
+      setMeasurementValues({ ...BODY_MEASUREMENT_FIELDS });
     }
   }, [customer]);
-
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: {
       values: Record<string, string>;
@@ -284,18 +342,8 @@ export default function CustomerDetailPage({
     });
   };
 
-  const applyTemplate = (templateKey: string) => {
-    const templateFields = MEASUREMENT_TEMPLATES[templateKey];
-    if (!templateFields) return;
-
-    const latest = customer.measurements?.[0]?.values || {};
-    const updated: Record<string, string> = {};
-
-    Object.keys(templateFields).forEach((key) => {
-      updated[key] = latest[key] || "";
-    });
-
-    setMeasurementValues(updated);
+  const applyTemplate = (_templateKey: string) => {
+    // unused — kept for safety, templates removed from UI
   };
 
   const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
@@ -635,200 +683,257 @@ export default function CustomerDetailPage({
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Ruler className="h-4 w-4" /> Measurements
+                <Ruler className="h-4 w-4" /> Body Measurements
               </CardTitle>
-              {can("create", "measurement") &&
-                customer.measurements?.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      if (!showMeasurementForm) {
-                        const latest = customer.measurements?.[0]?.values;
-                        setMeasurementValues(
-                          latest || MEASUREMENT_TEMPLATES.Blouse,
-                        );
-                      }
-                      setShowMeasurementForm(!showMeasurementForm);
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    {showMeasurementForm ? "Cancel" : "Update"}
-                  </Button>
-                )}
+              {can("create", "measurement") && customer.measurements?.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (!showMeasurementForm) {
+                      const latest = customer.measurements?.[0]?.values || {};
+                      const prefilled: Record<string, string> = {};
+                      ALL_BODY_FIELDS.forEach((k) => {
+                        prefilled[k] = latest[k] || "";
+                      });
+                      // carry over any extra custom fields from previous save
+                      Object.entries(latest).forEach(([k, v]) => {
+                        if (!(k in prefilled)) prefilled[k] = v as string;
+                      });
+                      setMeasurementValues(prefilled);
+                    }
+                    setShowMeasurementForm(!showMeasurementForm);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  {showMeasurementForm ? "Cancel" : "Update"}
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              {(showMeasurementForm || customer.measurements?.length === 0) ? (
-                <div className="space-y-3 border p-3 rounded-md bg-background">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium">Templates</p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {customer.measurements?.length === 0
-                        ? "New Profile"
-                        : "Edit Mode"}
-                    </span>
-                  </div>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+                Body dimensions only. Garment-specific lengths &amp; neck depths are entered on each outfit.
+              </p>
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.keys(MEASUREMENT_TEMPLATES).map((tmplKey) => (
-                      <Button
-                        key={tmplKey}
-                        variant="secondary"
-                        size="xs"
-                        className="h-7 text-xs"
-                        onClick={() => applyTemplate(tmplKey)}
-                      >
-                        {tmplKey}
-                      </Button>
+              {(showMeasurementForm || customer.measurements?.length === 0) ? (
+                <div className="space-y-5 border p-3 rounded-md bg-background">
+
+                  {/* Sectioned input grid */}
+                  {BODY_MEASUREMENT_SECTIONS.map((section) => (
+                    <div key={section.num} className="space-y-2">
+                      {/* Section header */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-primary/70 tabular-nums">{section.num}</span>
+                        <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                        {(section.fields as unknown as string[]).map((field) => (
+                          <div key={field} className="space-y-0.5">
+                            <Label className="text-[11px] text-muted-foreground">{field}</Label>
+                            <Input
+                              value={measurementValues[field] ?? ""}
+                              onChange={(e) =>
+                                setMeasurementValues((prev) => ({ ...prev, [field]: e.target.value }))
+                              }
+                              placeholder="inches"
+                              inputMode="decimal"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Extra custom fields carried from previous save */}
+                  {Object.entries(measurementValues)
+                    .filter(([key]) => !ALL_BODY_FIELDS.includes(key))
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-end gap-2">
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[11px]">{key}</Label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveField(key)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <Input
+                            value={value}
+                            onChange={(e) =>
+                              setMeasurementValues((prev) => ({ ...prev, [key]: e.target.value }))
+                            }
+                            placeholder="inches"
+                            inputMode="decimal"
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                      </div>
                     ))}
-                    {customer.measurements?.length > 0 && (
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        className="h-7 text-xs"
-                        onClick={() => {
-                          setMeasurementValues({
-                            ...customer.measurements[0].values,
-                          });
-                        }}
-                      >
-                        Copy Previous
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="h-7 text-xs text-muted-foreground"
-                      onClick={() => setMeasurementValues({})}
-                    >
-                      Clear
+
+                  {/* Add custom field */}
+                  <div className="flex gap-2 pt-1">
+                    <Input
+                      value={newField}
+                      onChange={(e) => setNewField(e.target.value)}
+                      placeholder="Custom field (e.g. Bicep)"
+                      className="h-7 text-xs"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); handleAddField(); }
+                      }}
+                    />
+                    <Button size="xs" variant="outline" type="button" className="h-7 px-2 shrink-0" onClick={handleAddField}>
+                      <Plus className="h-3 w-3" />
                     </Button>
                   </div>
 
-                  {Object.keys(measurementValues).length > 0 ? (
-                    <div className="space-y-3 pt-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        {Object.entries(measurementValues).map(
-                          ([key, value]) => (
-                            <div key={key} className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[11px]">{key}</Label>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveField(key)}
-                                  className="text-muted-foreground hover:text-destructive"
-                                  title="Remove field"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                              <Input
-                                value={value}
-                                onChange={(e) =>
-                                  setMeasurementValues((prev) => ({
-                                    ...prev,
-                                    [key]: e.target.value,
-                                  }))
-                                }
-                                placeholder="in inches"
-                                className="h-7 text-xs"
-                              />
-                            </div>
-                          ),
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Input
-                          value={newField}
-                          onChange={(e) => setNewField(e.target.value)}
-                          placeholder="Custom field name"
-                          className="h-7 text-xs"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddField();
-                            }
-                          }}
-                        />
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          type="button"
-                          className="h-7 px-2"
-                          onClick={handleAddField}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-
-                      <div className="flex gap-2 pt-1">
-                        <Button
-                          size="sm"
-                          className="w-full text-xs h-8"
-                          disabled={addMeasurementMutation.isPending}
-                          onClick={() =>
-                            addMeasurementMutation.mutate({
-                              values: measurementValues,
-                            })
-                          }
-                        >
-                          {addMeasurementMutation.isPending
-                            ? "Saving..."
-                            : "Save Measurements"}
-                        </Button>
-                        {customer.measurements?.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs h-8"
-                            onClick={() => {
-                              setShowMeasurementForm(false);
-                              setMeasurementValues({});
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic pt-1">
-                      Click a template button above or type a custom field name
-                      to build measurements.
-                    </p>
-                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="w-full text-xs h-8"
+                      disabled={addMeasurementMutation.isPending}
+                      onClick={() => addMeasurementMutation.mutate({ values: measurementValues })}
+                    >
+                      {addMeasurementMutation.isPending ? "Saving..." : "Save Measurements"}
+                    </Button>
+                    {customer.measurements?.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-8"
+                        onClick={() => { setShowMeasurementForm(false); setMeasurementValues({}); }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : customer.measurements?.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between text-xs text-muted-foreground border-b pb-1">
                     <span>Version {customer.measurements[0].version}</span>
-                    <span>
-                      {formatDate(customer.measurements[0].createdAt)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    {Object.entries(
-                      (customer.measurements[0].values || {}) as Record<
-                        string,
-                        string
-                      >,
-                    ).map(([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="text-muted-foreground">{key}:</span>
-                        <span className="font-semibold">{value || "—"}</span>
-                      </div>
-                    ))}
+                    <span>{formatDate(customer.measurements[0].createdAt)}</span>
                   </div>
 
+                  {/* Read-only sectioned display */}
+                  {BODY_MEASUREMENT_SECTIONS.map((section) => {
+                    const saved = customer.measurements[0].values as Record<string, string>;
+                    const hasAny = (section.fields as unknown as string[]).some((f) => saved[f]);
+                    if (!hasAny) return null;
+                    return (
+                      <div key={section.num} className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-primary/70 tabular-nums">{section.num}</span>
+                          <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                          {(section.fields as unknown as string[]).map((field) => (
+                            saved[field] ? (
+                              <div key={field} className="flex items-center justify-between text-xs border-b border-muted/40 py-0.5">
+                                <span className="text-muted-foreground">{field}</span>
+                                <span className="font-semibold">{saved[field]}"</span>
+                              </div>
+                            ) : null
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Any extra custom fields */}
+                  {(() => {
+                    const saved = customer.measurements[0].values as Record<string, string>;
+                    const extras = Object.entries(saved).filter(([k]) => !ALL_BODY_FIELDS.includes(k) && saved[k]);
+                    if (!extras.length) return null;
+                    return (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">CUSTOM</p>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                          {extras.map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between text-xs border-b border-muted/40 py-0.5">
+                              <span className="text-muted-foreground">{k}</span>
+                              <span className="font-semibold">{v}"</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {customer.measurements.length > 1 && (
-                    <p className="text-[11px] text-muted-foreground pt-1 italic">
-                      + {customer.measurements.length - 1} previous measurement
-                      version(s)
-                    </p>
+                    <div className="pt-1 border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowPrevVersions((v) => !v)}
+                        className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full"
+                      >
+                        <History className="h-3 w-3" />
+                        {showPrevVersions ? "Hide" : "Show"} {customer.measurements.length - 1} previous version{customer.measurements.length - 1 > 1 ? "s" : ""}
+                        {showPrevVersions
+                          ? <ChevronUp className="h-3 w-3 ml-auto" />
+                          : <ChevronDown className="h-3 w-3 ml-auto" />}
+                      </button>
+
+                      {showPrevVersions && (
+                        <div className="mt-3 space-y-4">
+                          {customer.measurements.slice(1).map((m: any) => (
+                            <div key={m.id} className="space-y-3 border rounded-md p-3 bg-muted/20">
+                              {/* Version header */}
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">Version {m.version}</span>
+                                <span>{formatDate(m.createdAt)}</span>
+                              </div>
+
+                              {/* Sectioned read-only */}
+                              {BODY_MEASUREMENT_SECTIONS.map((section) => {
+                                const vals = m.values as Record<string, string>;
+                                const entries = (section.fields as unknown as string[]).filter((f) => vals[f]);
+                                if (!entries.length) return null;
+                                return (
+                                  <div key={section.num} className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] font-bold text-primary/60 tabular-nums">{section.num}</span>
+                                      <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
+                                      <div className="flex-1 h-px bg-border" />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+                                      {entries.map((field) => (
+                                        <div key={field} className="flex items-center justify-between text-xs border-b border-muted/40 py-0.5">
+                                          <span className="text-muted-foreground text-[11px]">{field}</span>
+                                          <span className="font-semibold text-[11px]">{vals[field]}"</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {/* Custom fields for this version */}
+                              {(() => {
+                                const vals = m.values as Record<string, string>;
+                                const extras = Object.entries(vals).filter(([k, v]) => !ALL_BODY_FIELDS.includes(k) && v);
+                                if (!extras.length) return null;
+                                return (
+                                  <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+                                    {extras.map(([k, v]) => (
+                                      <div key={k} className="flex items-center justify-between text-xs border-b border-muted/40 py-0.5">
+                                        <span className="text-muted-foreground text-[11px]">{k}</span>
+                                        <span className="font-semibold text-[11px]">{v}"</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : null}

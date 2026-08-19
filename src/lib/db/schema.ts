@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   json,
+  jsonb,
   decimal,
 } from "drizzle-orm/pg-core";
 
@@ -118,9 +119,12 @@ export const outfits = pgTable("outfits", {
   maggamRequired: boolean("maggam_required").notNull().default(false),
   designerId: varchar("designer_id", { length: 20 }).references(() => users.id),
   masterId: varchar("master_id", { length: 20 }).references(() => users.id),
-  // Snapshot of the customer's measurements at outfit-creation time.
-  // NULL means "no snapshot yet" — the outfit page will fall back to the customer's latest version.
+  // Snapshot of the customer's body measurements at outfit-creation time.
+  // NULL means "no snapshot yet" — falls back to the customer's latest version.
   measurementSnapshotId: varchar("measurement_snapshot_id", { length: 20 }),
+  // Garment-specific measurements stored directly on the outfit
+  // (e.g. Front Length, Neck Front, Sleeve Round — fields that vary by garment type).
+  garmentMeasurements: jsonb("garment_measurements").$type<Record<string, string>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

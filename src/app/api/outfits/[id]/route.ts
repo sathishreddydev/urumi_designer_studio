@@ -137,6 +137,12 @@ export const PATCH = withPermission(
       if (body.price !== undefined) updateData.price = body.price ? String(body.price) : null;
       if (body.deliveryDate) updateData.deliveryDate = new Date(body.deliveryDate);
       if (body.trialDate) updateData.trialDate = new Date(body.trialDate);
+      if (body.garmentMeasurements !== undefined) updateData.garmentMeasurements = body.garmentMeasurements;
+    }
+
+    // MASTER can update garment measurements too (they're stitching it)
+    if (session.role === "MASTER") {
+      if (body.garmentMeasurements !== undefined) updateData.garmentMeasurements = body.garmentMeasurements;
     }
 
     // Status changes go through the transition endpoint

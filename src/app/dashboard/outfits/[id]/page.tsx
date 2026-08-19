@@ -70,6 +70,42 @@ const DEPENDENCY_TYPES = [
   "CUPS",
 ];
 
+// Garment-specific measurement fields per outfit type.
+// These are the stitching-specific dimensions that vary per garment,
+// separate from the customer's body measurements.
+const GARMENT_FIELDS: Record<string, string[]> = {
+  "Bridal Blouse":     ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
+  "Reception Blouse":  ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
+  "Saree Blouse":      ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
+  Lehenga:             ["Lehenga Length", "Flare / Gher", "Waist Band"],
+  Gown:                ["Full Length", "Yoke Length", "Neck Front", "Neck Back", "Slit Start"],
+  Kurta:               ["Kurti Length", "Neck Front", "Neck Back", "Side Slit Start"],
+  Anarkali:            ["Anarkali Length", "Yoke Length", "Neck Front", "Neck Back", "Flare / Gher"],
+  Sharara:             ["Top Length", "Sharara Length", "Neck Front"],
+  Other:               ["Length", "Neck Front", "Neck Back"],
+};
+
+// Mirrored body section definitions — used for grouped display on outfit detail page
+const BODY_SECTIONS = [
+  {
+    num: "01",
+    title: "UPPER BODY",
+    fields: ["Shoulder Length", "Upper Bust", "Bust", "Lower Bust", "Waist", "Lower Waist", "Hip"],
+  },
+  {
+    num: "02",
+    title: "APEX & SLEEVES",
+    fields: ["Apex Point", "Apex Down", "Apex Gap", "Sleeve Length", "Sleeve Loose", "Armhole", "Neck Front", "Neck Back"],
+  },
+  {
+    num: "03",
+    title: "BOTTOM (PANT)",
+    fields: ["Pant Length", "Pant Waist", "Hip / Seat", "Crotch (Rise)", "Thigh", "Knee", "Ankle", "Bottom Loose"],
+  },
+] as const;
+
+const ALL_BODY_FIELD_NAMES: string[] = BODY_SECTIONS.flatMap((s) => s.fields as unknown as string[]);
+
 export default function OutfitDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -83,6 +119,10 @@ export default function OutfitDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
+  // Garment-specific measurements (editable inline)
+  const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
+  const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] = useState(false);
+
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
     queryKey: ["outfit", params.id],
@@ -92,6 +132,26 @@ export default function OutfitDetailPage() {
       return res.json();
     },
   });
+
+  // Seed garment measurements from saved data when outfit loads
+  useEffect(() => {
+    if (outfit) {
+      const saved = (outfit.garmentMeasurements as Record<string, string>) || {};
+      // If no saved garment measurements yet, pre-populate fields from the type template
+      if (Object.keys(saved).length === 0) {
+        const typeKey = Object.keys(GARMENT_FIELDS).find(
+          (k) => k.toLowerCase() === (outfit.type || "").toLowerCase()
+        ) || outfit.type;
+        const templateFields = GARMENT_FIELDS[typeKey] || GARMENT_FIELDS["Other"] || [];
+        const empty: Record<string, string> = {};
+        templateFields.forEach((f) => { empty[f] = ""; });
+        setGarmentMeasurements(empty);
+      } else {
+        setGarmentMeasurements(saved);
+      }
+      setGarmentMeasurementsDirty(false);
+    }
+  }, [outfit?.id]);
 
   // Fetch available transitions
   const { data: transitions } = useQuery({
@@ -511,83 +571,140 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
-          {/* Measurements List */}
+          {/* Measurements */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2">
-                <Ruler className="h-4 w-4" /> Measurements
-              </h2>
-              {outfit.customerMeasurements && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">
-                    v{outfit.customerMeasurements.version}
-                  </span>
-                  {outfit.measurementIsSnapshot ? (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      at order time
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50">
-                      latest
-                    </Badge>
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+              <Ruler className="h-4 w-4" /> Measurements
+            </h2>
+
+            {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Body</p>
+                {outfit.customerMeasurements && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">v{outfit.customerMeasurements.version}</span>
+                    {outfit.measurementIsSnapshot ? (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">at order time</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50">latest</Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {outfit.customerMeasurements ? (
+                <div className="space-y-1.5">
+                  {!outfit.measurementIsSnapshot && outfit.measurementSnapshotId === null && outfit.customer?.id && role !== "MASTER" && (
+                    <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      Showing latest — created before snapshots were tracked.
+                    </p>
+                  )}
+
+                  {/* Sectioned body measurements */}
+                  {BODY_SECTIONS.map((section) => {
+                    const vals = outfit.customerMeasurements.values as Record<string, string>;
+                    const entries = (section.fields as unknown as string[])
+                      .map((f) => [f, vals[f]] as [string, string])
+                      .filter(([, v]) => v);
+                    if (!entries.length) return null;
+                    return (
+                      <div key={section.num} className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-primary/60 tabular-nums">{section.num}</span>
+                          <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+                          {entries.map(([field, value]) => (
+                            <div key={field} className="flex justify-between items-center border-b border-muted/40 py-0.5">
+                              <span className="text-[11px] text-muted-foreground">{field}</span>
+                              <span className="text-[11px] font-semibold">{value}"</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom fields not in standard sections */}
+                  {(() => {
+                    const vals = outfit.customerMeasurements.values as Record<string, string>;
+                    const extras = Object.entries(vals).filter(([k, v]) => !ALL_BODY_FIELD_NAMES.includes(k) && v);
+                    if (!extras.length) return null;
+                    return (
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 pt-1">
+                        {extras.map(([field, value]) => (
+                          <div key={field} className="flex justify-between items-center border-b border-muted/40 py-0.5">
+                            <span className="text-[11px] text-muted-foreground">{field}</span>
+                            <span className="text-[11px] font-semibold">{value}"</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {outfit.customer?.id && role !== "MASTER" && (
+                    <Link href={`/dashboard/customers/${outfit.customer.id}`} className="text-[11px] text-primary hover:underline mt-1 inline-block">
+                      Edit body measurements →
+                    </Link>
                   )}
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-1">
+                  No body measurements.{" "}
+                  {outfit.customer?.id && role !== "MASTER" && (
+                    <Link href={`/dashboard/customers/${outfit.customer.id}`} className="text-primary hover:underline">Add →</Link>
+                  )}
+                </p>
               )}
             </div>
 
-            {outfit.customerMeasurements ? (
-              <div className="space-y-3">
-                {/* Warn when the customer's measurements have been updated after this outfit was snapshotted */}
-                {outfit.measurementIsSnapshot === false && outfit.measurementSnapshotId === null && outfit.customer?.id && role !== "MASTER" && (
-                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    Showing latest measurements — this outfit was created before snapshots were tracked.
-                  </p>
-                )}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  {Object.entries(
-                    outfit.customerMeasurements.values as Record<
-                      string,
-                      string
-                    >,
-                  ).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex justify-between items-center border-b border-muted/50 pb-1"
-                    >
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {key.replace(/_/g, " ")}
-                      </span>
-                      <span className="font-semibold text-xs">
-                        {value || "—"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <Separator />
 
-                {/* Only non-MASTER roles can navigate to the customer profile to edit */}
-                {outfit.customer?.id && role !== "MASTER" && (
-                  <Link
-                    href={`/dashboard/customers/${outfit.customer.id}`}
-                    className="inline-block mt-2 text-xs text-primary hover:underline"
+            {/* ── GARMENT MEASUREMENTS (outfit-specific, editable) ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Garment · <span className="normal-case font-normal">{outfit.type}</span>
+                </p>
+                {garmentMeasurementsDirty && (
+                  <Button
+                    size="xs"
+                    className="h-6 text-[11px] px-2"
+                    onClick={() => {
+                      updateMutation.mutate({ garmentMeasurements });
+                      setGarmentMeasurementsDirty(false);
+                    }}
                   >
-                    Edit on customer profile →
-                  </Link>
+                    Save
+                  </Button>
                 )}
               </div>
-            ) : (
-              <div className="py-4 text-center text-xs text-muted-foreground">
-                No measurements recorded.
-                {outfit.customer?.id && role !== "MASTER" && (
-                  <Link
-                    href={`/dashboard/customers/${outfit.customer.id}`}
-                    className="block mt-1 text-primary hover:underline"
-                  >
-                    Add measurements →
-                  </Link>
-                )}
+
+              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                {Object.entries(garmentMeasurements).map(([field, value]) => (
+                  <div key={field} className="space-y-0.5">
+                    <label className="text-[11px] text-muted-foreground">{field}</label>
+                    <Input
+                      value={value}
+                      onChange={(e) => {
+                        setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
+                        setGarmentMeasurementsDirty(true);
+                      }}
+                      placeholder="in inches"
+                      inputMode="decimal"
+                      className="h-7 text-xs px-2"
+                    />
+                  </div>
+                ))}
               </div>
-            )}
+
+              {Object.keys(garmentMeasurements).length === 0 && (
+                <p className="text-xs text-muted-foreground italic">No fields for this garment type.</p>
+              )}
+            </div>
           </div>
 
           {/* Customer Material */}

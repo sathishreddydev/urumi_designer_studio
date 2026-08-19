@@ -105,6 +105,26 @@ export const GET = withPermission(
   }
 );
 
+// Garment-specific measurement fields keyed by outfit type.
+// These are pre-seeded as empty strings when an outfit is created, so the
+// outfit detail page always has a form to fill in — no extra steps needed.
+const GARMENT_MEASUREMENT_FIELDS: Record<string, string[]> = {
+  "Bridal Blouse":     ["Front Length", "Back Length", "Armhole", "Sleeve Round", "Neck Front", "Neck Back"],
+  "Reception Blouse":  ["Front Length", "Back Length", "Armhole", "Sleeve Round", "Neck Front", "Neck Back"],
+  "Saree Blouse":      ["Front Length", "Back Length", "Armhole", "Sleeve Round", "Neck Front", "Neck Back"],
+  "Lehenga":           ["Waist", "Hip", "Lehenga Length", "Flare / Gher"],
+  "Gown":              ["Full Length", "Yoke Length", "Waist", "Hip", "Flare / Gher"],
+  "Kurta":             ["Kurti Length", "Yoke Length", "Neck Front", "Neck Back", "Side Slit Start"],
+  "Anarkali":          ["Anarkali Length", "Yoke Length", "Neck Front", "Neck Back", "Flare / Gher"],
+  "Sharara":           ["Waist", "Hip", "Sharara Length", "Top Length", "Neck Front"],
+  "Other":             [],
+};
+
+function seedGarmentMeasurements(type: string): Record<string, string> {
+  const fields = GARMENT_MEASUREMENT_FIELDS[type] ?? [];
+  return Object.fromEntries(fields.map((f) => [f, ""]));
+}
+
 export const POST = withPermission(
   { resource: "outfit", action: "create" },
   async (request) => {
@@ -119,7 +139,7 @@ export const POST = withPermission(
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
-    // Look up the customer for this order so we can snapshot their current measurements
+    // Snapshot the customer's current body measurements at outfit-creation time
     let measurementSnapshotId: string | null = null;
     try {
       const [order] = await db
@@ -142,6 +162,9 @@ export const POST = withPermission(
       measurementSnapshotId = null;
     }
 
+    // Seed empty garment-specific fields based on outfit type
+    const garmentMeasurements = seedGarmentMeasurements(parsed.data.type);
+
     const [outfit] = await db
       .insert(outfits)
       .values({
@@ -156,6 +179,7 @@ export const POST = withPermission(
         price: parsed.data.price != null ? String(parsed.data.price) : null,
         designerId: parsed.data.designerId || null,
         measurementSnapshotId,
+        garmentMeasurements: Object.keys(garmentMeasurements).length > 0 ? garmentMeasurements : null,
       })
       .returning();
 
