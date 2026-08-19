@@ -55,6 +55,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 }
 
@@ -65,5 +66,31 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* ── Global responsive helpers ── */
+@layer base {
+  /* Prevent any element from overflowing its container horizontally */
+  * {
+    min-width: 0;
+  }
+
+  /* Ensure buttons, badges, and text truncate properly on small screens */
+  button, a, p, span, h1, h2, h3, h4, h5, h6 {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Responsive font sizes for headings */
+  h1 { font-size: clamp(1.25rem, 4vw, 1.875rem); }
+  h2 { font-size: clamp(1rem, 3vw, 1.5rem); }
+}
+
+/* ── Responsive table wrapper helper ── */
+@layer utilities {
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

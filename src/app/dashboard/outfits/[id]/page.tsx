@@ -452,23 +452,23 @@ export default function OutfitDetailPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b pb-4">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link href="/dashboard/outfits">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold lg:text-2xl truncate">
+              <h1 className="text-lg font-bold lg:text-2xl truncate">
                 {outfit.name}
               </h1>
-              <Badge className={getStatusColor(outfit.status)}>
+              <Badge className={`${getStatusColor(outfit.status)} shrink-0`}>
                 {formatStatus(outfit.status)}
               </Badge>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
               {outfit.customer?.name && (
                 <span className="font-medium text-foreground">
                   {outfit.customer.name}
@@ -483,13 +483,14 @@ export default function OutfitDetailPage() {
         </div>
 
         {/* Workflow Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {availableTransitions.map((t: any) => (
             <LoadingButton
               key={t.status}
               size="sm"
               loading={transitionMutation.isPending}
               onClick={() => transitionMutation.mutate({ newStatus: t.status })}
+              className="text-xs"
             >
               <ArrowRight className="h-3 w-3 mr-1" /> {t.label}
             </LoadingButton>
@@ -498,7 +499,7 @@ export default function OutfitDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0 h-8 w-8"
               onClick={() => setShowDeleteConfirm(true)}
             >
               <Trash2 className="h-4 w-4" />
@@ -616,11 +617,11 @@ export default function OutfitDetailPage() {
                           <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
                           <div className="flex-1 h-px bg-border" />
                         </div>
-                        <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5">
                           {entries.map(([field, value]) => (
                             <div key={field} className="flex justify-between items-center border-b border-muted/40 py-0.5">
-                              <span className="text-[11px] text-muted-foreground">{field}</span>
-                              <span className="text-[11px] font-semibold">{value}"</span>
+                              <span className="text-[11px] text-muted-foreground truncate mr-1">{field}</span>
+                              <span className="text-[11px] font-semibold shrink-0">{value}"</span>
                             </div>
                           ))}
                         </div>
@@ -669,7 +670,7 @@ export default function OutfitDetailPage() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Garment · <span className="normal-case font-normal">{outfit.type}</span>
                 </p>
-                {garmentMeasurementsDirty && (
+                {garmentMeasurementsDirty && role !== "RECEPTION" && (
                   <Button
                     size="xs"
                     className="h-6 text-[11px] px-2"
@@ -684,20 +685,27 @@ export default function OutfitDetailPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">All values in inches.</p>
 
-              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
                 {Object.entries(garmentMeasurements).map(([field, value]) => (
                   <div key={field} className="space-y-0.5">
                     <label className="text-[11px] text-muted-foreground">{field}</label>
-                    <Input
-                      value={value}
-                      onChange={(e) => {
-                        setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
-                        setGarmentMeasurementsDirty(true);
-                      }}
-                      placeholder="in inches"
-                      inputMode="decimal"
-                      className="h-7 text-xs px-2"
-                    />
+                    {role === "RECEPTION" ? (
+                      // Reception sees values but cannot edit
+                      <p className="h-7 text-xs px-2 flex items-center font-semibold">
+                        {value || "—"}
+                      </p>
+                    ) : (
+                      <Input
+                        value={value}
+                        onChange={(e) => {
+                          setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
+                          setGarmentMeasurementsDirty(true);
+                        }}
+                        placeholder="in inches"
+                        inputMode="decimal"
+                        className="h-7 text-xs px-2"
+                      />
+                    )}
                   </div>
                 ))}
               </div>

@@ -201,16 +201,16 @@ export default function CustomerPortalPage() {
     <div className="min-h-screen bg-neutral-50/50 dark:bg-background">
       {/* Header */}
       <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-20">
-        <div className="container mx-auto flex items-center justify-between px-4 py-3 max-w-6xl">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-primary/10 p-1.5 rounded-md">
-              <Scissors className="h-5 w-5 text-primary" />
+        <div className="container mx-auto flex items-center justify-between px-3 py-3 max-w-6xl gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="bg-primary/10 p-1.5 rounded-md shrink-0">
+              <Scissors className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
-            <span className="font-semibold text-base tracking-tight">
-              urumi by mounika Portal
+            <span className="font-semibold text-sm sm:text-base tracking-tight truncate">
+              urumi by mounika
             </span>
           </div>
-          <Badge variant="outline" className="text-xs font-normal">
+          <Badge variant="outline" className="text-xs font-normal shrink-0">
             Customer Dashboard
           </Badge>
         </div>
@@ -218,31 +218,24 @@ export default function CustomerPortalPage() {
 
       <main className="container mx-auto max-w-6xl p-4 md:p-6 space-y-6">
         {/* Top Greeting & Overview Banner */}
-        <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border border-primary/10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-6 border border-primary/10">
+          <div className="flex flex-col gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
                 Welcome back, {data.customer.name}
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Here is the real-time status of your tailored outfits and
-                reference approvals.
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
+                Real-time status of your tailored outfits and reference approvals.
               </p>
             </div>
-            <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-4 py-2.5 rounded-lg border text-xs">
+            <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-3 py-2 rounded-lg border text-xs self-start">
               <div>
-                <span className="text-muted-foreground block">
-                  Active Orders
-                </span>
-                <span className="font-semibold text-sm">
-                  {data.orders.length}
-                </span>
+                <span className="text-muted-foreground block">Active Orders</span>
+                <span className="font-semibold text-sm">{data.orders.length}</span>
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
-                <span className="text-muted-foreground block">
-                  Total Outfits
-                </span>
+                <span className="text-muted-foreground block">Total Outfits</span>
                 <span className="font-semibold text-sm">{totalOutfits}</span>
               </div>
             </div>
@@ -443,6 +436,12 @@ export default function CustomerPortalPage() {
                               <Progress value={progress} className="h-2" />
                             </div>
 
+                            {/* Garment Measurements — read-only, only shown when filled */}
+                            {outfit.garmentMeasurements &&
+                              Object.values(outfit.garmentMeasurements as Record<string, string>).some(Boolean) && (
+                              <GarmentMeasurementsPanel measurements={outfit.garmentMeasurements} type={outfit.type} />
+                            )}
+
                             {/* Design Reference Images Section */}
                             {designRefs.length > 0 && (
                               <div className="space-y-2 pt-2 border-t">
@@ -503,50 +502,27 @@ export default function CustomerPortalPage() {
                     {/* Financial Summary Footer */}
                     {(order.totalPaid > 0 || order.estimatedAmount) && (
                       <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-muted-foreground">
-                              Payment Summary
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            {order.estimatedAmount && (
-                              <div>
-                                <span className="text-muted-foreground mr-1">
-                                  Total:
-                                </span>
-                                <span className="font-medium font-mono">
-                                  ₹
-                                  {Number(
-                                    order.estimatedAmount,
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                            <div className="h-3 w-px bg-border" />
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-muted-foreground">Payment Summary</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {order.estimatedAmount && (
                             <div>
-                              <span className="text-muted-foreground mr-1">
-                                Paid:
-                              </span>
-                              <span className="font-semibold text-green-600 font-mono">
-                                ₹{order.totalPaid.toLocaleString()}
-                              </span>
+                              <p className="text-muted-foreground text-[10px]">Total</p>
+                              <p className="font-medium font-mono text-xs">₹{Number(order.estimatedAmount).toLocaleString()}</p>
                             </div>
-                            {orderBalance > 0 && (
-                              <>
-                                <div className="h-3 w-px bg-border" />
-                                <div>
-                                  <span className="text-muted-foreground mr-1">
-                                    Balance:
-                                  </span>
-                                  <span className="font-semibold text-destructive font-mono">
-                                    ₹{orderBalance.toLocaleString()}
-                                  </span>
-                                </div>
-                              </>
-                            )}
+                          )}
+                          <div>
+                            <p className="text-muted-foreground text-[10px]">Paid</p>
+                            <p className="font-semibold text-green-600 font-mono text-xs">₹{order.totalPaid.toLocaleString()}</p>
                           </div>
+                          {orderBalance > 0 && (
+                            <div>
+                              <p className="text-muted-foreground text-[10px]">Balance</p>
+                              <p className="font-semibold text-destructive font-mono text-xs">₹{orderBalance.toLocaleString()}</p>
+                            </div>
+                          )}
                         </div>
                         {/* Individual payment records */}
                         {order.payments && order.payments.length > 0 && (
@@ -992,6 +968,53 @@ function PortalUpload({
           onCapture={(file) => handleUpload(file)}
         />
       </div>
+    </div>
+  );
+}
+
+// ─── GARMENT MEASUREMENTS PANEL ────────────────────────────────────────────
+
+function GarmentMeasurementsPanel({
+  measurements,
+  type,
+}: {
+  measurements: Record<string, string>;
+  type: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const filled = Object.entries(measurements).filter(([, v]) => v);
+  if (!filled.length) return null;
+
+  return (
+    <div className="pt-2 border-t">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <Ruler className="h-3.5 w-3.5 text-primary" />
+          Garment Measurements · {type}
+        </span>
+        <span className="text-[10px] font-normal">
+          {open ? "Hide" : `Show ${filled.length} field${filled.length !== 1 ? "s" : ""}`}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+          {filled.map(([field, value]) => (
+            <div
+              key={field}
+              className="flex items-center justify-between text-xs border-b border-dashed border-border/60 py-1"
+            >
+              <span className="text-muted-foreground">{field}</span>
+              <span className="font-semibold font-mono">{value}"</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

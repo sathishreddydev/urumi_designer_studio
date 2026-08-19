@@ -75,6 +75,9 @@ export async function GET(
               deliveryDate: outfit.deliveryDate,
               trialDate: outfit.trialDate,
               maggamRequired: outfit.maggamRequired,
+              // Garment-specific measurements — shown read-only so customer can verify
+              // dimensions before production is locked in.
+              garmentMeasurements: outfit.garmentMeasurements || null,
               references: visibleRefs.map((r) => ({
                 id: r.id,
                 type: r.type,

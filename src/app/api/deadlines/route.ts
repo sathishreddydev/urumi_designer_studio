@@ -55,17 +55,22 @@ export const GET = withAuth(async (_request, { session }) => {
     .filter((o) => o.deliveryDate && new Date(o.deliveryDate) >= now)
     .sort((a, b) => new Date(a.deliveryDate!).getTime() - new Date(b.deliveryDate!).getTime());
 
+  // IDs already shown in delivery sections — exclude from trials to prevent duplication
+  const deliveryAlertIds = new Set([...overdue, ...dueSoon].map((o) => o.id));
+
   // Trial dates approaching — not relevant for MASTER (they don't handle trials)
-  // Skip for MASTER to keep their dashboard focused on production
+  // Skip for MASTER to keep their dashboard focused on production.
+  // Exclude outfits already shown in overdue/dueSoon to avoid the same outfit appearing twice.
   const upcomingTrials = session.role === "MASTER" ? [] : await (async () => {
-    const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-    return db
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const trials = await db
       .select({
         id: outfits.id,
         name: outfits.name,
         type: outfits.type,
         status: outfits.status,
         trialDate: outfits.trialDate,
+        deliveryDate: outfits.deliveryDate,
         orderNumber: orders.orderNumber,
         customerName: customers.name,
       })
@@ -75,11 +80,13 @@ export const GET = withAuth(async (_request, { session }) => {
       .where(
         and(
           isNotNull(outfits.trialDate),
-          lt(outfits.trialDate, twoDaysFromNow),
+          lt(outfits.trialDate, sevenDaysFromNow),
           notInArray(outfits.status, ["DELIVERED", "READY_FOR_DELIVERY", "TRIAL"]),
           designerFilter
         )
       );
+    // Drop any outfit already shown under delivery alerts
+    return trials.filter((o) => !deliveryAlertIds.has(o.id));
   })();
 
   return NextResponse.json({

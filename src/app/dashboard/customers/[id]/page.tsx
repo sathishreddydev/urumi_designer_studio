@@ -368,14 +368,15 @@ export default function CustomerDetailPage({
         <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5" /> Orders ({totalOrders})
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 truncate pr-2">
+                <ShoppingBag className="h-5 w-5 shrink-0" /> <span className="truncate">Orders ({totalOrders})</span>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {customer.portalToken && (
                   <Button
                     size="sm"
                     variant="outline"
+                    className="text-xs px-2 h-8"
                     onClick={() => {
                       const url = `${window.location.origin}/portal/${customer.portalToken}`;
                       const message = `Hi ${customer.name}! Track your outfit progress here: ${url}`;
@@ -387,13 +388,14 @@ export default function CustomerDetailPage({
                       );
                     }}
                   >
-                    <MessageCircle className="h-3.5 w-3.5 mr-1" />
-                    Share Portal
+                    <MessageCircle className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">Share Portal</span>
                   </Button>
                 )}
                 <Link href={`/dashboard/orders/new?customerId=${customer.id}`}>
-                  <Button size="sm">
-                    <Plus className="h-3.5 w-3.5 mr-1" /> New Order
+                  <Button size="sm" className="text-xs px-2 h-8">
+                    <Plus className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">New Order</span>
                   </Button>
                 </Link>
               </div>
@@ -727,7 +729,7 @@ export default function CustomerDetailPage({
                         <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
                         <div className="flex-1 h-px bg-border" />
                       </div>
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
                         {(section.fields as unknown as string[]).map((field) => (
                           <div key={field} className="space-y-0.5">
                             <Label className="text-[11px] text-muted-foreground">{field}</Label>
@@ -831,12 +833,12 @@ export default function CustomerDetailPage({
                           <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
                           <div className="flex-1 h-px bg-border" />
                         </div>
-                        <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
                           {(section.fields as unknown as string[]).map((field) => (
                             saved[field] ? (
                               <div key={field} className="flex items-center justify-between text-xs border-b border-muted/40 py-0.5">
-                                <span className="text-muted-foreground">{field}</span>
-                                <span className="font-semibold">{saved[field]}"</span>
+                                <span className="text-muted-foreground truncate mr-1">{field}</span>
+                                <span className="font-semibold shrink-0">{saved[field]}"</span>
                               </div>
                             ) : null
                           ))}

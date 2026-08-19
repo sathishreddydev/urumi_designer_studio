@@ -61,8 +61,8 @@ export default function BlockersPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold lg:text-3xl flex items-center gap-2">
-          <AlertTriangle className="h-6 w-6 text-red-500" />
-          Blockers
+          <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+          <span>Blockers</span>
         </h1>
         <p className="text-sm text-muted-foreground">
           {blockers?.length || 0} active dependency blocker{blockers?.length !== 1 ? "s" : ""} across all outfits

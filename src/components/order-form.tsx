@@ -669,43 +669,48 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header */}
-      <div className="flex items-center justify-between border-b pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b pb-4 gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <Link href={backUrl}>
-            <Button variant="outline" size="icon" className="h-9 w-9">
+            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold tracking-tight sm:text-2xl truncate">
               {isEditMode ? "Edit Order" : "Create New Order"}
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {isEditMode
                 ? `${order.orderNumber} · ${order.customer?.name}`
-                : "Configure garments, schedules, and initial payment details."}
+                : "Configure garments, schedules, and payment details."}
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2">
-          <Link href={backUrl}>
-            <Button variant="ghost">Cancel</Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={backUrl} className="hidden sm:block">
+            <Button variant="ghost" size="sm">Cancel</Button>
           </Link>
           <Button
+            size="sm"
             onClick={() =>
               isEditMode ? saveMutation.mutate() : createMutation.mutate()
             }
             disabled={!canSubmit || isPending}
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
             {isEditMode ? (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
+                <Save className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Save Changes</span>
+                <span className="sm:hidden">Save</span>
               </>
             ) : (
-              "Save Order"
+              <>
+                <span className="hidden sm:inline">Save Order</span>
+                <span className="sm:hidden">Save</span>
+              </>
             )}
           </Button>
         </div>

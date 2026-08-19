@@ -16,9 +16,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar role={session.role} userName={session.name} />
-      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 lg:pt-0">
         <RealtimeProvider>
-          <div className="p-4 lg:p-8">{children}</div>
+          <div className="p-3 sm:p-4 lg:p-6 xl:p-8 max-w-full">{children}</div>
         </RealtimeProvider>
       </main>
     </div>

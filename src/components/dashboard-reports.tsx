@@ -58,12 +58,12 @@ export function DashboardReports() {
       <div className="grid gap-3 grid-cols-3">
         <Card>
           <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-green-100 p-1.5 dark:bg-green-900/30">
-                <IndianRupee className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+            <div className="flex items-center gap-1.5">
+              <div className="rounded-md bg-green-100 p-1.5 dark:bg-green-900/30 shrink-0">
+                <IndianRupee className="h-3 w-3 text-green-700 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-base font-bold sm:text-lg">₹{summary.totalRevenue?.toLocaleString() || 0}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">₹{summary.totalRevenue?.toLocaleString() || 0}</p>
                 <p className="text-[10px] text-muted-foreground">Revenue</p>
               </div>
             </div>
@@ -72,12 +72,12 @@ export function DashboardReports() {
 
         <Card>
           <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-amber-100 p-1.5 dark:bg-amber-900/30">
-                <TrendingUp className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
+            <div className="flex items-center gap-1.5">
+              <div className="rounded-md bg-amber-100 p-1.5 dark:bg-amber-900/30 shrink-0">
+                <TrendingUp className="h-3 w-3 text-amber-700 dark:text-amber-400" />
               </div>
-              <div>
-                <p className="text-base font-bold sm:text-lg">{summary.ordersInPeriod || 0}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-bold">{summary.ordersInPeriod || 0}</p>
                 <p className="text-[10px] text-muted-foreground">Orders ({days}d)</p>
               </div>
             </div>
@@ -86,12 +86,12 @@ export function DashboardReports() {
 
         <Card>
           <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-cyan-100 p-1.5 dark:bg-cyan-900/30">
-                <Clock className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400" />
+            <div className="flex items-center gap-1.5">
+              <div className="rounded-md bg-cyan-100 p-1.5 dark:bg-cyan-900/30 shrink-0">
+                <Clock className="h-3 w-3 text-cyan-700 dark:text-cyan-400" />
               </div>
-              <div>
-                <p className="text-base font-bold sm:text-lg">
+              <div className="min-w-0">
+                <p className="text-sm font-bold">
                   {summary.avgProductionDays ? `${summary.avgProductionDays}d` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Avg Time</p>
@@ -108,13 +108,13 @@ export function DashboardReports() {
             <CardTitle className="text-xs font-medium">Outfits by Status</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="grid gap-1.5 grid-cols-2 sm:grid-cols-3">
+            <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Object.entries(statusBreakdown).map(([status, count]: [string, any]) => (
-                <div key={status} className="flex items-center justify-between rounded border px-2 py-1.5">
-                  <Badge className={`text-[9px] ${getStatusColor(status)}`}>
+                <div key={status} className="flex items-center justify-between rounded border px-2 py-1.5 min-w-0 gap-2">
+                  <Badge className={`text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)] ${getStatusColor(status)}`}>
                     {formatStatus(status)}
                   </Badge>
-                  <span className="text-xs font-bold">{count}</span>
+                  <span className="text-xs font-bold shrink-0">{count}</span>
                 </div>
               ))}
             </div>

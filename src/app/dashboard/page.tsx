@@ -201,12 +201,12 @@ function StatCard({
 }) {
   const card = (
     <Card className={highlight ? "border-primary/50 bg-primary/5" : undefined}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-4 sm:pb-2">
-        <CardTitle className="text-xs font-medium sm:text-sm">{title}</CardTitle>
-        <div className={highlight ? "text-primary" : "text-muted-foreground"}>{icon}</div>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+        <CardTitle className="text-xs font-medium leading-tight line-clamp-2">{title}</CardTitle>
+        <div className={`shrink-0 ml-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{icon}</div>
       </CardHeader>
-      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-        <div className={`text-xl font-bold sm:text-2xl ${highlight ? "text-primary" : ""}`}>{value}</div>
+      <CardContent className="p-3 pt-0">
+        <div className={`text-lg font-bold sm:text-xl ${highlight ? "text-primary" : ""}`}>{value}</div>
       </CardContent>
     </Card>
   );

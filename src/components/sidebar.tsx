@@ -70,13 +70,13 @@ export function Sidebar({ role, userName }: SidebarProps) {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center border-b bg-card px-4 lg:hidden">
-        <Button variant="ghost" size="icon" onClick={() => setOpen(true)}>
+      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center border-b bg-card px-3 lg:hidden">
+        <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="shrink-0">
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="ml-3 flex items-center gap-2">
-          <Scissors className="h-5 w-5 text-primary" />
-          <span className="font-bold">urumi by mounika</span>
+        <div className="ml-2 flex items-center gap-2 min-w-0">
+          <Scissors className="h-4 w-4 text-primary shrink-0" />
+          <span className="font-bold text-sm truncate">urumi by mounika</span>
         </div>
       </div>
 
@@ -118,14 +118,14 @@ export function Sidebar({ role, userName }: SidebarProps) {
                   : "text-muted-foreground"
               )}
             >
-              {item.icon}
-              {item.label}
+              <span className="shrink-0">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
             </Link>
           ))}
         </nav>
 
         <div className="border-t p-3">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 rounded-lg px-3 py-2 min-w-0">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -139,14 +139,14 @@ export function Sidebar({ role, userName }: SidebarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start gap-2 flex-1"
+              className="justify-start gap-2 flex-1 min-w-0"
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 window.location.href = "/login";
               }}
             >
-              <LogOut className="h-4 w-4" />
-              Logout
+              <LogOut className="h-4 w-4 shrink-0" />
+              <span className="truncate">Logout</span>
             </Button>
           </div>
         </div>

@@ -180,40 +180,44 @@ export default function OrderDetailPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-2 sm:gap-3">
         <Link href={order.customer?.id ? `/dashboard/customers/${order.customer.id}` : "/dashboard/orders"}>
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold lg:text-2xl">{order.orderNumber}</h1>
-            <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+            <h1 className="text-lg font-bold lg:text-2xl truncate">{order.orderNumber}</h1>
+            <Badge className={`${getStatusColor(order.status)} shrink-0`}>{order.status}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground truncate">
             {order.customer?.name} · {order.customer?.mobile}
           </p>
           {portalUrl && (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
               Portal: <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{portalUrl}</a>
             </p>
           )}
         </div>
         {can("update", "order") && !isCompleted && (
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
             <Link href={`/dashboard/orders/${params.id}/invoice`}>
-              <Button variant="outline" size="sm">Invoice</Button>
+              <Button variant="outline" size="sm" className="text-xs h-8 px-2">
+                <span className="hidden sm:inline">Invoice</span>
+                <span className="sm:hidden">Inv</span>
+              </Button>
             </Link>
             <Link href={`/dashboard/orders/${params.id}/edit`}>
-              <Button variant="outline" size="sm">Edit</Button>
+              <Button variant="outline" size="sm" className="text-xs h-8 px-2">Edit</Button>
             </Link>
             {can("delete", "order") && (
               <Button
                 variant="outline"
                 size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-8 px-2"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                <Trash2 className="h-3 w-3" /> Delete
+                <Trash2 className="h-3 w-3 sm:mr-1" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             )}
           </div>
@@ -239,32 +243,32 @@ export default function OrderDetailPage() {
       {/* Payment Summary */}
       <Card>
         <CardContent className="pt-4 pb-4">
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-xs text-muted-foreground">Estimated</p>
-              <p className="text-base font-bold">
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Estimated</p>
+              <p className="text-sm font-bold sm:text-base">
                 {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString()}` : (orderTotal > 0 ? `₹${orderTotal.toLocaleString()}` : "—")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Paid</p>
-              <p className="text-base font-bold text-green-600">₹{totalPaid.toLocaleString()}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Paid</p>
+              <p className="text-sm font-bold text-green-600 sm:text-base">₹{totalPaid.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Balance</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Balance</p>
               {(() => {
                 const estimated = Number(order.estimatedAmount) || orderTotal;
                 const bal = estimated - totalPaid;
-                if (estimated <= 0) return <p className="text-base font-bold">—</p>;
+                if (estimated <= 0) return <p className="text-sm font-bold sm:text-base">—</p>;
                 if (bal < 0) {
                   return (
-                    <p className="text-base font-bold text-amber-600">
+                    <p className="text-sm font-bold text-amber-600 sm:text-base">
                       ₹{Math.abs(bal).toLocaleString()} over
                     </p>
                   );
                 }
                 return (
-                  <p className={`text-base font-bold ${bal > 0 ? "text-red-600" : "text-green-600"}`}>
+                  <p className={`text-sm font-bold sm:text-base ${bal > 0 ? "text-red-600" : "text-green-600"}`}>
                     ₹{bal.toLocaleString()}
                   </p>
                 );
