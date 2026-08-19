@@ -712,7 +712,7 @@ export default function CustomerDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
-                Body dimensions only. Garment-specific lengths &amp; neck depths are entered on each outfit.
+                Body dimensions only. Garment-specific lengths &amp; neck depths are entered on each outfit. <strong>All values in inches.</strong>
               </p>
 
               {(showMeasurementForm || customer.measurements?.length === 0) ? (

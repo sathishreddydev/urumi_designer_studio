@@ -580,7 +580,7 @@ export default function OutfitDetailPage() {
             {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Body</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Body · <span className="normal-case font-normal text-muted-foreground">inches</span></p>
                 {outfit.customerMeasurements && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground">v{outfit.customerMeasurements.version}</span>
@@ -682,6 +682,7 @@ export default function OutfitDetailPage() {
                   </Button>
                 )}
               </div>
+              <p className="text-[11px] text-muted-foreground">All values in inches.</p>
 
               <div className="grid grid-cols-3 gap-x-3 gap-y-2">
                 {Object.entries(garmentMeasurements).map(([field, value]) => (
