@@ -118,6 +118,9 @@ export const outfits = pgTable("outfits", {
   maggamRequired: boolean("maggam_required").notNull().default(false),
   designerId: varchar("designer_id", { length: 20 }).references(() => users.id),
   masterId: varchar("master_id", { length: 20 }).references(() => users.id),
+  // Snapshot of the customer's measurements at outfit-creation time.
+  // NULL means "no snapshot yet" — the outfit page will fall back to the customer's latest version.
+  measurementSnapshotId: varchar("measurement_snapshot_id", { length: 20 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

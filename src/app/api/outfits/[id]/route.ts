@@ -50,17 +50,36 @@ export const GET = withPermission(
       ? allReferences.filter((r) => r.status === "LOCKED" || r.type === "FABRIC")
       : allReferences;
 
-    // Fetch customer-level measurements (latest version)
+    // Fetch measurements: prefer the snapshot taken at outfit-creation time,
+    // fall back to the customer's latest version for older outfits without a snapshot.
     let latestCustomerMeasurement = null;
+    let measurementIsSnapshot = false;
     if (order) {
       try {
-        const [cm] = await db
-          .select()
-          .from(customerMeasurements)
-          .where(eq(customerMeasurements.customerId, order.customerId))
-          .orderBy(desc(customerMeasurements.version))
-          .limit(1);
-        latestCustomerMeasurement = cm || null;
+        if (outfit.measurementSnapshotId) {
+          // Load the exact version that was active when this outfit was created
+          const [snapshotMeasurement] = await db
+            .select()
+            .from(customerMeasurements)
+            .where(eq(customerMeasurements.id, outfit.measurementSnapshotId))
+            .limit(1);
+          if (snapshotMeasurement) {
+            latestCustomerMeasurement = snapshotMeasurement;
+            measurementIsSnapshot = true;
+          }
+        }
+
+        // No snapshot (old outfit) — fall back to latest version
+        if (!latestCustomerMeasurement) {
+          const [cm] = await db
+            .select()
+            .from(customerMeasurements)
+            .where(eq(customerMeasurements.customerId, order.customerId))
+            .orderBy(desc(customerMeasurements.version))
+            .limit(1);
+          latestCustomerMeasurement = cm || null;
+          measurementIsSnapshot = false;
+        }
       } catch {
         // Table may not exist yet
         latestCustomerMeasurement = null;
@@ -74,6 +93,7 @@ export const GET = withPermission(
       designer: designerUser,
       master: masterUser,
       customerMeasurements: latestCustomerMeasurement,
+      measurementIsSnapshot,
       references: outfitReferences,
       dependencies: outfitDependencies,
       productionLogs: logs,

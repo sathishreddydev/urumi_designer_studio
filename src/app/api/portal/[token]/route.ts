@@ -71,6 +71,7 @@ export async function GET(
               name: outfit.name,
               type: outfit.type,
               status: outfit.status,
+              price: outfit.price,
               deliveryDate: outfit.deliveryDate,
               trialDate: outfit.trialDate,
               maggamRequired: outfit.maggamRequired,

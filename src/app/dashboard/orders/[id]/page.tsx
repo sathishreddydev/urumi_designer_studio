@@ -352,6 +352,12 @@ export default function OrderDetailPage() {
                       <p className="text-xs text-muted-foreground ml-6">
                         {outfit.type}{outfit.maggamRequired && " · Maggam"}
                       </p>
+                      <p className="text-xs ml-6 mt-0.5">
+                        {outfit.price
+                          ? <span className="font-medium text-foreground">₹{Number(outfit.price).toLocaleString()}</span>
+                          : <span className="italic text-amber-600">⏳ Price not set yet</span>
+                        }
+                      </p>
                     </Link>
                     <Badge className={getStatusColor(outfit.status)}>
                       {formatStatus(outfit.status)}

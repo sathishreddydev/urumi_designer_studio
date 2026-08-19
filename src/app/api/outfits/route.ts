@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { outfits, orders, customers, users } from "@/lib/db/schema";
+import { outfits, orders, customers, users, customerMeasurements } from "@/lib/db/schema";
 import { eq, count, desc, inArray, ilike, and as drizzleAnd } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { outfitSchema } from "@/lib/validations";
@@ -119,6 +119,29 @@ export const POST = withPermission(
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
+    // Look up the customer for this order so we can snapshot their current measurements
+    let measurementSnapshotId: string | null = null;
+    try {
+      const [order] = await db
+        .select({ customerId: orders.customerId })
+        .from(orders)
+        .where(eq(orders.id, body.orderId))
+        .limit(1);
+
+      if (order?.customerId) {
+        const [latestMeasurement] = await db
+          .select({ id: customerMeasurements.id })
+          .from(customerMeasurements)
+          .where(eq(customerMeasurements.customerId, order.customerId))
+          .orderBy(desc(customerMeasurements.version))
+          .limit(1);
+        measurementSnapshotId = latestMeasurement?.id ?? null;
+      }
+    } catch {
+      // Non-fatal — outfit creation should not fail just because measurements are missing
+      measurementSnapshotId = null;
+    }
+
     const [outfit] = await db
       .insert(outfits)
       .values({
@@ -130,9 +153,9 @@ export const POST = withPermission(
         deliveryDate: parsed.data.deliveryDate ? new Date(parsed.data.deliveryDate) : null,
         trialDate: parsed.data.trialDate ? new Date(parsed.data.trialDate) : null,
         maggamRequired: parsed.data.maggamRequired,
-        // Use validated values from parsed.data (not raw body)
         price: parsed.data.price != null ? String(parsed.data.price) : null,
         designerId: parsed.data.designerId || null,
+        measurementSnapshotId,
       })
       .returning();
 

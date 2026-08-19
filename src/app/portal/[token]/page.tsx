@@ -414,6 +414,12 @@ export default function CustomerPortalPage() {
                                       </Badge>
                                     )}
                                   </div>
+                                  <div className="mt-1 text-xs">
+                                    {outfit.price
+                                      ? <span className="font-semibold text-foreground">₹{Number(outfit.price).toLocaleString()}</span>
+                                      : <span className="italic text-amber-600">⏳ Price to be confirmed</span>
+                                    }
+                                  </div>
                                 </div>
                               </div>
                               <Badge className={getStatusColor(outfit.status)}>

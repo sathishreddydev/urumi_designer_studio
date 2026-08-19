@@ -518,14 +518,32 @@ export default function OutfitDetailPage() {
                 <Ruler className="h-4 w-4" /> Measurements
               </h2>
               {outfit.customerMeasurements && (
-                <span className="text-xs text-muted-foreground">
-                  v{outfit.customerMeasurements.version}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">
+                    v{outfit.customerMeasurements.version}
+                  </span>
+                  {outfit.measurementIsSnapshot ? (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      at order time
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50">
+                      latest
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
 
             {outfit.customerMeasurements ? (
               <div className="space-y-3">
+                {/* Warn when the customer's measurements have been updated after this outfit was snapshotted */}
+                {outfit.measurementIsSnapshot === false && outfit.measurementSnapshotId === null && outfit.customer?.id && role !== "MASTER" && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    Showing latest measurements — this outfit was created before snapshots were tracked.
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {Object.entries(
                     outfit.customerMeasurements.values as Record<

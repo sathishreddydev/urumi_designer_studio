@@ -37,25 +37,9 @@ import {
   Trash2,
   Search,
   IndianRupee,
-  Lock,
   X,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
-
-const PRODUCTION_STARTED_STATUSES = [
-  "PRODUCTION_READY",
-  "PATTERN_DRAFTING",
-  "MAGGAM_WORK",
-  "MAGGAM_REVIEW",
-  "FABRIC_CUTTING",
-  "STITCHING",
-  "PRODUCTION_COMPLETED",
-  "TRIAL",
-  "ALTERATION",
-  "QC",
-  "READY_FOR_DELIVERY",
-  "DELIVERED",
-];
 
 const MEASUREMENT_TEMPLATES: Record<string, Record<string, string>> = {
   Blouse: {
@@ -206,15 +190,6 @@ export default function CustomerDetailPage({
       });
     },
   });
-
-  const isMeasurementsLocked = useMemo(() => {
-    if (!customer?.orders) return false;
-    return customer.orders.some((order: any) =>
-      (order.outfits || []).some((outfit: any) =>
-        PRODUCTION_STARTED_STATUSES.includes(outfit.status),
-      ),
-    );
-  }, [customer]);
 
   const filteredOrders = useMemo(() => {
     if (!customer?.orders) return [];
@@ -661,14 +636,8 @@ export default function CustomerDetailPage({
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Ruler className="h-4 w-4" /> Measurements
-                {isMeasurementsLocked && (
-                  <Badge variant="secondary" className="text-[10px] gap-1">
-                    <Lock className="h-3 w-3" /> Locked
-                  </Badge>
-                )}
               </CardTitle>
               {can("create", "measurement") &&
-                !isMeasurementsLocked &&
                 customer.measurements?.length > 0 && (
                   <Button
                     size="sm"
@@ -689,14 +658,7 @@ export default function CustomerDetailPage({
                 )}
             </CardHeader>
             <CardContent className="space-y-3">
-              {isMeasurementsLocked && (
-                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                  Locked because production has started on an outfit.
-                </p>
-              )}
-
-              {(showMeasurementForm || customer.measurements?.length === 0) &&
-              !isMeasurementsLocked ? (
+              {(showMeasurementForm || customer.measurements?.length === 0) ? (
                 <div className="space-y-3 border p-3 rounded-md bg-background">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium">Templates</p>
