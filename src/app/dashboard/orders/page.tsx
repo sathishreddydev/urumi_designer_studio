@@ -19,8 +19,14 @@ import { formatDate, getStatusColor } from "@/lib/utils";
 import Link from "next/link";
 
 const ORDER_STATUSES = [
-  "Active", "In Design", "Production Ready", "Waiting For Dependencies",
-  "In Production", "Trial/QC", "Ready For Delivery", "Completed",
+  "Active",
+  "In Design",
+  "Production Ready",
+  "Waiting For Dependencies",
+  "In Production",
+  "Trial/QC",
+  "Ready For Delivery",
+  "Completed",
 ];
 const LIMIT = 20;
 
@@ -47,14 +53,15 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold lg:text-3xl">Orders</h1>
+          <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Orders</h1>
           <p className="text-sm text-muted-foreground">{data?.total || 0} total</p>
         </div>
         <Link href="/dashboard/orders/new">
-          <Button className="w-full sm:w-auto">
-            <Plus className="h-4 w-4" /> New Order
+          <Button className="w-full sm:w-auto" size="sm">
+            <Plus className="h-4 w-4 mr-1" /> New Order
           </Button>
         </Link>
       </div>
@@ -64,14 +71,14 @@ export default function OrdersPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by order number..."
-            className="pl-10"
+            placeholder="Search by order number or customer..."
+            className="pl-9"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -82,7 +89,7 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
         {hasFilters && (
-          <Button variant="ghost" size="icon" onClick={() => { setSearch(""); setStatus(""); setPage(1); }}>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSearch(""); setStatus(""); setPage(1); }}>
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -97,24 +104,24 @@ export default function OrdersPage() {
         </div>
       ) : data?.orders?.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+          <CardContent className="py-12 text-center text-muted-foreground text-sm">
             {hasFilters ? "No orders match your filters" : "No orders found"}
           </CardContent>
         </Card>
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="hidden md:block rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Order</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th>
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-right px-4 py-3 font-medium">Estimated</th>
-                  <th className="text-right px-4 py-3 font-medium">Paid</th>
-                  <th className="text-right px-4 py-3 font-medium">Balance</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Estimated</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Paid</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Balance</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -123,27 +130,35 @@ export default function OrdersPage() {
                   const paid = order.totalPaid || 0;
                   const balance = estimated - paid;
                   return (
-                    <tr key={order.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
-                      <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm">{order.customerName}</p>
+                    <tr
+                      key={order.id}
+                      className="hover:bg-muted/30 cursor-pointer"
+                      onClick={() => (window.location.href = `/dashboard/orders/${order.id}`)}
+                    >
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">{order.orderNumber}</td>
+                      <td className="px-4 py-3 max-w-[160px]">
+                        <p className="text-sm truncate">{order.customerName}</p>
                         <p className="text-xs text-muted-foreground">{order.customerMobile}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+                        <Badge className={`${getStatusColor(order.status)} whitespace-nowrap text-xs`}>
+                          {order.status}
+                        </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
                         {estimated > 0 ? `₹${estimated.toLocaleString("en-IN")}` : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right text-green-600 font-medium">
+                      <td className="px-4 py-3 text-right text-green-600 font-medium whitespace-nowrap">
                         ₹{paid.toLocaleString("en-IN")}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <span className={balance > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
                           {estimated > 0 ? `₹${Math.max(0, balance).toLocaleString("en-IN")}` : "—"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{formatDate(order.deliveryDate)}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatDate(order.deliveryDate)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -159,32 +174,40 @@ export default function OrdersPage() {
               const balance = estimated - paid;
               return (
                 <Link key={order.id} href={`/dashboard/orders/${order.id}`}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
                     <CardContent className="pt-3 pb-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-sm">{order.orderNumber}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {order.customerName}
-                          </p>
+                      {/* Top row: order + badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm truncate">{order.orderNumber}</p>
+                          <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
                         </div>
-                        <div className="text-right">
-                          <Badge className={`text-[10px] ${getStatusColor(order.status)}`}>{order.status}</Badge>
-                        </div>
+                        <Badge className={`${getStatusColor(order.status)} text-[10px] shrink-0 max-w-[110px] truncate`}>
+                          {order.status}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-3 mt-2 text-[11px]">
+
+                      {/* Bottom row: financials + delivery */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                         {estimated > 0 && (
-                          <span className="text-muted-foreground">Est: ₹{estimated.toLocaleString("en-IN")}</span>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            Est: ₹{estimated.toLocaleString("en-IN")}
+                          </span>
                         )}
                         {paid > 0 && (
-                          <span className="text-green-600">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                          <span className="text-[11px] text-green-600 font-medium whitespace-nowrap">
+                            Paid: ₹{paid.toLocaleString("en-IN")}
+                          </span>
                         )}
                         {estimated > 0 && balance > 0 && (
-                          <span className="text-red-600">Bal: ₹{balance.toLocaleString("en-IN")}</span>
+                          <span className="text-[11px] text-red-600 font-medium whitespace-nowrap">
+                            Bal: ₹{balance.toLocaleString("en-IN")}
+                          </span>
                         )}
                         {order.deliveryDate && (
-                          <span className="text-muted-foreground ml-auto flex items-center gap-0.5">
-                            <Calendar className="h-2.5 w-2.5" /> {formatDate(order.deliveryDate)}
+                          <span className="text-[11px] text-muted-foreground ml-auto flex items-center gap-0.5 whitespace-nowrap">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            {formatDate(order.deliveryDate)}
                           </span>
                         )}
                       </div>

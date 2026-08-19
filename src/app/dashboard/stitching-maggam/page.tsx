@@ -22,13 +22,12 @@ import {
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 
-// Tabs for this page
 const TABS = [
-  { key: "PATTERN_DRAFTING", label: "Pattern Drafting", icon: PenTool },
-  { key: "MAGGAM_WORK", label: "Maggam Work", icon: Sparkles },
-  { key: "MAGGAM_REVIEW", label: "Maggam Review", icon: CheckCircle },
-  { key: "FABRIC_CUTTING", label: "Fabric Cutting", icon: Scissors },
-  { key: "STITCHING", label: "Stitching", icon: Shirt },
+  { key: "PATTERN_DRAFTING", label: "Pattern Drafting", short: "Pattern", icon: PenTool },
+  { key: "MAGGAM_WORK",      label: "Maggam Work",     short: "Maggam",  icon: Sparkles },
+  { key: "MAGGAM_REVIEW",    label: "Maggam Review",   short: "Review",  icon: CheckCircle },
+  { key: "FABRIC_CUTTING",   label: "Fabric Cutting",  short: "Cutting", icon: Scissors },
+  { key: "STITCHING",        label: "Stitching",       short: "Stitch",  icon: Shirt },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -41,15 +40,15 @@ export default function StitchingMaggamPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  // Fetch all outfits in stitching/maggam statuses — single call, server handles MASTER scoping
   const { data, isLoading } = useQuery({
     queryKey: ["stitching-maggam-outfits"],
     queryFn: async () => {
       const res = await fetch("/api/outfits?status=production&limit=200");
       if (!res.ok) return [];
       const d = await res.json();
-      // Keep only the stitching/maggam subset
-      const STITCHING_STATUSES = new Set(["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING"]);
+      const STITCHING_STATUSES = new Set([
+        "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING",
+      ]);
       return (d.outfits || []).filter((o: any) => STITCHING_STATUSES.has(o.status));
     },
   });
@@ -71,7 +70,7 @@ export default function StitchingMaggamPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stitching-maggam-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
-      toast({ title: "Status updated", description: "Outfit moved to next stage successfully." });
+      toast({ title: "Status updated", description: "Outfit moved to next stage." });
     },
     onError: (error: Error) => {
       toast({ variant: "destructive", title: "Transition failed", description: error.message });
@@ -84,7 +83,6 @@ export default function StitchingMaggamPage() {
     return !outfit.masterId || outfit.masterId === session?.id;
   });
 
-  // Counts per tab
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
     for (const tab of TABS) {
@@ -93,22 +91,18 @@ export default function StitchingMaggamPage() {
     return map;
   }, [allOutfits]);
 
-  // Summary header stats
   const totalCount = allOutfits.length;
   const urgentCount = allOutfits.filter(
     (o: any) => o.deliveryDate && new Date(o.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
   ).length;
 
-  // Unique outfit types for filter dropdown
   const outfitTypes = useMemo(() => {
     const types = new Set<string>(allOutfits.map((o: any) => o.type as string).filter(Boolean));
     return Array.from(types).sort();
   }, [allOutfits]);
 
-  // Filtered outfits for active tab
   const filteredOutfits = useMemo(() => {
     let items = allOutfits.filter((o: any) => o.status === activeTab);
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       items = items.filter(
@@ -118,11 +112,9 @@ export default function StitchingMaggamPage() {
           o.orderNumber?.toLowerCase().includes(q)
       );
     }
-
     if (typeFilter !== "all") {
       items = items.filter((o: any) => o.type === typeFilter);
     }
-
     return items;
   }, [allOutfits, activeTab, searchQuery, typeFilter]);
 
@@ -130,10 +122,8 @@ export default function StitchingMaggamPage() {
     return (
       <div className="space-y-4">
         <div className="h-8 w-64 animate-pulse rounded bg-muted" />
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
-          ))}
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />)}
         </div>
         <div className="h-40 animate-pulse rounded bg-muted" />
       </div>
@@ -141,49 +131,48 @@ export default function StitchingMaggamPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold lg:text-3xl">Stitching & Maggam</h1>
+        <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Stitching &amp; Maggam</h1>
         <p className="text-sm text-muted-foreground">
           Track maggam work, fabric cutting, and stitching progress
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Shirt className="h-5 w-5 text-primary" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="rounded-lg bg-primary/10 p-1.5 sm:p-2 shrink-0">
+                <Shirt className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{totalCount}</p>
+              <div className="min-w-0">
+                <p className="text-xl font-bold sm:text-2xl">{totalCount}</p>
                 <p className="text-xs text-muted-foreground">Total Active</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-red-100 p-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="rounded-lg bg-red-100 p-1.5 sm:p-2 shrink-0">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{urgentCount}</p>
-                <p className="text-xs text-muted-foreground">Urgent (3 days)</p>
+              <div className="min-w-0">
+                <p className="text-xl font-bold sm:text-2xl">{urgentCount}</p>
+                <p className="text-xs text-muted-foreground">Urgent (&lt;3d)</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b -mx-4 px-4 md:mx-0 md:px-0">
-        <div className="flex gap-0 overflow-x-auto scrollbar-hide pb-px -mb-px">
+      {/* Tabs — full-bleed on mobile, scrollable */}
+      <div className="border-b -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0">
+        <div className="flex overflow-x-auto scrollbar-hide pb-px -mb-px">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -191,18 +180,19 @@ export default function StitchingMaggamPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0 ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0 ${
                   isActive
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
                 }`}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                {/* On very small screens show short label, on sm+ show full */}
+                <span className="xs:hidden hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.short}</span>
                 <Badge
                   variant={isActive ? "default" : "secondary"}
-                  className="ml-0.5 sm:ml-1 text-[10px] px-1.5 py-0 min-w-[1.25rem] text-center"
+                  className="text-[10px] px-1 py-0 min-w-[1.1rem] text-center"
                 >
                   {counts[tab.key] || 0}
                 </Badge>
@@ -212,12 +202,12 @@ export default function StitchingMaggamPage() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search & Filter */}
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by outfit name, customer, or order..."
+            placeholder="Search outfit, customer, or order…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -226,13 +216,11 @@ export default function StitchingMaggamPage() {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="h-9 sm:h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring sm:w-[160px]"
         >
           <option value="all">All Types</option>
           {outfitTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
+            <option key={type} value={type}>{type}</option>
           ))}
         </select>
       </div>
@@ -241,22 +229,22 @@ export default function StitchingMaggamPage() {
       {filteredOutfits.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No outfits found in {formatStatus(activeTab)}
+            No outfits in {formatStatus(activeTab)}
             {searchQuery && " matching your search"}
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Desktop: Table */}
-          <div className="hidden md:block rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+          {/* Desktop Table */}
+          <div className="hidden md:block rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery</th>
-                  <th className="text-left px-4 py-3 font-medium">Assigned To</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Type</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Assigned To</th>
                   <th className="text-right px-4 py-3 font-medium">Action</th>
                 </tr>
               </thead>
@@ -266,14 +254,15 @@ export default function StitchingMaggamPage() {
                   const isUrgent =
                     outfit.deliveryDate &&
                     new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-                  const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
+                  const isAssigned =
+                    role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 max-w-[180px]">
                         <Link
                           href={`/dashboard/outfits/${outfit.id}`}
-                          className="font-medium hover:underline"
+                          className="font-medium hover:underline truncate block"
                         >
                           {outfit.name}
                         </Link>
@@ -281,26 +270,20 @@ export default function StitchingMaggamPage() {
                           <p className="text-xs text-muted-foreground">{outfit.orderNumber}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground text-sm max-w-[130px] truncate">
                         {outfit.customerName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-sm">
                         {outfit.type}
-                        {outfit.maggamRequired && (
-                          <span className="text-pink-600 ml-1">· M</span>
-                        )}
+                        {outfit.maggamRequired && <span className="text-pink-600 ml-1">· M</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={
-                            isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"
-                          }
-                        >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={isUrgent ? "text-red-600 font-medium text-sm" : "text-muted-foreground text-sm"}>
                           {formatDate(outfit.deliveryDate)}
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground text-sm max-w-[120px] truncate">
                         {outfit.masterName || outfit.designerName || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -309,14 +292,15 @@ export default function StitchingMaggamPage() {
                             size="sm"
                             loading={pendingId === outfit.id}
                             disabled={transitionMutation.isPending && pendingId !== outfit.id}
-                            onClick={() =>
-                              transitionMutation.mutate({ id: outfit.id, newStatus: next })
-                            }
+                            onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
+                            className="whitespace-nowrap text-xs"
                           >
-                            {formatStatus(next)} <ArrowRight className="h-3 w-3" />
+                            {formatStatus(next)} <ArrowRight className="h-3 w-3 ml-1" />
                           </LoadingButton>
                         ) : next ? (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">Not assigned</Badge>
+                          <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">
+                            Not assigned
+                          </Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -326,73 +310,70 @@ export default function StitchingMaggamPage() {
             </table>
           </div>
 
-          {/* Mobile: Cards */}
+          {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {filteredOutfits.map((outfit: any) => {
               const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
               const isUrgent =
                 outfit.deliveryDate &&
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-              const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
+              const isAssigned =
+                role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
               return (
                 <Card key={outfit.id}>
                   <CardContent className="pt-3 pb-3 space-y-2">
+                    {/* Name + status badge */}
                     <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/dashboard/outfits/${outfit.id}`}
-                        className="min-w-0 flex-1"
-                      >
+                      <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
                           <p className="font-medium text-sm truncate">{outfit.name}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground ml-5">
+                        <p className="text-xs text-muted-foreground ml-5 truncate">
                           {outfit.customerName && `${outfit.customerName} · `}
                           {outfit.type}
                           {outfit.maggamRequired && " · Maggam"}
                         </p>
                       </Link>
-                      <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
+                      <Badge className={`${getStatusColor(outfit.status)} text-[10px] shrink-0 whitespace-nowrap max-w-[120px] truncate`}>
                         {formatStatus(outfit.status)}
                       </Badge>
                     </div>
 
-                    {outfit.deliveryDate && (
-                      <div className="flex items-center gap-1 text-xs ml-5">
-                        <Calendar className="h-3 w-3" />
-                        <span
-                          className={
-                            isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"
-                          }
-                        >
-                          {formatDate(outfit.deliveryDate)}
-                          {isUrgent && " ⚠️"}
-                        </span>
-                      </div>
-                    )}
+                    {/* Meta row: delivery + master */}
+                    <div className="flex items-center gap-3 ml-5 flex-wrap">
+                      {outfit.deliveryDate && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          <span className={isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                            {formatDate(outfit.deliveryDate)}
+                            {isUrgent && " ⚠"}
+                          </span>
+                        </div>
+                      )}
+                      {outfit.masterName && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          M: {outfit.masterName}
+                        </p>
+                      )}
+                    </div>
 
-                    {outfit.masterName && (
-                      <p className="text-xs text-muted-foreground ml-5">
-                        Master: {outfit.masterName}
-                      </p>
-                    )}
-
+                    {/* Action button */}
                     {next && isAssigned ? (
                       <LoadingButton
                         size="sm"
-                        className="w-full mt-1"
+                        className="w-full text-xs"
                         loading={pendingId === outfit.id}
                         disabled={transitionMutation.isPending && pendingId !== outfit.id}
-                        onClick={() =>
-                          transitionMutation.mutate({ id: outfit.id, newStatus: next })
-                        }
+                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
                       >
-                        {formatStatus(next)} <ArrowRight className="h-3 w-3" />
+                        <span className="truncate">Move to {formatStatus(next)}</span>
+                        <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
                       </LoadingButton>
                     ) : next ? (
-                      <Badge variant="outline" className="w-full justify-center mt-1">
-                        Not assigned
+                      <Badge variant="outline" className="w-full justify-center text-xs text-muted-foreground">
+                        Not assigned to you
                       </Badge>
                     ) : null}
                   </CardContent>
@@ -408,18 +389,16 @@ export default function StitchingMaggamPage() {
 
 function getNextStatus(current: string, maggamRequired: boolean, role: string): string | null {
   if (role === "MASTER" || role === "ADMIN") {
-    const masterTransitions: Record<string, string> = {
+    const transitions: Record<string, string> = {
       PATTERN_DRAFTING: maggamRequired ? "MAGGAM_WORK" : "FABRIC_CUTTING",
       MAGGAM_WORK: "MAGGAM_REVIEW",
       FABRIC_CUTTING: "STITCHING",
       STITCHING: "PRODUCTION_COMPLETED",
     };
-    if (masterTransitions[current]) return masterTransitions[current];
+    if (transitions[current]) return transitions[current];
   }
-
   if (role === "DESIGNER" || role === "ADMIN") {
     if (current === "MAGGAM_REVIEW") return "FABRIC_CUTTING";
   }
-
   return null;
 }
