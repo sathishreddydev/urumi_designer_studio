@@ -451,69 +451,67 @@ export default function OutfitDetailPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-2 border-b pb-4">
-        {/* Row 1: back + name + status badge */}
-        <div className="flex items-center gap-2 min-w-0">
-          <Link href="/dashboard/outfits">
-            <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold sm:text-lg lg:text-2xl truncate">
-                {outfit.name}
-              </h1>
-              <Badge className={`${getStatusColor(outfit.status)} shrink-0 text-xs`}>
-                {formatStatus(outfit.status)}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {outfit.customer?.name && (
-                <span className="font-medium text-foreground">{outfit.customer.name}</span>
-              )}
-              {outfit.customer?.name && " · "}
-              {outfit.type}
-              {outfit.maggamRequired && " · Maggam"}
-              {outfit.customer?.occasion && ` · ${outfit.customer.occasion}`}
-            </p>
+      {/* Header — single row: back | title+badge | actions+delete */}
+      <div className="flex items-center gap-2 border-b pb-4">
+        {/* Back button */}
+        <Link href="/dashboard/outfits" className="shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+
+        {/* Title + badge + subtitle */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-sm font-bold sm:text-base lg:text-xl truncate">
+              {outfit.name}
+            </h1>
+            <Badge className={`${getStatusColor(outfit.status)} shrink-0 text-[10px] sm:text-xs whitespace-nowrap`}>
+              {formatStatus(outfit.status)}
+            </Badge>
           </div>
+          <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+            {outfit.customer?.name && (
+              <span className="font-medium text-foreground">{outfit.customer.name}</span>
+            )}
+            {outfit.customer?.name && " · "}
+            {outfit.type}
+            {outfit.maggamRequired && " · Maggam"}
+          </p>
         </div>
 
-        {/* Row 2: workflow action buttons */}
-        {(availableTransitions.length > 0 || can("delete", "outfit")) && (
-          <div className="flex items-center gap-2 flex-wrap pl-10">
-            {availableTransitions.map((t: any) => (
-              <LoadingButton
-                key={t.status}
-                size="sm"
-                loading={transitionMutation.isPending}
-                onClick={() => transitionMutation.mutate({ newStatus: t.status })}
-                className="text-xs flex-1 sm:flex-none"
-              >
-                <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
-                <span className="truncate">{t.label}</span>
-              </LoadingButton>
-            ))}
-            {can("delete", "outfit") && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0 h-8 w-8"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
+        {/* Right side: action button(s) + delete — always stay on the right */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {availableTransitions.map((t: any) => (
+            <LoadingButton
+              key={t.status}
+              size="sm"
+              loading={transitionMutation.isPending}
+              onClick={() => transitionMutation.mutate({ newStatus: t.status })}
+              className="text-xs h-8 px-2.5 whitespace-nowrap"
+            >
+              <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden">Next</span>
+            </LoadingButton>
+          ))}
+          {can("delete", "outfit") && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 shrink-0"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
-        {/* LEFT COLUMN: Metadata & Measurements — comes SECOND on mobile */}
-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 order-2 lg:order-1">
+        {/* LEFT COLUMN: Metadata & Measurements */}
+        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4">
           {/* Key Outfit Details */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
@@ -732,7 +730,7 @@ export default function OutfitDetailPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Accordion Workflow Sections — comes FIRST on mobile */}
+        {/* RIGHT COLUMN: Accordion Workflow Sections */}
         <div className="lg:col-span-8 order-1 lg:order-2">
           <Accordion
             type="multiple"
