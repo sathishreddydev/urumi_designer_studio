@@ -704,28 +704,58 @@ export default function OutfitDetailPage() {
               <p className="text-[11px] text-muted-foreground">All values in inches.</p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
-                {Object.entries(garmentMeasurements).map(([field, value]) => (
-                  <div key={field} className="space-y-0.5">
-                    <label className="text-[11px] text-muted-foreground">{field}</label>
-                    {role === "RECEPTION" ? (
-                      // Reception sees values but cannot edit
-                      <p className="h-7 text-xs px-2 flex items-center font-semibold">
-                        {value || "—"}
-                      </p>
-                    ) : (
-                      <Input
-                        value={value}
-                        onChange={(e) => {
-                          setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
-                          setGarmentMeasurementsDirty(true);
-                        }}
-                        placeholder="in inches"
-                        inputMode="decimal"
-                        className="h-7 text-xs px-2"
-                      />
-                    )}
-                  </div>
-                ))}
+                {Object.entries(garmentMeasurements).map(([field, value]) => {
+                  // Check if body measurements have a value for the same field name
+                  const bodyValue = outfit.customerMeasurements?.values?.[field];
+                  const isDuplicate = bodyValue && bodyValue !== "" && bodyValue !== value && value !== "";
+                  const isSameAsBody = bodyValue && bodyValue !== "" && bodyValue === value;
+
+                  return (
+                    <div key={field} className="space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <label className="text-[11px] text-muted-foreground truncate">{field}</label>
+                        {/* Body reference hint */}
+                        {bodyValue && bodyValue !== "" && (
+                          <span
+                            className={`text-[9px] shrink-0 px-1 rounded font-medium ${
+                              isDuplicate
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                            title={`Body measurement: ${bodyValue}"`}
+                          >
+                            B:{bodyValue}"
+                          </span>
+                        )}
+                      </div>
+                      {role === "RECEPTION" ? (
+                        <p className="h-7 text-xs px-2 flex items-center font-semibold">
+                          {value || "—"}
+                        </p>
+                      ) : (
+                        <Input
+                          value={value}
+                          onChange={(e) => {
+                            setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
+                            setGarmentMeasurementsDirty(true);
+                          }}
+                          placeholder="in inches"
+                          inputMode="decimal"
+                          className={`h-7 text-xs px-2 ${
+                            isDuplicate ? "border-amber-400 focus-visible:ring-amber-400" : ""
+                          }`}
+                        />
+                      )}
+                      {/* Conflict warning */}
+                      {isDuplicate && (
+                        <p className="text-[9px] text-amber-600 flex items-center gap-0.5">
+                          <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                          Differs from body ({bodyValue}")
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {Object.keys(garmentMeasurements).length === 0 && (

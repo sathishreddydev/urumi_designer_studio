@@ -41,8 +41,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useMemo, useState } from "react";
-
+import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
 // Body measurements grouped into sections.
 // Each section has a number, title, and ordered fields.
 const BODY_MEASUREMENT_SECTIONS = [
@@ -118,6 +118,48 @@ export default function CustomerDetailPage({
   const [orderSearch, setOrderSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
+  // Voice callback — passed to MeasurementVoiceInput component
+  const voiceOnResult = useCallback((matched: Record<string, string>, custom: Record<string, string>, raw: string) => {
+    const totalCount = Object.keys(matched).length + Object.keys(custom).length;
+    if (totalCount === 0) {
+      setTimeout(() => toast({
+        variant: "destructive",
+        title: "Nothing recognized",
+        description: `Heard: "${raw}". Try "Bust 36 Waist 28 Hip 40".`,
+      }), 0);
+      return;
+    }
+
+    setMeasurementValues((prev) => {
+      const duplicates: string[] = [];
+      const allParsed = { ...matched, ...custom };
+
+      for (const [k, v] of Object.entries(allParsed)) {
+        if (prev[k] && prev[k] !== "" && prev[k] !== v) {
+          duplicates.push(`${k}: ${prev[k]}" → ${v}"`);
+        }
+      }
+
+      if (duplicates.length > 0) {
+        setTimeout(() => toast({
+          title: "Some values overwritten",
+          description: duplicates.slice(0, 3).join(" · ") + (duplicates.length > 3 ? ` +${duplicates.length - 3} more` : ""),
+        }), 0);
+      }
+
+      const lines: string[] = [
+        ...Object.entries(matched).map(([k, v]) => `${k}: ${v}"`),
+        ...Object.entries(custom).map(([k, v]) => `${k} (custom): ${v}"`),
+      ];
+      setTimeout(() => toast({
+        title: `${totalCount} field${totalCount > 1 ? "s" : ""} filled`,
+        description: lines.slice(0, 5).join(" · ") + (lines.length > 5 ? ` +${lines.length - 5} more` : ""),
+      }), 0);
+
+      return { ...prev, ...matched, ...custom };
+    });
+  }, []);
+
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", customerId],
     queryFn: async () => {
@@ -128,7 +170,7 @@ export default function CustomerDetailPage({
   });
 
   useEffect(() => {
-    if (customer && customer.measurements?.length === 0) {
+    if (customer && customer.measurements?.length === 0 && !showMeasurementForm) {
       setMeasurementValues({ ...BODY_MEASUREMENT_FIELDS });
     }
   }, [customer]);
@@ -653,7 +695,8 @@ export default function CustomerDetailPage({
               {(showMeasurementForm) ? (
                 <div className="space-y-5 border p-3 rounded-md bg-background">
 
-                  {/* Sectioned input grid */}
+                  {/* ── VOICE INPUT ── */}
+                  <MeasurementVoiceInput onResult={voiceOnResult} />
                   {BODY_MEASUREMENT_SECTIONS.map((section) => (
                     <div key={section.num} className="space-y-2">
                       {/* Section header */}
@@ -684,7 +727,7 @@ export default function CustomerDetailPage({
                     </div>
                   ))}
 
-                  {/* Extra custom fields carried from previous save */}
+                  {/* ── CUSTOM FIELDS (extra fields not in standard sections) ── */}
                   {Object.entries(measurementValues)
                     .filter(([key]) => !ALL_BODY_FIELDS.includes(key))
                     .map(([key, value]) => (
@@ -877,7 +920,17 @@ export default function CustomerDetailPage({
                     </div>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="py-6 text-center border border-dashed rounded-lg">
+                  <Ruler className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">No measurements yet</p>
+                  {can("create", "measurement") && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click <strong>Add</strong> above to enter body measurements.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
