@@ -333,7 +333,7 @@ export default function OutfitDetailPage() {
 
   // Upload reference
   const uploadRefMutation = useMutation({
-    mutationFn: async ({ file, type }: { file: File; type: string }) => {
+    mutationFn: async ({ file, type, isWorkPhoto }: { file: File; type: string; isWorkPhoto?: boolean }) => {
       const formData = new FormData();
       formData.append("file", file);
       const uploadRes = await fetch("/api/upload", {
@@ -346,13 +346,13 @@ export default function OutfitDetailPage() {
       const res = await fetch(`/api/outfits/${params.id}/references`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, url, filename }),
+        body: JSON.stringify({ type, url, filename, isWorkPhoto: isWorkPhoto === true }),
       });
       if (!res.ok) throw new Error("Failed to save reference");
       return res.json();
     },
-    onMutate: async ({ type }: { file: File; type: string }) => {
-      setUploadingType(type);
+    onMutate: async ({ type, isWorkPhoto }: { file: File; type: string; isWorkPhoto?: boolean }) => {
+      setUploadingType(isWorkPhoto ? "COMPLETION" : type);
     },
     onSettled: () => {
       setUploadingType(null);
@@ -419,8 +419,26 @@ export default function OutfitDetailPage() {
     (r: any) => r.type === "MAGGAM",
   );
   const fabricRefs = (outfit.references || []).filter(
-    (r: any) => r.type === "FABRIC",
+    (r: any) => r.type === "FABRIC" && !r.isWorkPhoto,
   );
+
+  // Completion / work photos — stored as FABRIC type with isWorkPhoto = true
+  const completionRefs = (outfit.references || []).filter(
+    (r: any) => r.isWorkPhoto === true,
+  );
+
+  // Completion photo upload is available from PRODUCTION_COMPLETED onwards
+  const completionStatuses = [
+    "PRODUCTION_COMPLETED",
+    "TRIAL",
+    "ALTERATION",
+    "QC",
+    "READY_FOR_DELIVERY",
+    "DELIVERED",
+  ];
+  const canUploadCompletion =
+    (role === "ADMIN" || role === "RECEPTION" || role === "DESIGNER") &&
+    completionStatuses.includes(outfit.status);
 
   const materialLockedStatuses = [
     "PATTERN_DRAFTING",
@@ -728,6 +746,8 @@ export default function OutfitDetailPage() {
               onDelete={(refId) => deleteRefMutation.mutate(refId)}
             />
           </div>
+
+
         </div>
 
         {/* RIGHT COLUMN: Accordion Workflow Sections */}
@@ -1126,6 +1146,35 @@ export default function OutfitDetailPage() {
                 )}
               </AccordionContent>
             </AccordionItem>
+
+            {/* Completion Photos — visible once production is complete */}
+            {(completionRefs.length > 0 || canUploadCompletion) && (
+              <AccordionItem
+                value="completion"
+                className="border rounded-lg bg-card px-3 sm:px-4"
+              >
+                <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
+                  <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+                    <Camera className="h-4 w-4 text-primary shrink-0" />
+                    Completion Photos
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {completionRefs.length}
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  <CompletionPhotosSection
+                    references={completionRefs}
+                    canUpload={canUploadCompletion}
+                    isUploading={uploadingType === "COMPLETION"}
+                    onUpload={(file) =>
+                      uploadRefMutation.mutate({ file, type: "FABRIC", isWorkPhoto: true })
+                    }
+                    onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            )}
           </Accordion>
         </div>
       </div>
@@ -1771,6 +1820,191 @@ function CustomerMaterialSection({
                 if (deleteRefId) {
                   handleDelete(deleteRefId);
                 }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ─── COMPLETION PHOTOS SECTION ───────────────────────────────────────────────
+
+function CompletionPhotosSection({
+  references,
+  canUpload,
+  isUploading,
+  onUpload,
+  onDelete,
+}: {
+  references: any[];
+  canUpload: boolean;
+  isUploading?: boolean;
+  onUpload: (file: File) => void;
+  onDelete: (refId: string) => void;
+}) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [deleteRefId, setDeleteRefId] = useState<string | null>(null);
+  const [loadingRefId, setLoadingRefId] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+
+  async function handleDelete(refId: string) {
+    setLoadingRefId(refId);
+    setDeleteRefId(null);
+    onDelete(refId);
+    setTimeout(() => setLoadingRefId(null), 600);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Completion Photos
+          </h3>
+          <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
+            Finished Work
+          </span>
+        </div>
+
+        {canUpload && (
+          <div className="flex items-center gap-2">
+            {isUploading ? (
+              <LoadingButton
+                size="sm"
+                variant="outline"
+                loading={true}
+                loadingText="Uploading..."
+              />
+            ) : (
+              <>
+                <label>
+                  <Button size="sm" variant="outline" asChild>
+                    <span>
+                      <Plus className="h-3 w-3 mr-1" /> Upload
+                    </span>
+                  </Button>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files) {
+                        Array.from(files).forEach((file) => onUpload(file));
+                      }
+                    }}
+                  />
+                </label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCameraOpen(true)}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Camera className="h-3.5 w-3.5" />
+                    Take Photo
+                  </span>
+                </Button>
+                <CameraCaptureModal
+                  open={cameraOpen}
+                  onClose={() => setCameraOpen(false)}
+                  onCapture={(file) => onUpload(file)}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Photos of the finished outfit — after stitching is complete.
+      </p>
+
+      {references.length === 0 ? (
+        <div className="py-4 text-center text-xs text-muted-foreground border border-dashed border-emerald-200 rounded-lg bg-emerald-50/40">
+          No completion photos yet
+          {canUpload && " — upload finished outfit photos above"}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {references.map((ref: any, index: number) => {
+            const isLoading = loadingRefId === ref.id;
+
+            return (
+              <div
+                key={ref.id}
+                className="relative rounded-lg border-2 border-emerald-200 overflow-hidden"
+              >
+                <img
+                  src={ref.url}
+                  alt="Completed outfit"
+                  className="aspect-square w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => {
+                    setViewerIndex(index);
+                    setViewerOpen(true);
+                  }}
+                />
+
+                {/* Finished badge */}
+                <div className="absolute top-1.5 left-1.5 bg-emerald-600/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                  ✓ Done
+                </div>
+
+                {isLoading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+
+                {canUpload && !isLoading && (
+                  <button
+                    className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteRefId(ref.id);
+                    }}
+                    aria-label="Delete completion photo"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <ImageViewer
+        images={references}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+
+      <AlertDialog
+        open={!!deleteRefId}
+        onOpenChange={(open) => !open && setDeleteRefId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Completion Photo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this completion photo? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteRefId) handleDelete(deleteRefId);
               }}
             >
               Delete

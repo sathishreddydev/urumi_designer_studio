@@ -64,7 +64,7 @@ export async function GET(
             const DESIGN_STATUSES = ["DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES"];
             const visibleRefs = DESIGN_STATUSES.includes(outfit.status)
               ? refs // Show all references during design phase for customer review
-              : refs.filter((r) => r.status === "LOCKED"); // After production starts, only show locked
+              : refs.filter((r) => r.status === "LOCKED" || r.isWorkPhoto === true); // After production: locked refs + completion photos
 
             return {
               id: outfit.id,

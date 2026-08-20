@@ -38,6 +38,7 @@ export const POST = withPermission(
         filename: body.filename,
         uploadedBy: session.id,
         isCustomerUpload: false,
+        isWorkPhoto: body.isWorkPhoto === true,
         notes: body.notes,
       })
       .returning();

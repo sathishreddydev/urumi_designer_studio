@@ -1,15 +1,5 @@
 "use client";
 
-import { useState, useMemo, use, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,29 +10,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
+import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  Phone,
-  Mail,
-  MapPin,
-  ShoppingBag,
   Calendar,
-  Shirt,
-  MessageCircle,
-  Pencil,
-  Plus,
-  Ruler,
-  Trash2,
-  Search,
-  IndianRupee,
-  X,
   ChevronDown,
   ChevronUp,
   History,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Plus,
+  Ruler,
+  Search,
+  Shirt,
+  ShoppingBag,
+  Trash2,
+  X
 } from "lucide-react";
-import { usePermissions } from "@/hooks/use-permissions";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useMemo, useState } from "react";
 
 // Body measurements grouped into sections.
 // Each section has a number, title, and ordered fields.
@@ -51,7 +50,7 @@ const BODY_MEASUREMENT_SECTIONS = [
     num: "01",
     title: "UPPER BODY",
     fields: [
-      "Shoulder Length",
+      "Shoulder",
       "Upper Bust",
       "Bust",
       "Lower Bust",
@@ -246,11 +245,7 @@ export default function CustomerDetailPage({
   }
 
   const totalOrders = customer.orders?.length || 0;
-  const totalOutfits =
-    customer.orders?.reduce(
-      (sum: number, o: any) => sum + (o.outfits?.length || 0),
-      0,
-    ) || 0;
+
   const totalPaid =
     customer.orders?.reduce(
       (sum: number, o: any) =>
