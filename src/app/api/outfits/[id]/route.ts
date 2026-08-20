@@ -138,6 +138,7 @@ export const PATCH = withPermission(
       if (body.deliveryDate) updateData.deliveryDate = new Date(body.deliveryDate);
       if (body.trialDate) updateData.trialDate = new Date(body.trialDate);
       if (body.garmentMeasurements !== undefined) updateData.garmentMeasurements = body.garmentMeasurements;
+      if (body.voiceNotes !== undefined) updateData.voiceNotes = body.voiceNotes;
     }
 
     // MASTER can update garment measurements too (they're stitching it)

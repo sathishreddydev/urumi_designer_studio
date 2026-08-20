@@ -125,6 +125,8 @@ export const outfits = pgTable("outfits", {
   // Garment-specific measurements stored directly on the outfit
   // (e.g. Front Length, Neck Front, Sleeve Round — fields that vary by garment type).
   garmentMeasurements: jsonb("garment_measurements").$type<Record<string, string>>(),
+  // Voice notes — array of { id, url, label, createdAt } recorded on the outfit
+  voiceNotes: jsonb("voice_notes").$type<{ id: string; url: string; label: string; createdAt: string }[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -60,6 +60,8 @@ import {
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
+import { VoiceNoteRecorder, type VoiceNote } from "@/components/voice-note-recorder";
+import { VoiceToTextButton } from "@/components/voice-to-text-button";
 
 const DEPENDENCY_TYPES = [
   "FABRIC",
@@ -125,6 +127,9 @@ export default function OutfitDetailPage() {
   const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] = useState(false);
   const [newGarmentField, setNewGarmentField] = useState("");
 
+  // Voice notes
+  const [voiceNotes, setVoiceNotes] = useState<{ id: string; url: string; label: string; createdAt: string }[]>([]);
+
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
     queryKey: ["outfit", params.id],
@@ -152,6 +157,8 @@ export default function OutfitDetailPage() {
         setGarmentMeasurements(saved);
       }
       setGarmentMeasurementsDirty(false);
+      // Seed voice notes
+      setVoiceNotes(outfit.voiceNotes || []);
     }
   }, [outfit?.id]);
 
@@ -1117,7 +1124,7 @@ export default function OutfitDetailPage() {
             )}
 
             {/* Design & Fitting Notes */}
-            {can("update", "outfit") && role !== "MASTER" && (
+            {(can("update", "outfit") || role === "MASTER") && (
               <AccordionItem
                 value="design"
                 className="border rounded-lg bg-card px-3 sm:px-4"
@@ -1129,64 +1136,35 @@ export default function OutfitDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 pb-4 space-y-4">
-                  <div className="space-y-3">
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Designer Instructions
-                    </Label>
-                    <Textarea
-                      defaultValue={outfit.designerNotes || ""}
-                      placeholder="Design notes, neck pattern preferences, embellishments..."
-                      rows={3}
-                      onBlur={(e) => {
-                        if (e.target.value !== (outfit.designerNotes || "")) {
-                          updateMutation.mutate({
-                            designerNotes: e.target.value,
-                          });
-                        }
-                      }}
-                    />
-                    <Textarea
-                      defaultValue={outfit.specialInstructions || ""}
-                      placeholder="Special tailoring instructions..."
-                      rows={2}
-                      onBlur={(e) => {
-                        if (
-                          e.target.value !== (outfit.specialInstructions || "")
-                        ) {
-                          updateMutation.mutate({
-                            specialInstructions: e.target.value,
-                          });
-                        }
-                      }}
-                    />
-                  </div>
+                  <DesignNotesSection
+                    outfit={outfit}
+                    updateMutation={updateMutation}
+                    readOnly={role === "MASTER"}
+                  />
 
                   <Separator />
 
-                  <div className="space-y-3">
+                  {/* Voice Notes */}
+                  <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Trial & Alterations
+                      Voice Notes
                     </Label>
-                    <Textarea
-                      defaultValue={outfit.trialNotes || ""}
-                      placeholder="Fit feedback during trial..."
-                      rows={2}
-                      onBlur={(e) => {
-                        if (e.target.value !== (outfit.trialNotes || "")) {
-                          updateMutation.mutate({ trialNotes: e.target.value });
-                        }
+                    <p className="text-[11px] text-muted-foreground">
+                      Record verbal instructions — plays back for the tailor in the workshop.
+                    </p>
+                    <VoiceNoteRecorder
+                      notes={voiceNotes}
+                      label="Design & Fitting"
+                      canRecord={!isLocked && role !== "MASTER"}
+                      onAdd={(note) => {
+                        const updated = [...voiceNotes, note];
+                        setVoiceNotes(updated);
+                        updateMutation.mutate({ voiceNotes: updated });
                       }}
-                    />
-                    <Textarea
-                      defaultValue={outfit.alterationNotes || ""}
-                      placeholder="Alteration fixes (e.g., shorten sleeves, tighten waist)..."
-                      rows={2}
-                      onBlur={(e) => {
-                        if (e.target.value !== (outfit.alterationNotes || "")) {
-                          updateMutation.mutate({
-                            alterationNotes: e.target.value,
-                          });
-                        }
+                      onDelete={(id) => {
+                        const updated = voiceNotes.filter((n) => n.id !== id);
+                        setVoiceNotes(updated);
+                        updateMutation.mutate({ voiceNotes: updated });
                       }}
                     />
                   </div>
@@ -2107,5 +2085,161 @@ function CompletionPhotosSection({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ─── DESIGN NOTES SECTION ─────────────────────────────────────────────────
+// Extracted as a separate component so it can hold its own controlled state
+// for the textareas (needed for voice-to-text appending).
+
+function DesignNotesSection({
+  outfit,
+  updateMutation,
+  readOnly = false,
+}: {
+  outfit: any;
+  updateMutation: any;
+  readOnly?: boolean;
+}) {
+  const [designerNotes, setDesignerNotes] = useState(outfit.designerNotes || "");
+  const [specialInstructions, setSpecialInstructions] = useState(outfit.specialInstructions || "");
+  const [trialNotes, setTrialNotes] = useState(outfit.trialNotes || "");
+  const [alterationNotes, setAlterationNotes] = useState(outfit.alterationNotes || "");
+
+  function save(field: string, value: string) {
+    if (readOnly) return;
+    updateMutation.mutate({ [field]: value });
+  }
+
+  return (
+    <>
+      {/* Designer Instructions */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+          Designer Instructions
+        </Label>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Design notes, neck pattern, embellishments</span>
+            {!readOnly && (
+              <VoiceToTextButton
+                onTranscript={(text) => {
+                  const updated = designerNotes ? designerNotes + " " + text : text;
+                  setDesignerNotes(updated);
+                  save("designerNotes", updated);
+                }}
+              />
+            )}
+          </div>
+          <Textarea
+            value={designerNotes}
+            placeholder={readOnly ? "No designer instructions recorded." : "Design notes, neck pattern preferences, embellishments..."}
+            rows={3}
+            readOnly={readOnly}
+            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
+            onChange={(e) => { if (!readOnly) setDesignerNotes(e.target.value); }}
+            onBlur={(e) => {
+              if (!readOnly && e.target.value !== (outfit.designerNotes || "")) {
+                save("designerNotes", e.target.value);
+              }
+            }}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Special tailoring instructions</span>
+            {!readOnly && (
+              <VoiceToTextButton
+                onTranscript={(text) => {
+                  const updated = specialInstructions ? specialInstructions + " " + text : text;
+                  setSpecialInstructions(updated);
+                  save("specialInstructions", updated);
+                }}
+              />
+            )}
+          </div>
+          <Textarea
+            value={specialInstructions}
+            placeholder={readOnly ? "No special instructions recorded." : "Special tailoring instructions..."}
+            rows={2}
+            readOnly={readOnly}
+            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
+            onChange={(e) => { if (!readOnly) setSpecialInstructions(e.target.value); }}
+            onBlur={(e) => {
+              if (!readOnly && e.target.value !== (outfit.specialInstructions || "")) {
+                save("specialInstructions", e.target.value);
+              }
+            }}
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Trial & Alterations */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+          Trial & Alterations
+        </Label>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Fit feedback during trial</span>
+            {!readOnly && (
+              <VoiceToTextButton
+                onTranscript={(text) => {
+                  const updated = trialNotes ? trialNotes + " " + text : text;
+                  setTrialNotes(updated);
+                  save("trialNotes", updated);
+                }}
+              />
+            )}
+          </div>
+          <Textarea
+            value={trialNotes}
+            placeholder={readOnly ? "No trial notes recorded." : "Fit feedback during trial..."}
+            rows={2}
+            readOnly={readOnly}
+            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
+            onChange={(e) => { if (!readOnly) setTrialNotes(e.target.value); }}
+            onBlur={(e) => {
+              if (!readOnly && e.target.value !== (outfit.trialNotes || "")) {
+                save("trialNotes", e.target.value);
+              }
+            }}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Alteration fixes</span>
+            {!readOnly && (
+              <VoiceToTextButton
+                onTranscript={(text) => {
+                  const updated = alterationNotes ? alterationNotes + " " + text : text;
+                  setAlterationNotes(updated);
+                  save("alterationNotes", updated);
+                }}
+              />
+            )}
+          </div>
+          <Textarea
+            value={alterationNotes}
+            placeholder={readOnly ? "No alteration notes recorded." : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."}
+            rows={2}
+            readOnly={readOnly}
+            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
+            onChange={(e) => { if (!readOnly) setAlterationNotes(e.target.value); }}
+            onBlur={(e) => {
+              if (!readOnly && e.target.value !== (outfit.alterationNotes || "")) {
+                save("alterationNotes", e.target.value);
+              }
+            }}
+          />
+        </div>
+      </div>
+    </>
   );
 }
