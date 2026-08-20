@@ -10,17 +10,6 @@ import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { Shirt, Calendar, AlertTriangle, ArrowRight } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 
-const PRODUCTION_STATUSES = [
-  "WAITING_FOR_DEPENDENCIES",
-  "PRODUCTION_READY",
-  "PATTERN_DRAFTING",
-  "MAGGAM_WORK",
-  "MAGGAM_REVIEW",
-  "FABRIC_CUTTING",
-  "STITCHING",
-  "PRODUCTION_COMPLETED",
-];
-
 export default function ProductionPage() {
   const queryClient = useQueryClient();
   const { role, session } = usePermissions();
@@ -78,7 +67,7 @@ export default function ProductionPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold lg:text-3xl">
+        <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">
           {role === "MASTER" ? "My Production Cards" : "Production"}
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -94,15 +83,15 @@ export default function ProductionPage() {
         </Card>
       ) : (
         <>
-          {/* Desktop: Table */}
-          <div className="hidden md:block rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+          {/* Desktop Table */}
+          <div className="hidden md:block rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Type</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
                   <th className="text-right px-4 py-3 font-medium">Action</th>
                 </tr>
               </thead>
@@ -114,25 +103,27 @@ export default function ProductionPage() {
 
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <Link href={`/dashboard/outfits/${outfit.id}`} className="font-medium hover:underline">
+                      <td className="px-4 py-3 max-w-[180px]">
+                        <Link href={`/dashboard/outfits/${outfit.id}`} className="font-medium hover:underline truncate block">
                           {outfit.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {outfit.type}
                         {outfit.maggamRequired && <span className="text-pink-600 ml-1">· M</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={getStatusColor(outfit.status)}>
-                          {formatStatus(outfit.status)}
-                        </Badge>
-                        {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
-                          <Badge variant="destructive" className="ml-1 text-[10px]">BLOCKED</Badge>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          <Badge className={`${getStatusColor(outfit.status)} text-xs whitespace-nowrap`}>
+                            {formatStatus(outfit.status)}
+                          </Badge>
+                          {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
+                            <Badge variant="destructive" className="text-[10px] whitespace-nowrap">BLOCKED</Badge>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={isUrgent ? "text-red-600 font-medium text-sm" : "text-muted-foreground text-sm"}>
                           {formatDate(outfit.deliveryDate)}
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>
@@ -144,17 +135,18 @@ export default function ProductionPage() {
                             loading={pendingId === outfit.id}
                             disabled={transitionMutation.isPending && pendingId !== outfit.id}
                             onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
+                            className="whitespace-nowrap text-xs"
                           >
-                            {formatStatus(next)} <ArrowRight className="h-3 w-3" />
+                            {formatStatus(next)} <ArrowRight className="h-3 w-3 ml-1" />
                           </LoadingButton>
                         ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
                           <Link href={`/dashboard/outfits/${outfit.id}`}>
-                            <LoadingButton size="sm" variant="destructive">
-                              <AlertTriangle className="h-3 w-3" /> View Blocker
+                            <LoadingButton size="sm" variant="destructive" className="text-xs whitespace-nowrap">
+                              <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                             </LoadingButton>
                           </Link>
                         ) : next && !isAssigned ? (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">Not assigned</Badge>
+                          <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Not assigned</Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -164,65 +156,68 @@ export default function ProductionPage() {
             </table>
           </div>
 
-          {/* Mobile: Cards */}
-          <div className="md:hidden space-y-3">
+          {/* Mobile Cards */}
+          <div className="md:hidden flex flex-col gap-3">
             {outfits.map((outfit: any) => {
               const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
               const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
               const isAssigned = role !== "MASTER" || outfit.masterId === undefined || outfit.masterName;
 
               return (
-                <Card key={outfit.id}>
-                  <CardContent className="pt-3 pb-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <p className="font-medium text-sm truncate">{outfit.name}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-5">
-                          {outfit.type}{outfit.maggamRequired && " · Maggam"}
-                        </p>
-                      </Link>
-                      <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
+                <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 space-y-3">
+                  {/* Top: name + badges */}
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <p className="font-medium text-sm truncate">{outfit.name}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground ml-5">
+                        {outfit.type}{outfit.maggamRequired && " · Maggam"}
+                      </p>
+                    </Link>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap max-w-[120px] truncate`}>
                         {formatStatus(outfit.status)}
                       </Badge>
                       {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
-                        <Badge variant="destructive" className="text-[10px] ml-1">BLOCKED</Badge>
+                        <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
                       )}
                     </div>
+                  </div>
 
-                    {outfit.deliveryDate && (
-                      <div className="flex items-center gap-1 text-xs ml-5">
-                        <Calendar className="h-3 w-3" />
-                        <span className={isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}>
-                          {formatDate(outfit.deliveryDate)}
-                          {isUrgent && " ⚠️"}
-                        </span>
-                      </div>
-                    )}
+                  {/* Delivery */}
+                  {outfit.deliveryDate && (
+                    <div className="flex items-center gap-1 text-xs ml-5">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      <span className={isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                        {formatDate(outfit.deliveryDate)}{isUrgent && " ⚠"}
+                      </span>
+                    </div>
+                  )}
 
-                    {next && isAssigned ? (
-                      <LoadingButton
-                        size="sm"
-                        className="w-full mt-1"
-                        loading={pendingId === outfit.id}
-                        disabled={transitionMutation.isPending && pendingId !== outfit.id}
-                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
-                      >
-                        {formatStatus(next)} <ArrowRight className="h-3 w-3" />
+                  {/* Action */}
+                  {next && isAssigned ? (
+                    <LoadingButton
+                      size="sm"
+                      className="w-full text-xs"
+                      loading={pendingId === outfit.id}
+                      disabled={transitionMutation.isPending && pendingId !== outfit.id}
+                      onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
+                    >
+                      <span className="truncate">Move to {formatStatus(next)}</span>
+                      <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
+                    </LoadingButton>
+                  ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
+                    <Link href={`/dashboard/outfits/${outfit.id}`} className="block">
+                      <LoadingButton size="sm" variant="destructive" className="w-full text-xs">
+                        <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                       </LoadingButton>
-                    ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
-                      <Link href={`/dashboard/outfits/${outfit.id}`} className="block mt-1">
-                        <LoadingButton size="sm" variant="destructive" className="w-full">
-                          <AlertTriangle className="h-3 w-3" /> View Blocker
-                        </LoadingButton>
-                      </Link>
-                    ) : next && !isAssigned ? (
-                      <p className="text-xs text-muted-foreground ml-5">Not assigned to you</p>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                    </Link>
+                  ) : next && !isAssigned ? (
+                    <p className="text-xs text-muted-foreground ml-5">Not assigned to you</p>
+                  ) : null}
+                </div>
               );
             })}
           </div>
@@ -233,7 +228,6 @@ export default function ProductionPage() {
 }
 
 function getNextStatus(current: string, maggamRequired: boolean, role: string): string | null {
-  // Master transitions
   if (role === "MASTER" || role === "ADMIN") {
     const masterTransitions: Record<string, string> = {
       PRODUCTION_READY: "PATTERN_DRAFTING",
@@ -244,11 +238,8 @@ function getNextStatus(current: string, maggamRequired: boolean, role: string): 
     };
     if (masterTransitions[current]) return masterTransitions[current];
   }
-
-  // Designer transitions (maggam review)
   if (role === "DESIGNER" || role === "ADMIN") {
     if (current === "MAGGAM_REVIEW") return "FABRIC_CUTTING";
   }
-
   return null;
 }

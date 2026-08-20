@@ -100,63 +100,6 @@ const BODY_MEASUREMENT_FIELDS: Record<string, string> = Object.fromEntries(
   ALL_BODY_FIELDS.map((f) => [f, ""])
 );
 
-// Keep legacy templates only for "Copy Previous" migration — new saves always use body fields.
-const MEASUREMENT_TEMPLATES: Record<string, Record<string, string>> = {
-  Blouse: {
-    Bust: "",
-    "Upper Chest": "",
-    Waist: "",
-    Shoulder: "",
-    "Arm Length": "",
-    Armhole: "",
-    "Sleeve Round": "",
-    "Neck Front": "",
-    "Neck Back": "",
-    "Front Length": "",
-    "Back Length": "",
-  },
-  Lehenga: {
-    Waist: "",
-    Hip: "",
-    "Lehenga Length": "",
-    "Flare / Gher": "",
-  },
-  "Kurti / Suit": {
-    Bust: "",
-    Waist: "",
-    Hip: "",
-    Shoulder: "",
-    "Kurti Length": "",
-    "Arm Length": "",
-    Armhole: "",
-    "Neck Front": "",
-    "Neck Back": "",
-    "Side Slit Start": "",
-  },
-  Anarkali: {
-    Bust: "",
-    "Upper Chest": "",
-    Waist: "",
-    Shoulder: "",
-    "Anarkali Length": "",
-    "Yoke Length": "",
-    "Arm Length": "",
-    "Neck Front": "",
-    "Neck Back": "",
-    "Flare / Gher": "",
-  },
-  Gown: {
-    Bust: "",
-    Waist: "",
-    Hip: "",
-    Shoulder: "",
-    "Full Length": "",
-    "Yoke Length": "",
-    "Arm Length": "",
-    "Neck Front": "",
-    "Neck Back": "",
-  }
-};
 
 export default function CustomerDetailPage({
   params,
@@ -468,20 +411,21 @@ export default function CustomerDetailPage({
                   >
                     <Card className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-sm">
                       <CardContent className="pt-4 pb-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-base">
+                        {/* Order header: number + badge + date */}
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="font-semibold text-sm truncate">
                               {order.orderNumber}
                             </span>
                             <Badge
-                              className={getStatusColor(order.status)}
+                              className={`${getStatusColor(order.status)} text-[10px] shrink-0`}
                               variant="secondary"
                             >
                               {order.status}
                             </Badge>
                           </div>
                           {order.deliveryDate && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
                               <Calendar className="h-3.5 w-3.5" />
                               {formatDate(order.deliveryDate)}
                             </span>
@@ -493,38 +437,34 @@ export default function CustomerDetailPage({
                             {order.outfits.map((outfit: any) => (
                               <div
                                 key={outfit.id}
-                                className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-xs"
+                                className="flex items-start justify-between rounded-md bg-muted/40 px-3 py-2 text-xs gap-2"
                               >
-                                <div className="flex items-center gap-2">
-                                  <Shirt className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span className="font-medium">
-                                    {outfit.name}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    · {outfit.type}
-                                  </span>
-                                  {/* Fabric image thumbnails */}
-                                  {(() => {
-                                    const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
-                                    if (fabricRefs.length === 0) return null;
-                                    return (
-                                      <div className="flex items-center gap-1 ml-1">
-                                        {fabricRefs.slice(0, 3).map((ref: any) => (
-                                          <div key={ref.id} className="h-5 w-5 rounded-sm overflow-hidden border border-border">
-                                            <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
-                                          </div>
-                                        ))}
-                                        {fabricRefs.length > 3 && (
-                                          <span className="text-[9px] text-muted-foreground">+{fabricRefs.length - 3}</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
+                                <div className="flex items-start gap-2 min-w-0 flex-1">
+                                  <Shirt className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                  <div className="min-w-0">
+                                    <span className="font-medium block truncate">{outfit.name}</span>
+                                    <span className="text-muted-foreground">{outfit.type}</span>
+                                    {/* Fabric image thumbnails */}
+                                    {(() => {
+                                      const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
+                                      if (fabricRefs.length === 0) return null;
+                                      return (
+                                        <div className="flex items-center gap-1 mt-1">
+                                          {fabricRefs.slice(0, 3).map((ref: any) => (
+                                            <div key={ref.id} className="h-5 w-5 rounded-sm overflow-hidden border border-border shrink-0">
+                                              <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
+                                            </div>
+                                          ))}
+                                          {fabricRefs.length > 3 && (
+                                            <span className="text-[9px] text-muted-foreground">+{fabricRefs.length - 3}</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                                 <Badge
-                                  className={`text-[10px] ${getStatusColor(
-                                    outfit.status,
-                                  )}`}
+                                  className={`text-[10px] shrink-0 ${getStatusColor(outfit.status)}`}
                                 >
                                   {formatStatus(outfit.status)}
                                 </Badge>
@@ -538,28 +478,28 @@ export default function CustomerDetailPage({
                         )}
 
                         <div className="pt-2 border-t space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <span className="text-muted-foreground">
+                          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-muted-foreground whitespace-nowrap">
                                 Paid:{" "}
                                 <strong className="text-green-600 font-semibold">
                                   ₹{orderPaid.toLocaleString()}
                                 </strong>
                               </span>
                               {order.estimatedAmount && orderBalance > 0 && (
-                                <span className="text-destructive font-medium">
+                                <span className="text-destructive font-medium whitespace-nowrap">
                                   Bal: ₹{orderBalance.toLocaleString()}
                                 </span>
                               )}
                             </div>
-                            <span className="text-muted-foreground">
+                            <span className="text-muted-foreground whitespace-nowrap">
                               {formatDate(order.orderDate)}
                             </span>
                           </div>
                           {(order.payments || []).length > 0 && (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                               {(order.payments || []).map((p: any, idx: number) => (
-                                <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                                <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-muted px-1.5 py-0.5 rounded whitespace-nowrap">
                                   {p.method} · ₹{Number(p.amount).toLocaleString()}
                                 </span>
                               ))}
@@ -581,20 +521,20 @@ export default function CustomerDetailPage({
         <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  {customer.name}
+              <div className="min-w-0 flex-1 pr-2">
+                <CardTitle className="text-base font-bold flex flex-wrap items-center gap-2 sm:text-xl">
+                  <span className="truncate">{customer.name}</span>
                   {customer.occasion && (
-                    <Badge variant="outline" className="text-xs font-normal">
+                    <Badge variant="outline" className="text-xs font-normal shrink-0">
                       {customer.occasion}
                     </Badge>
                   )}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Customer ID: {customer.id.slice(0, 8)}
+                  ID: {customer.id.slice(0, 8)}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <Link href={`/dashboard/customers/${customer.id}/edit`}>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Pencil className="h-4 w-4" />
@@ -613,19 +553,15 @@ export default function CustomerDetailPage({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-             
               <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-4 w-4" /> {customer.mobile}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                    <Phone className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{customer.mobile}</span>
                   </span>
                   {cleanMobile && (
-                    <a href={`tel:${cleanMobile}`}>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="h-7 text-xs"
-                      >
+                    <a href={`tel:${cleanMobile}`} className="shrink-0">
+                      <Button variant="outline" size="xs" className="h-7 text-xs">
                         Call
                       </Button>
                     </a>
@@ -633,20 +569,18 @@ export default function CustomerDetailPage({
                 </div>
 
                 {customer.whatsapp && (
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <MessageCircle className="h-4 w-4" /> {customer.whatsapp}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                      <MessageCircle className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{customer.whatsapp}</span>
                     </span>
                     <a
                       href={`https://wa.me/${cleanWhatsapp}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="shrink-0"
                     >
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="h-7 text-xs"
-                      >
+                      <Button variant="outline" size="xs" className="h-7 text-xs whitespace-nowrap">
                         WhatsApp
                       </Button>
                     </a>

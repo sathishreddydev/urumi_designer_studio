@@ -225,19 +225,19 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Info */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-        <Card><CardContent className="pt-3 pb-3">
-          <p className="text-xs text-muted-foreground">Order Date</p>
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card px-3 py-2.5">
+          <p className="text-[10px] text-muted-foreground">Order Date</p>
           <p className="text-sm font-medium">{formatDate(order.orderDate)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-3 pb-3">
-          <p className="text-xs text-muted-foreground">Trial Date</p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2.5">
+          <p className="text-[10px] text-muted-foreground">Trial Date</p>
           <p className="text-sm font-medium">{formatDate(order.trialDate)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-3 pb-3">
-          <p className="text-xs text-muted-foreground">Delivery Date</p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2.5 col-span-2 sm:col-span-1">
+          <p className="text-[10px] text-muted-foreground">Delivery Date</p>
           <p className="text-sm font-medium">{formatDate(order.deliveryDate)}</p>
-        </CardContent></Card>
+        </div>
       </div>
 
       {/* Payment Summary */}
@@ -347,6 +347,7 @@ export default function OrderDetailPage() {
             (order.outfits || []).map((outfit: any) => (
               <Card key={outfit.id}>
                 <CardContent className="pt-4 pb-4">
+                  {/* Outfit name + badge — stacked on mobile */}
                   <div className="flex items-start justify-between gap-2">
                     <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -363,7 +364,7 @@ export default function OrderDetailPage() {
                         }
                       </p>
                     </Link>
-                    <Badge className={getStatusColor(outfit.status)}>
+                    <Badge className={`${getStatusColor(outfit.status)} text-[10px] shrink-0 max-w-[130px] truncate`}>
                       {formatStatus(outfit.status)}
                     </Badge>
                   </div>
@@ -460,9 +461,10 @@ export default function OrderDetailPage() {
                           transactionRef: form.get("transactionRef") || undefined,
                       });
                     }}
-                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                    className="space-y-3"
                   >
-                      <div className="space-y-1 w-full sm:w-56">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
                         <Label className="text-xs">Apply To Outfit</Label>
                         <select name="outfitId" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                           <option value="">Whole Order</option>
@@ -471,27 +473,27 @@ export default function OrderDetailPage() {
                           ))}
                         </select>
                       </div>
-
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-xs">Amount (₹)</Label>
-                      <Input name="amount" type="number" placeholder="5000" min="1" step="1" className="h-9" required />
+                      <div className="space-y-1">
+                        <Label className="text-xs">Amount (₹)</Label>
+                        <Input name="amount" type="number" placeholder="5000" min="1" step="1" className="h-9" required />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Method</Label>
+                        <select name="method" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm" required>
+                          <option value="CASH">Cash</option>
+                          <option value="UPI">UPI</option>
+                          <option value="CARD">Card</option>
+                          <option value="BANK_TRANSFER">Bank Transfer</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Transaction / Ref</Label>
+                        <Input name="transactionRef" placeholder="Txn ref / UPI ID" className="h-9" />
+                      </div>
                     </div>
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-xs">Method</Label>
-                      <select name="method" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm" required>
-                        <option value="CASH">Cash</option>
-                        <option value="UPI">UPI</option>
-                        <option value="CARD">Card</option>
-                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-xs">Transaction / Ref</Label>
-                      <Input name="transactionRef" placeholder="Txn ref / UPI ID" className="h-9" />
-                    </div>
-                    <Input name="notes" placeholder="Notes" className="h-9 flex-1" />
-                    <LoadingButton size="sm" type="submit" loading={addPaymentMutation.isPending} loadingText="Saving...">
-                      Record
+                    <Input name="notes" placeholder="Notes (optional)" className="h-9" />
+                    <LoadingButton size="sm" type="submit" loading={addPaymentMutation.isPending} loadingText="Saving..." className="w-full sm:w-auto">
+                      Record Payment
                     </LoadingButton>
                   </form>
                 </CardContent>
@@ -509,18 +511,24 @@ export default function OrderDetailPage() {
                 <CardContent className="pt-4 pb-4">
                   <div className="space-y-2">
                     {(order.payments || []).map((payment: any) => (
-                      <div key={payment.id} className="flex items-center justify-between text-sm">
-                        <div>
+                      <div key={payment.id} className="flex items-start justify-between gap-3 text-sm py-1">
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium">{payment.method}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(payment.createdAt)}</p>
-                          {payment.transactionRef && <p className="text-xs text-muted-foreground">Ref: {payment.transactionRef}</p>}
-                          {payment.outfitId && (
-                            <p className="text-xs text-muted-foreground">For: {(order.outfits || []).find((o: any) => o.id === payment.outfitId)?.name || "Outfit"}</p>
+                          {payment.transactionRef && (
+                            <p className="text-xs text-muted-foreground truncate">Ref: {payment.transactionRef}</p>
                           )}
-                          {payment.notes && <p className="text-xs text-muted-foreground">{payment.notes}</p>}
+                          {payment.outfitId && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              For: {(order.outfits || []).find((o: any) => o.id === payment.outfitId)?.name || "Outfit"}
+                            </p>
+                          )}
+                          {payment.notes && (
+                            <p className="text-xs text-muted-foreground truncate">{payment.notes}</p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <p className="font-semibold">₹{Number(payment.amount).toLocaleString()}</p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <p className="font-semibold whitespace-nowrap">₹{Number(payment.amount).toLocaleString()}</p>
                           {isAdmin && (
                             <Button
                               variant="ghost"

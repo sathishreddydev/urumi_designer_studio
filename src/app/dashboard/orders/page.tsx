@@ -167,52 +167,50 @@ export default function OrdersPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="md:hidden space-y-2">
+          <div className="md:hidden flex flex-col gap-3">
             {data.orders.map((order: any) => {
               const estimated = Number(order.estimatedAmount) || 0;
               const paid = order.totalPaid || 0;
               const balance = estimated - paid;
               return (
-                <Link key={order.id} href={`/dashboard/orders/${order.id}`}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
-                    <CardContent className="pt-3 pb-3">
-                      {/* Top row: order + badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm truncate">{order.orderNumber}</p>
-                          <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
-                        </div>
-                        <Badge className={`${getStatusColor(order.status)} text-[10px] shrink-0 max-w-[110px] truncate`}>
-                          {order.status}
-                        </Badge>
+                <Link key={order.id} href={`/dashboard/orders/${order.id}`} className="block">
+                  <div className="rounded-xl border bg-card shadow-sm p-4 active:scale-[0.99] transition-all hover:shadow-md">
+                    {/* Top row: order number + status badge */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm truncate">{order.orderNumber}</p>
+                        <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
                       </div>
+                      <Badge className={`${getStatusColor(order.status)} text-[10px] shrink-0 max-w-[120px] truncate`}>
+                        {order.status}
+                      </Badge>
+                    </div>
 
-                      {/* Bottom row: financials + delivery */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
-                        {estimated > 0 && (
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                            Est: ₹{estimated.toLocaleString("en-IN")}
-                          </span>
-                        )}
-                        {paid > 0 && (
-                          <span className="text-[11px] text-green-600 font-medium whitespace-nowrap">
-                            Paid: ₹{paid.toLocaleString("en-IN")}
-                          </span>
-                        )}
-                        {estimated > 0 && balance > 0 && (
-                          <span className="text-[11px] text-red-600 font-medium whitespace-nowrap">
-                            Bal: ₹{balance.toLocaleString("en-IN")}
-                          </span>
-                        )}
-                        {order.deliveryDate && (
-                          <span className="text-[11px] text-muted-foreground ml-auto flex items-center gap-0.5 whitespace-nowrap">
-                            <Calendar className="h-3 w-3 shrink-0" />
-                            {formatDate(order.deliveryDate)}
-                          </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    {/* Bottom row: financials + delivery */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {estimated > 0 && (
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          Est: ₹{estimated.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                      {paid > 0 && (
+                        <span className="text-[11px] text-green-600 font-medium whitespace-nowrap">
+                          Paid: ₹{paid.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                      {estimated > 0 && balance > 0 && (
+                        <span className="text-[11px] text-red-600 font-medium whitespace-nowrap">
+                          Bal: ₹{balance.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                      {order.deliveryDate && (
+                        <span className="text-[11px] text-muted-foreground ml-auto flex items-center gap-0.5 whitespace-nowrap">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          {formatDate(order.deliveryDate)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </Link>
               );
             })}

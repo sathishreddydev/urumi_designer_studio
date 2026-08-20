@@ -37,7 +37,7 @@ export function DashboardReports() {
 
   return (
     <div className="space-y-4">
-      {/* Period selector + revenue cards */}
+      {/* Period selector */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Business Overview</h3>
         <div className="flex gap-1">
@@ -55,12 +55,13 @@ export function DashboardReports() {
         </div>
       </div>
 
+      {/* Revenue cards — 1 col on xs, 3 on sm+ */}
       <div className="grid gap-3 grid-cols-3">
         <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-1.5">
+          <CardContent className="pt-3 pb-3 px-3">
+            <div className="flex items-center gap-2">
               <div className="rounded-md bg-green-100 p-1.5 dark:bg-green-900/30 shrink-0">
-                <IndianRupee className="h-3 w-3 text-green-700 dark:text-green-400" />
+                <IndianRupee className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate">₹{summary.totalRevenue?.toLocaleString() || 0}</p>
@@ -71,10 +72,10 @@ export function DashboardReports() {
         </Card>
 
         <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-1.5">
+          <CardContent className="pt-3 pb-3 px-3">
+            <div className="flex items-center gap-2">
               <div className="rounded-md bg-amber-100 p-1.5 dark:bg-amber-900/30 shrink-0">
-                <TrendingUp className="h-3 w-3 text-amber-700 dark:text-amber-400" />
+                <TrendingUp className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold">{summary.ordersInPeriod || 0}</p>
@@ -85,10 +86,10 @@ export function DashboardReports() {
         </Card>
 
         <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-1.5">
+          <CardContent className="pt-3 pb-3 px-3">
+            <div className="flex items-center gap-2">
               <div className="rounded-md bg-cyan-100 p-1.5 dark:bg-cyan-900/30 shrink-0">
-                <Clock className="h-3 w-3 text-cyan-700 dark:text-cyan-400" />
+                <Clock className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold">
