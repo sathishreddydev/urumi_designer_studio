@@ -616,7 +616,7 @@ export default function CustomerDetailPage({
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Ruler className="h-4 w-4" /> Body Measurements
               </CardTitle>
-              {can("create", "measurement") && customer.measurements?.length > 0 && (
+              {can("create", "measurement") && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -627,7 +627,6 @@ export default function CustomerDetailPage({
                       ALL_BODY_FIELDS.forEach((k) => {
                         prefilled[k] = latest[k] || "";
                       });
-                      // carry over any extra custom fields from previous save
                       Object.entries(latest).forEach(([k, v]) => {
                         if (!(k in prefilled)) prefilled[k] = v as string;
                       });
@@ -636,8 +635,13 @@ export default function CustomerDetailPage({
                     setShowMeasurementForm(!showMeasurementForm);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  {showMeasurementForm ? "Cancel" : "Update"}
+                  {showMeasurementForm ? (
+                    <><X className="h-3.5 w-3.5 mr-1" /> Cancel</>
+                  ) : customer.measurements?.length > 0 ? (
+                    <><Pencil className="h-3.5 w-3.5 mr-1" /> Update</>
+                  ) : (
+                    <><Plus className="h-3.5 w-3.5 mr-1" /> Add</>
+                  )}
                 </Button>
               )}
             </CardHeader>
@@ -646,7 +650,7 @@ export default function CustomerDetailPage({
                 Body dimensions only. Garment-specific lengths &amp; neck depths are entered on each outfit. <strong>All values in inches.</strong>
               </p>
 
-              {(showMeasurementForm || customer.measurements?.length === 0) ? (
+              {(showMeasurementForm) ? (
                 <div className="space-y-5 border p-3 rounded-md bg-background">
 
                   {/* Sectioned input grid */}
@@ -658,19 +662,22 @@ export default function CustomerDetailPage({
                         <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
                         <div className="flex-1 h-px bg-border" />
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {(section.fields as unknown as string[]).map((field) => (
-                          <div key={field} className="space-y-0.5">
-                            <Label className="text-[11px] text-muted-foreground">{field}</Label>
-                            <Input
-                              value={measurementValues[field] ?? ""}
-                              onChange={(e) =>
-                                setMeasurementValues((prev) => ({ ...prev, [field]: e.target.value }))
-                              }
-                              placeholder="inches"
-                              inputMode="decimal"
-                              className="h-7 text-xs"
-                            />
+                          <div key={field} className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{field}</Label>
+                            <div className="relative">
+                              <Input
+                                value={measurementValues[field] ?? ""}
+                                onChange={(e) =>
+                                  setMeasurementValues((prev) => ({ ...prev, [field]: e.target.value }))
+                                }
+                                placeholder='0.0"'
+                                inputMode="decimal"
+                                className="h-10 text-sm pr-7"
+                              />
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">"</span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -682,26 +689,29 @@ export default function CustomerDetailPage({
                     .filter(([key]) => !ALL_BODY_FIELDS.includes(key))
                     .map(([key, value]) => (
                       <div key={key} className="flex items-end gap-2">
-                        <div className="flex-1 space-y-0.5">
+                        <div className="flex-1 space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-[11px]">{key}</Label>
+                            <Label className="text-xs">{key}</Label>
                             <button
                               type="button"
                               onClick={() => handleRemoveField(key)}
                               className="text-muted-foreground hover:text-destructive"
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                          <Input
-                            value={value}
-                            onChange={(e) =>
-                              setMeasurementValues((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                            placeholder="inches"
-                            inputMode="decimal"
-                            className="h-7 text-xs"
-                          />
+                          <div className="relative">
+                            <Input
+                              value={value}
+                              onChange={(e) =>
+                                setMeasurementValues((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              placeholder='0.0"'
+                              inputMode="decimal"
+                              className="h-10 text-sm pr-7"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">"</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -712,20 +722,20 @@ export default function CustomerDetailPage({
                       value={newField}
                       onChange={(e) => setNewField(e.target.value)}
                       placeholder="Custom field (e.g. Bicep)"
-                      className="h-7 text-xs"
+                      className="h-10 text-sm"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") { e.preventDefault(); handleAddField(); }
                       }}
                     />
-                    <Button size="xs" variant="outline" type="button" className="h-7 px-2 shrink-0" onClick={handleAddField}>
-                      <Plus className="h-3 w-3" />
+                    <Button size="sm" variant="outline" type="button" className="h-10 px-3 shrink-0" onClick={handleAddField}>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       size="sm"
-                      className="w-full text-xs h-8"
+                      className="flex-1 h-10 text-sm"
                       disabled={addMeasurementMutation.isPending}
                       onClick={() => addMeasurementMutation.mutate({ values: measurementValues })}
                     >
@@ -735,7 +745,7 @@ export default function CustomerDetailPage({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-xs h-8"
+                        className="h-10"
                         onClick={() => { setShowMeasurementForm(false); setMeasurementValues({}); }}
                       >
                         Cancel
