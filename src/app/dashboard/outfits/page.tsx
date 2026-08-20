@@ -185,7 +185,7 @@ export default function OutfitsPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="md:hidden space-y-2">
+          <div className="md:hidden flex flex-col gap-3">
             {outfits.map((outfit: any) => {
               const isBlocked = outfit.status === "WAITING_FOR_DEPENDENCIES";
               const isUrgent =
@@ -193,55 +193,50 @@ export default function OutfitsPage() {
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
               return (
-                <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
-                    <CardContent className="pt-3 pb-3">
-                      {/* Top: name + badges */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
-                            <p className="font-medium text-sm truncate">{outfit.name}</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground ml-5 truncate">
-                            {outfit.customerName && `${outfit.customerName} · `}
-                            {outfit.type}
-                            {outfit.maggamRequired && " · Maggam"}
-                          </p>
-                          {outfit.orderNumber && (
-                            <p className="text-[10px] text-muted-foreground ml-5">{outfit.orderNumber}</p>
-                          )}
+                <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`} className="block">
+                  <div className="rounded-xl border bg-card shadow-sm p-4 active:scale-[0.99] transition-all hover:shadow-md">
+                    {/* Top row: name + status badge */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <p className="font-semibold text-sm truncate">{outfit.name}</p>
                         </div>
-                        {/* Badges stacked */}
-                        <div className="flex flex-col items-end gap-1 shrink-0 max-w-[120px]">
-                          <Badge className={`${getStatusColor(outfit.status)} text-[10px] truncate w-full text-center`}>
-                            {formatStatus(outfit.status)}
-                          </Badge>
-                          {isBlocked && (
-                            <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
-                          )}
-                        </div>
+                        <p className="text-xs text-muted-foreground ml-5 truncate">
+                          {outfit.customerName && `${outfit.customerName} · `}
+                          {outfit.type}
+                          {outfit.maggamRequired && " · Maggam"}
+                        </p>
+                        {outfit.orderNumber && (
+                          <p className="text-[10px] text-muted-foreground ml-5">{outfit.orderNumber}</p>
+                        )}
                       </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge className={`${getStatusColor(outfit.status)} text-[10px] max-w-[120px] truncate`}>
+                          {formatStatus(outfit.status)}
+                        </Badge>
+                        {isBlocked && (
+                          <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
+                        )}
+                      </div>
+                    </div>
 
-                      {/* Bottom: delivery + master */}
-                      <div className="flex items-center justify-between mt-1.5 ml-5 gap-2">
-                        {outfit.deliveryDate && (
-                          <div className="flex items-center gap-1 text-xs">
-                            <Calendar className="h-3 w-3 shrink-0" />
-                            <span className={isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}>
-                              {formatDate(outfit.deliveryDate)}
-                              {isUrgent && " ⚠"}
-                            </span>
-                          </div>
-                        )}
-                        {outfit.masterName && (
-                          <p className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
-                            M: {outfit.masterName}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    {/* Bottom row: delivery + master */}
+                    <div className="flex items-center gap-x-3 ml-5">
+                      {outfit.deliveryDate && (
+                        <span className={`text-[11px] flex items-center gap-0.5 whitespace-nowrap ${isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          {formatDate(outfit.deliveryDate)}
+                          {isUrgent && <AlertTriangle className="h-3 w-3 ml-0.5" />}
+                        </span>
+                      )}
+                      {outfit.masterName && (
+                        <p className="text-[11px] text-muted-foreground ml-auto truncate max-w-[100px]">
+                          M: {outfit.masterName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </Link>
               );
             })}
