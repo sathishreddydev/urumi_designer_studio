@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
+import { ContactPickerButton } from "@/components/contact-picker-button";
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function NewCustomerPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
@@ -69,7 +71,15 @@ export default function NewCustomerPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mobile">Mobile *</Label>
-                <Input id="mobile" {...register("mobile")} placeholder="10-digit mobile" />
+                <div className="flex gap-2">
+                  <Input id="mobile" {...register("mobile")} placeholder="10-digit mobile" className="flex-1" />
+                  <ContactPickerButton
+                    onPick={({ name, tel }) => {
+                      setValue("mobile", tel, { shouldValidate: true });
+                      if (name) setValue("name", name, { shouldValidate: true });
+                    }}
+                  />
+                </div>
                 {errors.mobile && <p className="text-xs text-destructive">{errors.mobile.message}</p>}
               </div>
               <div className="space-y-2">

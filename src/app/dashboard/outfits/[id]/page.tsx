@@ -53,6 +53,7 @@ import {
   Scissors,
   FileText,
   History,
+  X,
   Layers,
   Camera,
 } from "lucide-react";
@@ -122,6 +123,7 @@ export default function OutfitDetailPage() {
   // Garment-specific measurements (editable inline)
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
   const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] = useState(false);
+  const [newGarmentField, setNewGarmentField] = useState("");
 
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
@@ -708,25 +710,51 @@ export default function OutfitDetailPage() {
                   // Check if body measurements have a value for the same field name
                   const bodyValue = outfit.customerMeasurements?.values?.[field];
                   const isDuplicate = bodyValue && bodyValue !== "" && bodyValue !== value && value !== "";
-                  const isSameAsBody = bodyValue && bodyValue !== "" && bodyValue === value;
+
+                  // Determine if this is a template field or a custom-added field
+                  const typeKey = Object.keys(GARMENT_FIELDS).find(
+                    (k) => k.toLowerCase() === (outfit.type || "").toLowerCase()
+                  ) || outfit.type;
+                  const templateFields = GARMENT_FIELDS[typeKey] || [];
+                  const isCustomField = !templateFields.includes(field);
 
                   return (
                     <div key={field} className="space-y-0.5">
                       <div className="flex items-center justify-between gap-1">
                         <label className="text-[11px] text-muted-foreground truncate">{field}</label>
-                        {/* Body reference hint */}
-                        {bodyValue && bodyValue !== "" && (
-                          <span
-                            className={`text-[9px] shrink-0 px-1 rounded font-medium ${
-                              isDuplicate
-                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                            title={`Body measurement: ${bodyValue}"`}
-                          >
-                            B:{bodyValue}"
-                          </span>
-                        )}
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {/* Body reference hint */}
+                          {bodyValue && bodyValue !== "" && (
+                            <span
+                              className={`text-[9px] px-1 rounded font-medium ${
+                                isDuplicate
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                              title={`Body measurement: ${bodyValue}"`}
+                            >
+                              B:{bodyValue}"
+                            </span>
+                          )}
+                          {/* Remove button for custom fields */}
+                          {isCustomField && role !== "RECEPTION" && (
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => {
+                                setGarmentMeasurements((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy[field];
+                                  return copy;
+                                });
+                                setGarmentMeasurementsDirty(true);
+                              }}
+                              title="Remove field"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {role === "RECEPTION" ? (
                         <p className="h-7 text-xs px-2 flex items-center font-semibold">
@@ -760,6 +788,42 @@ export default function OutfitDetailPage() {
 
               {Object.keys(garmentMeasurements).length === 0 && (
                 <p className="text-xs text-muted-foreground italic">No fields for this garment type.</p>
+              )}
+
+              {/* Add custom garment field — not available to RECEPTION */}
+              {role !== "RECEPTION" && (
+                <div className="flex gap-2 pt-1">
+                  <Input
+                    value={newGarmentField}
+                    onChange={(e) => setNewGarmentField(e.target.value)}
+                    placeholder="Custom field (e.g. Sleeve Round)"
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const key = newGarmentField.trim();
+                        if (!key || key in garmentMeasurements) return;
+                        setGarmentMeasurements((prev) => ({ ...prev, [key]: "" }));
+                        setGarmentMeasurementsDirty(true);
+                        setNewGarmentField("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2 shrink-0"
+                    onClick={() => {
+                      const key = newGarmentField.trim();
+                      if (!key || key in garmentMeasurements) return;
+                      setGarmentMeasurements((prev) => ({ ...prev, [key]: "" }));
+                      setGarmentMeasurementsDirty(true);
+                      setNewGarmentField("");
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
           </div>

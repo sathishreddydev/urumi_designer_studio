@@ -14,6 +14,7 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { ArrowLeft } from "lucide-react";
 import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
+import { ContactPickerButton } from "@/components/contact-picker-button";
 
 export default function EditCustomerPage() {
   const params = useParams();
@@ -33,6 +34,7 @@ export default function EditCustomerPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
@@ -95,7 +97,15 @@ export default function EditCustomerPage() {
               </div>
               <div className="space-y-2">
                 <Label>Mobile *</Label>
-                <Input {...register("mobile")} />
+                <div className="flex gap-2">
+                  <Input {...register("mobile")} className="flex-1" />
+                  <ContactPickerButton
+                    onPick={({ name, tel }) => {
+                      setValue("mobile", tel, { shouldValidate: true });
+                      if (name) setValue("name", name, { shouldValidate: true });
+                    }}
+                  />
+                </div>
                 {errors.mobile && <p className="text-xs text-destructive">{errors.mobile.message}</p>}
               </div>
               <div className="space-y-2">
