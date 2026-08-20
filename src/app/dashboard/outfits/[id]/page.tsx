@@ -9,7 +9,7 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -60,7 +60,7 @@ import {
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
-import { VoiceNoteRecorder, type VoiceNote } from "@/components/voice-note-recorder";
+import { VoiceNoteRecorder } from "@/components/voice-note-recorder";
 import { VoiceToTextButton } from "@/components/voice-to-text-button";
 
 const DEPENDENCY_TYPES = [
@@ -157,7 +157,7 @@ export default function OutfitDetailPage() {
         setGarmentMeasurements(saved);
       }
       setGarmentMeasurementsDirty(false);
-      // Seed voice notes
+      // Seed voice notes — re-seed whenever server data changes
       setVoiceNotes(outfit.voiceNotes || []);
     }
   }, [outfit?.id]);
@@ -1135,39 +1135,15 @@ export default function OutfitDetailPage() {
                     Design & Fitting Instructions
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4 space-y-4">
+                <AccordionContent className="pt-2 pb-4">
                   <DesignNotesSection
                     outfit={outfit}
                     updateMutation={updateMutation}
                     readOnly={role === "MASTER"}
+                    isLocked={isLocked}
+                    voiceNotes={voiceNotes}
+                    onVoiceNotesChange={(updated) => setVoiceNotes(updated)}
                   />
-
-                  <Separator />
-
-                  {/* Voice Notes */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Voice Notes
-                    </Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Record verbal instructions — plays back for the tailor in the workshop.
-                    </p>
-                    <VoiceNoteRecorder
-                      notes={voiceNotes}
-                      label="Design & Fitting"
-                      canRecord={!isLocked && role !== "MASTER"}
-                      onAdd={(note) => {
-                        const updated = [...voiceNotes, note];
-                        setVoiceNotes(updated);
-                        updateMutation.mutate({ voiceNotes: updated });
-                      }}
-                      onDelete={(id) => {
-                        const updated = voiceNotes.filter((n) => n.id !== id);
-                        setVoiceNotes(updated);
-                        updateMutation.mutate({ voiceNotes: updated });
-                      }}
-                    />
-                  </div>
                 </AccordionContent>
               </AccordionItem>
             )}
@@ -2089,30 +2065,85 @@ function CompletionPhotosSection({
 }
 
 // ─── DESIGN NOTES SECTION ─────────────────────────────────────────────────
-// Extracted as a separate component so it can hold its own controlled state
-// for the textareas (needed for voice-to-text appending).
-
 function DesignNotesSection({
   outfit,
   updateMutation,
   readOnly = false,
+  isLocked = false,
+  voiceNotes,
+  onVoiceNotesChange,
 }: {
   outfit: any;
   updateMutation: any;
   readOnly?: boolean;
+  isLocked?: boolean;
+  voiceNotes?: { id: string; url: string; label: string; createdAt: string }[];
+  onVoiceNotesChange?: (notes: { id: string; url: string; label: string; createdAt: string }[]) => void;
 }) {
   const [designerNotes, setDesignerNotes] = useState(outfit.designerNotes || "");
   const [specialInstructions, setSpecialInstructions] = useState(outfit.specialInstructions || "");
   const [trialNotes, setTrialNotes] = useState(outfit.trialNotes || "");
   const [alterationNotes, setAlterationNotes] = useState(outfit.alterationNotes || "");
+  const [localVoiceNotes, setLocalVoiceNotes] = useState(voiceNotes || []);
+  const [saving, setSaving] = useState(false);
 
-  function save(field: string, value: string) {
-    if (readOnly) return;
-    updateMutation.mutate({ [field]: value });
+  // Sync when SSE re-fetches outfit data from server
+  useEffect(() => {
+    if (readOnly) {
+      // Master — always sync to latest server data
+      setDesignerNotes(outfit.designerNotes || "");
+      setSpecialInstructions(outfit.specialInstructions || "");
+      setTrialNotes(outfit.trialNotes || "");
+      setAlterationNotes(outfit.alterationNotes || "");
+      setLocalVoiceNotes(voiceNotes || []);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outfit.designerNotes, outfit.specialInstructions, outfit.trialNotes, outfit.alterationNotes, readOnly]);
+
+  // After a successful save, sync voice notes back in edit mode too
+  useEffect(() => {
+    if (!readOnly && voiceNotes) {
+      setLocalVoiceNotes(voiceNotes);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(voiceNotes)]);
+
+  const isDirty =
+    designerNotes !== (outfit.designerNotes || "") ||
+    specialInstructions !== (outfit.specialInstructions || "") ||
+    trialNotes !== (outfit.trialNotes || "") ||
+    alterationNotes !== (outfit.alterationNotes || "") ||
+    JSON.stringify(localVoiceNotes) !== JSON.stringify(voiceNotes || []);
+
+  function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    updateMutation.mutate(
+      {
+        designerNotes,
+        specialInstructions,
+        trialNotes,
+        alterationNotes,
+        voiceNotes: localVoiceNotes,
+      },
+      {
+        onSuccess: () => setSaving(false),
+        onError: () => setSaving(false),
+      }
+    );
+    onVoiceNotesChange?.(localVoiceNotes);
+  }
+
+  function handleCancel() {
+    setDesignerNotes(outfit.designerNotes || "");
+    setSpecialInstructions(outfit.specialInstructions || "");
+    setTrialNotes(outfit.trialNotes || "");
+    setAlterationNotes(outfit.alterationNotes || "");
+    setLocalVoiceNotes(voiceNotes || []);
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {/* Designer Instructions */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold uppercase text-muted-foreground">
@@ -2125,9 +2156,7 @@ function DesignNotesSection({
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  const updated = designerNotes ? designerNotes + " " + text : text;
-                  setDesignerNotes(updated);
-                  save("designerNotes", updated);
+                  setDesignerNotes((prev: string) => prev ? prev + " " + text : text);
                 }}
               />
             )}
@@ -2139,11 +2168,6 @@ function DesignNotesSection({
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
             onChange={(e) => { if (!readOnly) setDesignerNotes(e.target.value); }}
-            onBlur={(e) => {
-              if (!readOnly && e.target.value !== (outfit.designerNotes || "")) {
-                save("designerNotes", e.target.value);
-              }
-            }}
           />
         </div>
 
@@ -2153,9 +2177,7 @@ function DesignNotesSection({
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  const updated = specialInstructions ? specialInstructions + " " + text : text;
-                  setSpecialInstructions(updated);
-                  save("specialInstructions", updated);
+                  setSpecialInstructions((prev: string) => prev ? prev + " " + text : text);
                 }}
               />
             )}
@@ -2167,11 +2189,6 @@ function DesignNotesSection({
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
             onChange={(e) => { if (!readOnly) setSpecialInstructions(e.target.value); }}
-            onBlur={(e) => {
-              if (!readOnly && e.target.value !== (outfit.specialInstructions || "")) {
-                save("specialInstructions", e.target.value);
-              }
-            }}
           />
         </div>
       </div>
@@ -2190,9 +2207,7 @@ function DesignNotesSection({
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  const updated = trialNotes ? trialNotes + " " + text : text;
-                  setTrialNotes(updated);
-                  save("trialNotes", updated);
+                  setTrialNotes((prev: string) => prev ? prev + " " + text : text);
                 }}
               />
             )}
@@ -2204,11 +2219,6 @@ function DesignNotesSection({
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
             onChange={(e) => { if (!readOnly) setTrialNotes(e.target.value); }}
-            onBlur={(e) => {
-              if (!readOnly && e.target.value !== (outfit.trialNotes || "")) {
-                save("trialNotes", e.target.value);
-              }
-            }}
           />
         </div>
 
@@ -2218,9 +2228,7 @@ function DesignNotesSection({
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  const updated = alterationNotes ? alterationNotes + " " + text : text;
-                  setAlterationNotes(updated);
-                  save("alterationNotes", updated);
+                  setAlterationNotes((prev: string) => prev ? prev + " " + text : text);
                 }}
               />
             )}
@@ -2232,14 +2240,55 @@ function DesignNotesSection({
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
             onChange={(e) => { if (!readOnly) setAlterationNotes(e.target.value); }}
-            onBlur={(e) => {
-              if (!readOnly && e.target.value !== (outfit.alterationNotes || "")) {
-                save("alterationNotes", e.target.value);
-              }
-            }}
           />
         </div>
       </div>
-    </>
+
+      <Separator />
+
+      {/* Voice Notes */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+          Voice Notes
+        </Label>
+        <p className="text-[11px] text-muted-foreground">
+          Record verbal instructions — plays back for the tailor in the workshop.
+        </p>
+        <VoiceNoteRecorder
+          notes={localVoiceNotes}
+          label="Design & Fitting"
+          canRecord={!readOnly && !isLocked}
+          onAdd={(note) => {
+            setLocalVoiceNotes((prev: typeof localVoiceNotes) => [...prev, note]);
+          }}
+          onDelete={(id) => {
+            setLocalVoiceNotes((prev: typeof localVoiceNotes) => prev.filter((n) => n.id !== id));
+          }}
+        />
+      </div>
+
+      {/* Save / Cancel — only for editable mode */}
+      {!readOnly && (
+        <div className="flex items-center gap-2 pt-1 border-t">
+          <Button
+            size="sm"
+            className="flex-1 h-9"
+            disabled={!isDirty || saving}
+            onClick={handleSave}
+          >
+            {saving ? "Saving..." : "Save Instructions"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9"
+            disabled={!isDirty || saving}
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

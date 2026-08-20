@@ -173,6 +173,8 @@ export default function CustomerDetailPage({
     if (customer && customer.measurements?.length === 0 && !showMeasurementForm) {
       setMeasurementValues({ ...BODY_MEASUREMENT_FIELDS });
     }
+  // showMeasurementForm intentionally excluded — only run when customer loads
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer]);
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: {
@@ -322,11 +324,7 @@ export default function CustomerDetailPage({
     });
   };
 
-  const applyTemplate = (_templateKey: string) => {
-    // unused — kept for safety, templates removed from UI
-  };
-
-  const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
+const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
   const cleanWhatsapp = customer.whatsapp
     ? customer.whatsapp.replace(/\D/g, "")
     : cleanMobile;

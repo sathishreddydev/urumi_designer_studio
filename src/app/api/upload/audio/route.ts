@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (!ALLOWED_AUDIO.includes(file.type)) {
+    if (!ALLOWED_AUDIO.includes(file.type.split(";")[0])) {
       return NextResponse.json({ error: "Invalid file type. Only audio files are allowed." }, { status: 400 });
     }
 
