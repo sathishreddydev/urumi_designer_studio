@@ -54,7 +54,7 @@ export default function OrdersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-3 items-center justify-between">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Orders</h1>
           <p className="text-sm text-muted-foreground">{data?.total || 0} total</p>
