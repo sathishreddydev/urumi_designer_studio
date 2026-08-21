@@ -44,12 +44,17 @@ import {
   Shirt,
   ShoppingBag,
   Trash2,
-  X
+  X,
+  Camera,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
+import { CameraCaptureModal } from "@/components/camera-capture-modal";
+import { parseVoiceTranscript } from "@/hooks/use-measurement-voice";
+import { createWorker } from "tesseract.js";
 // Body measurements grouped into sections.
 // Each section has a number, title, and ordered fields.
 const BODY_MEASUREMENT_SECTIONS = [
@@ -124,6 +129,8 @@ export default function CustomerDetailPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [measurementFileReading, setMeasurementFileReading] = useState(false);
+  const [measurementCameraOpen, setMeasurementCameraOpen] = useState(false);
 
   // Voice callback — passed to MeasurementVoiceInput component
   const voiceOnResult = useCallback((matched: Record<string, string>, custom: Record<string, string>, raw: string) => {
@@ -214,6 +221,38 @@ export default function CustomerDetailPage({
       });
     },
   });
+
+  async function readMeasurementFile(file: File) {
+    setMeasurementFileReading(true);
+    try {
+      const text = file.type.startsWith("text/") || /\.(txt|csv)$/i.test(file.name)
+        ? await file.text()
+        : (await (async () => {
+            const worker = await createWorker("eng");
+            try {
+              const result = await worker.recognize(file);
+              return result.data.text;
+            } finally {
+              await worker.terminate();
+            }
+          })());
+      const { matched, custom } = parseVoiceTranscript(text);
+      const values = { ...matched, ...custom };
+      if (Object.keys(values).length === 0) {
+        throw new Error("No measurement values were found. Use labels like Bust 36, Waist 28, or Hip 40.");
+      }
+      setMeasurementValues((previous) => ({ ...previous, ...values }));
+      toast({ title: "Measurements read", description: `${Object.keys(values).length} field${Object.keys(values).length === 1 ? "" : "s"} updated from ${file.name}.` });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not read measurements",
+        description: error instanceof Error ? error.message : "The file could not be read",
+      });
+    } finally {
+      setMeasurementFileReading(false);
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -706,6 +745,42 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
 
                   {/* ── VOICE INPUT ── */}
                   <MeasurementVoiceInput onResult={voiceOnResult} />
+
+                  <div className="rounded-md border border-dashed p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-medium">Measurement chart or photo</p>
+                        <p className="text-[11px] text-muted-foreground">Read values from an image or text file into this form.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <label>
+                          <Button type="button" size="sm" variant="outline" asChild disabled={measurementFileReading}>
+                            <span><Upload className="mr-1 h-3.5 w-3.5" /> Read File</span>
+                          </Button>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*,.txt,.csv"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) readMeasurementFile(file);
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setMeasurementCameraOpen(true)} disabled={measurementFileReading}>
+                          <Camera className="mr-1 h-3.5 w-3.5" /> Read Photo
+                        </Button>
+                      </div>
+                    </div>
+                    {measurementFileReading && <p className="text-xs text-muted-foreground">Reading measurements...</p>}
+                    <CameraCaptureModal
+                      open={measurementCameraOpen}
+                      onClose={() => setMeasurementCameraOpen(false)}
+                      onCapture={readMeasurementFile}
+                    />
+                  </div>
+
                   {BODY_MEASUREMENT_SECTIONS.map((section) => (
                     <div key={section.num} className="space-y-2">
                       {/* Section header */}
@@ -788,7 +863,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                     <Button
                       size="sm"
                       className="flex-1 h-10 text-sm"
-                      disabled={addMeasurementMutation.isPending}
+                      disabled={addMeasurementMutation.isPending || measurementFileReading}
                       onClick={() => addMeasurementMutation.mutate({ values: measurementValues })}
                     >
                       {addMeasurementMutation.isPending ? "Saving..." : "Save Measurements"}
