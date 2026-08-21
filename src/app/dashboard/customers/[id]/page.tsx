@@ -747,14 +747,14 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                   <MeasurementVoiceInput onResult={voiceOnResult} />
 
                   <div className="rounded-md border border-dashed p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-xs font-medium">Measurement chart or photo</p>
                         <p className="text-[11px] text-muted-foreground">Read values from an image or text file into this form.</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <label>
-                          <Button type="button" size="sm" variant="outline" asChild disabled={measurementFileReading}>
+                          <Button type="button" size="sm" variant="outline" asChild disabled={measurementFileReading} className="shrink-0">
                             <span><Upload className="mr-1 h-3.5 w-3.5" /> Read File</span>
                           </Button>
                           <input
@@ -768,7 +768,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                             }}
                           />
                         </label>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setMeasurementCameraOpen(true)} disabled={measurementFileReading}>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setMeasurementCameraOpen(true)} disabled={measurementFileReading} className="shrink-0">
                           <Camera className="mr-1 h-3.5 w-3.5" /> Read Photo
                         </Button>
                       </div>
