@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -17,53 +17,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ArrowLeft, CreditCard, Shirt, UserCircle, Trash2, ImageIcon } from "lucide-react";
+  ArrowLeft,
+  CreditCard,
+  Shirt,
+  Trash2,
+  ImageIcon,
+  ImagePlus,
+  Camera,
+  X,
+  Calendar,
+  ExternalLink,
+  Plus,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
-
-const OUTFIT_TYPES = [
-  "Bridal Blouse", "Reception Blouse", "Lehenga", "Gown",
-  "Kurta", "Saree Blouse", "Anarkali", "Sharara", "Other",
-];
+import { CameraCaptureModal } from "@/components/camera-capture-modal";
+import { OutfitTypeSelect } from "@/components/outfit-type-select";
 
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { can, isAdmin } = usePermissions();
+
+  // Inline Section Expansion States (No Modals)
   const [showAddOutfit, setShowAddOutfit] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Image Viewer State
   const [viewerImages, setViewerImages] = useState<any[]>([]);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+
+  // Validation & Form Reset Keys
   const [paymentAmountError, setPaymentAmountError] = useState("");
+  const [outfitFormKey, setOutfitFormKey] = useState(0);
+  const [paymentFormKey, setPaymentFormKey] = useState(0);
+  const [newOutfitFabricImages, setNewOutfitFabricImages] = useState<File[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
     queryFn: async () => {
       const res = await fetch(`/api/orders/${params.id}`);
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed to fetch order details");
       return res.json();
     },
   });
 
-  // Fetch staff for assignment
-  const { data: staff } = useQuery({
+  const { data: staff = [] } = useQuery({
     queryKey: ["staff"],
     queryFn: async () => {
       const res = await fetch("/api/users");
@@ -73,43 +85,115 @@ export default function OrderDetailPage() {
     enabled: isAdmin,
   });
 
-  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER");
-  const masters = (staff || []).filter((u: any) => u.role === "MASTER");
+  const designers = useMemo(
+    () => staff.filter((u: any) => u.role === "DESIGNER"),
+    [staff],
+  );
+  const masters = useMemo(
+    () => staff.filter((u: any) => u.role === "MASTER"),
+    [staff],
+  );
 
-  // Add outfit mutation
+  // Derived Calculations
+  const { totalPaid, orderTotal, balance, missingPriceOutfits } =
+    useMemo(() => {
+      if (!order)
+        return {
+          totalPaid: 0,
+          orderTotal: 0,
+          balance: 0,
+          missingPriceOutfits: [],
+        };
+
+      const paid = (order.payments || [])
+        .filter((p: any) => p.status === "SETTLED" || !p.status)
+        .reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+      const calculatedTotal = (order.outfits || []).reduce(
+        (s: number, o: any) => s + (Number(o.price) || 0),
+        0,
+      );
+
+      const estimated = Number(order.estimatedAmount) || calculatedTotal;
+      const unpriced = (order.outfits || []).filter(
+        (o: any) =>
+          o.price === null ||
+          o.price === undefined ||
+          String(o.price).trim() === "",
+      );
+
+      return {
+        totalPaid: paid,
+        orderTotal: calculatedTotal,
+        balance: estimated - paid,
+        missingPriceOutfits: unpriced,
+      };
+    }, [order]);
+
+  // Mutations
   const addOutfitMutation = useMutation({
     mutationFn: async (data: any) => {
+      const { fabricImages = [], ...outfitData } = data;
       const res = await fetch("/api/outfits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, orderId: params.id }),
+        body: JSON.stringify({ ...outfitData, orderId: params.id }),
       });
       if (!res.ok) throw new Error("Failed to add outfit");
-      return res.json();
+      const createdOutfit = await res.json();
+
+      for (const file of fabricImages as File[]) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) continue;
+
+        const { url, filename } = await uploadRes.json();
+        await fetch(`/api/outfits/${createdOutfit.id}/references`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "FABRIC", url, filename }),
+        });
+      }
+
+      return createdOutfit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
       setShowAddOutfit(false);
+      setOutfitFormKey((prev) => prev + 1);
+      setNewOutfitFabricImages([]);
+      toast({ title: "Outfit Added", description: "New item added to order." });
     },
   });
 
-  // Assign designer/master
   const assignMutation = useMutation({
-    mutationFn: async ({ outfitId, designerId, masterId }: { outfitId: string; designerId?: string; masterId?: string }) => {
+    mutationFn: async ({
+      outfitId,
+      designerId,
+      masterId,
+    }: {
+      outfitId: string;
+      designerId?: string;
+      masterId?: string;
+    }) => {
       const res = await fetch(`/api/outfits/${outfitId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ designerId, masterId }),
       });
-      if (!res.ok) throw new Error("Failed to assign");
+      if (!res.ok) throw new Error("Failed to assign staff");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
+      toast({ title: "Assignment Updated" });
     },
   });
 
-  // Add payment
   const addPaymentMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/payments", {
@@ -126,17 +210,27 @@ export default function OrderDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
       setShowAddPayment(false);
-      toast({ title: "Payment recorded", description: "Payment has been saved." });
+      setPaymentFormKey((prev) => prev + 1);
+      setPaymentAmountError("");
+      toast({
+        title: "Payment Recorded",
+        description: "Payment status updated.",
+      });
     },
     onError: (err: Error) => {
-      toast({ variant: "destructive", title: "Failed", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: err.message,
+      });
     },
   });
 
-  // Delete payment
   const deletePaymentMutation = useMutation({
     mutationFn: async (paymentId: string) => {
-      const res = await fetch(`/api/payments/${paymentId}`, { method: "DELETE" });
+      const res = await fetch(`/api/payments/${paymentId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to void payment");
@@ -145,10 +239,7 @@ export default function OrderDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
-      toast({ title: "Payment voided" });
-    },
-    onError: (err: Error) => {
-      toast({ variant: "destructive", title: "Failed", description: err.message });
+      toast({ title: "Payment Voided" });
     },
   });
 
@@ -157,90 +248,122 @@ export default function OrderDetailPage() {
       const res = await fetch(`/api/orders/${params.id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to delete");
+        throw new Error(err.error || "Failed to delete order");
       }
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Deleted", description: "Order and all related data deleted." });
+      toast({
+        title: "Order Deleted",
+        description: "Order and related records removed.",
+      });
       router.push("/dashboard/orders");
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: error.message,
+      });
     },
   });
 
   if (isLoading) {
-    return <div className="h-8 w-64 animate-pulse rounded bg-muted" />;
+    return (
+      <div className="space-y-4 max-w-7xl mx-auto p-4 animate-pulse">
+        <div className="h-10 bg-muted rounded-md w-1/3" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="h-64 bg-muted rounded-md lg:col-span-2" />
+          <div className="h-64 bg-muted rounded-md" />
+        </div>
+      </div>
+    );
   }
 
-  if (!order) return <p>Order not found</p>;
+  if (!order) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Order not found.</p>
+        <Button variant="link" onClick={() => router.push("/dashboard/orders")}>
+          Back to Orders
+        </Button>
+      </div>
+    );
+  }
 
-  const totalPaid = (order.payments || [])
-    .filter((p: any) => p.status === "SETTLED" || !p.status) // legacy rows without status count as settled
-    .reduce((s: number, p: any) => s + Number(p.amount), 0);
-  const orderTotal = (order.outfits || []).reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
-  const missingPriceOutfits = (order.outfits || []).filter(
-    (outfit: any) => outfit.price === null || outfit.price === undefined || String(outfit.price).trim() === "",
-  );
   const isCompleted = order.status === "Completed";
   const portalUrl = order.portalToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/${order.portalToken}`
     : null;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-2 sm:gap-3">
-        <Link href={order.customer?.id ? `/dashboard/customers/${order.customer.id}` : "/dashboard/orders"}>
-          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold lg:text-2xl truncate">{order.orderNumber}</h1>
-            <Badge className={`${getStatusColor(order.status)} shrink-0`}>{order.status}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground truncate">
-            {order.customer?.name} · {order.customer?.mobile}
-          </p>
-          {portalUrl && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              Portal: <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{portalUrl}</a>
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {/* Top Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href={
+              order.customer?.id
+                ? `/dashboard/customers/${order.customer.id}`
+                : "/dashboard/orders"
+            }
+          >
+            <Button variant="outline" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">
+                {order.orderNumber}
+              </h1>
+              <Badge className={getStatusColor(order.status)}>
+                {order.status}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Customer:{" "}
+              <span className="font-medium text-foreground">
+                {order.customer?.name}
+              </span>{" "}
+              ({order.customer?.mobile})
             </p>
-          )}
+          </div>
         </div>
+
+        {/* Top Header Actions */}
         {can("update", "order") && !isCompleted && (
-          <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="text-xs h-8 px-2"
               onClick={() => {
                 if (missingPriceOutfits.length > 0) {
                   toast({
                     variant: "destructive",
-                    title: "Cannot open invoice",
-                    description: `Add prices for: ${missingPriceOutfits.map((outfit: any) => outfit.name).join(", ")}.`,
+                    title: "Cannot generate invoice",
+                    description: `Missing pricing on: ${missingPriceOutfits.map((o: any) => o.name).join(", ")}`,
                   });
                   return;
                 }
                 router.push(`/dashboard/orders/${params.id}/invoice`);
               }}
             >
-              <span className="hidden sm:inline">Invoice</span>
-              <span className="sm:hidden">Inv</span>
+              Invoice
             </Button>
             <Link href={`/dashboard/orders/${params.id}/edit`}>
-              <Button variant="outline" size="sm" className="text-xs h-8 px-2">Edit</Button>
+              <Button variant="outline" size="sm">
+                Edit
+              </Button>
             </Link>
             {can("delete", "order") && (
               <Button
                 variant="outline"
                 size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-8 px-2"
-                onClick={() => setShowDeleteConfirm(true)}
+                className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                onClick={() => setShowDeleteConfirm((prev) => !prev)}
               >
-                <Trash2 className="h-3 w-3 sm:mr-1" />
+                <Trash2 className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Delete</span>
               </Button>
             )}
@@ -248,428 +371,720 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* Info */}
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card px-3 py-2.5">
-          <p className="text-[10px] text-muted-foreground">Order Date</p>
-          <p className="text-sm font-medium">{formatDate(order.orderDate)}</p>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5">
-          <p className="text-[10px] text-muted-foreground">Trial Date</p>
-          <p className="text-sm font-medium">{formatDate(order.trialDate)}</p>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5 col-span-2 sm:col-span-1">
-          <p className="text-[10px] text-muted-foreground">Delivery Date</p>
-          <p className="text-sm font-medium">{formatDate(order.deliveryDate)}</p>
-        </div>
-      </div>
-
-      {/* Payment Summary */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Estimated</p>
-              <p className="text-sm font-bold sm:text-base">
-                {order.estimatedAmount ? `₹${Number(order.estimatedAmount).toLocaleString()}` : (orderTotal > 0 ? `₹${orderTotal.toLocaleString()}` : "—")}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Paid</p>
-              <p className="text-sm font-bold text-green-600 sm:text-base">₹{totalPaid.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Balance</p>
-              {(() => {
-                const estimated = Number(order.estimatedAmount) || orderTotal;
-                const bal = estimated - totalPaid;
-                if (estimated <= 0) return <p className="text-sm font-bold sm:text-base">—</p>;
-                if (bal < 0) {
-                  return (
-                    <p className="text-sm font-bold text-amber-600 sm:text-base">
-                      ₹{Math.abs(bal).toLocaleString()} over
-                    </p>
-                  );
-                }
-                return (
-                  <p className={`text-sm font-bold sm:text-base ${bal > 0 ? "text-red-600" : "text-green-600"}`}>
-                    ₹{bal.toLocaleString()}
-                  </p>
-                );
-              })()}
-            </div>
+      {/* Inline Delete Confirmation Panel */}
+      {showDeleteConfirm && (
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+            <AlertTriangle className="h-4 w-4" /> Confirm Deletion of Order{" "}
+            {order.orderNumber}
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-muted-foreground">
+            This operation cannot be undone. All outfits, attachments,
+            assignments, and payments will be permanently removed.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              size="sm"
+              loading={deleteOrderMutation.isPending}
+              onClick={() => deleteOrderMutation.mutate()}
+            >
+              Confirm & Delete
+            </LoadingButton>
+          </div>
+        </div>
+      )}
 
-      {/* Tabs */}
-      <Tabs defaultValue="outfits">
-        <TabsList>
-          <TabsTrigger value="outfits">Outfits ({(order.outfits || []).length})</TabsTrigger>
-          {can("read", "payment") && (
-            <TabsTrigger value="payments">Payments ({(order.payments || []).length})</TabsTrigger>
-          )}
-        </TabsList>
-
-        {/* Outfits Tab */}
-        <TabsContent value="outfits" className="space-y-3 mt-4">
-          {/* Add Outfit Button */}
-          {!isCompleted && can("create", "outfit") && (
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setShowAddOutfit(!showAddOutfit)}>
-                <Shirt className="h-3 w-3" /> Add Outfit
-              </Button>
-            </div>
-          )}
-
-          {/* Add Outfit Form */}
-          {showAddOutfit && (
-            <Card>
-              <CardContent className="pt-4 pb-4">
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Outfits Workspace */}
+        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shirt className="h-4 w-4 text-primary" />
+                Outfits ({order.outfits?.length || 0})
+              </CardTitle>
+              {!isCompleted && can("create", "outfit") && (
+                <Button
+                  size="sm"
+                  variant={showAddOutfit ? "secondary" : "default"}
+                  className="gap-1"
+                  onClick={() => setShowAddOutfit(!showAddOutfit)}
+                >
+                  {showAddOutfit ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  {showAddOutfit ? "Close Form" : "Add Outfit"}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              {/* Inline Add Outfit Form Panel */}
+              {showAddOutfit && (
                 <form
+                  key={outfitFormKey}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const form = new FormData(e.currentTarget);
                     addOutfitMutation.mutate({
                       name: form.get("name"),
                       type: form.get("type"),
+                      occasion: form.get("occasion") || undefined,
+                      price: form.get("price") ? Number(form.get("price")) : undefined,
                       maggamRequired: form.get("maggamRequired") === "on",
+                      designerId: form.get("designerId") === "none" ? undefined : form.get("designerId"),
+                      fabricImages: newOutfitFabricImages,
                     });
                   }}
-                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                  className="bg-muted/40 p-4 border rounded-lg space-y-4 my-2 transition-all"
                 >
-                  <div className="space-y-1 flex-1">
-                    <Label className="text-xs">Outfit Name</Label>
-                    <Input name="name" placeholder="e.g. Bridal Blouse" className="h-9" required />
-                  </div>
-                  <div className="space-y-1 flex-1">
-                    <Label className="text-xs">Type</Label>
-                    <Select name="type" required>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {OUTFIT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  <p className="text-sm font-semibold border-b pb-2">
+                    New Outfit Details
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name">Item Name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="e.g., Heavy Silk Blouse"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="type">Type</Label>
+                      <OutfitTypeSelect name="type" required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="occasion">Occasion</Label>
+                      <Input
+                        id="occasion"
+                        name="occasion"
+                        placeholder="e.g. Wedding Reception"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="price">Estimated Price (₹)</Label>
+                      <Input
+                        id="price"
+                        name="price"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    {isAdmin && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="designerId">Assigned Designer</Label>
+                        <Select name="designerId" defaultValue="none">
+                          <SelectTrigger id="designerId">
+                            <SelectValue placeholder="Assign later..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Assign later...</SelectItem>
+                            {designers.map((designer: any) => (
+                              <SelectItem key={designer.id} value={designer.id}>
+                                {designer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" name="maggamRequired" id="maggamRequired" className="h-4 w-4" />
-                    <Label htmlFor="maggamRequired" className="text-xs">Maggam</Label>
+                    <input
+                      type="checkbox"
+                      name="maggamRequired"
+                      id="maggamRequired"
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label
+                      htmlFor="maggamRequired"
+                      className="text-sm font-normal"
+                    >
+                      Requires Maggam Work
+                    </Label>
                   </div>
-                  <LoadingButton size="sm" type="submit" loading={addOutfitMutation.isPending} loadingText="Adding...">
-                    Add
-                  </LoadingButton>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Outfits List */}
-          {(order.outfits || []).length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No outfits added yet
-              </CardContent>
-            </Card>
-          ) : (
-            (order.outfits || []).map((outfit: any) => (
-              <Card key={outfit.id}>
-                <CardContent className="pt-4 pb-4">
-                  {/* Outfit name + badge — stacked on mobile */}
-                  <div className="flex items-start justify-between gap-2">
-                    <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Shirt className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <p className="font-medium truncate">{outfit.name}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground ml-6">
-                        {outfit.type}{outfit.maggamRequired && " · Maggam"}
-                      </p>
-                      <p className="text-xs ml-6 mt-0.5">
-                        {outfit.price
-                          ? <span className="font-medium text-foreground">₹{Number(outfit.price).toLocaleString()}</span>
-                          : <span className="italic text-amber-600">⏳ Price not set yet</span>
-                        }
-                      </p>
-                    </Link>
-                    <Badge className={`${getStatusColor(outfit.status)} text-[10px] shrink-0 max-w-[130px] truncate`}>
-                      {formatStatus(outfit.status)}
-                    </Badge>
-                  </div>
-
-                  {/* Fabric Images Thumbnails */}
-                  {(() => {
-                    const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
-                    if (fabricRefs.length === 0) return null;
-                    return (
-                      <div className="mt-2 ml-6">
-                        <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                          <ImageIcon className="h-3 w-3" /> Customer Material ({fabricRefs.length})
-                        </p>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {fabricRefs.map((ref: any, idx: number) => (
-                            <div
-                              key={ref.id}
-                              className="h-10 w-10 rounded border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setViewerImages(fabricRefs.map((r: any) => ({ id: r.id, url: r.url, filename: r.filename, status: r.status })));
-                                setViewerIndex(idx);
-                                setViewerOpen(true);
-                              }}
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <ImagePlus className="h-3.5 w-3.5 text-primary" />
+                      Customer Material Images
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload photos of the customer's fabric material (optional).
+                    </p>
+                    {newOutfitFabricImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {newOutfitFabricImages.map((file, index) => (
+                          <div key={`${file.name}-${index}`} className="relative group h-16 w-16 overflow-hidden rounded-md border">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Fabric ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNewOutfitFabricImages((current) =>
+                                  current.filter((_, fileIndex) => fileIndex !== index),
+                                )
+                              }
+                              className="absolute right-0 top-0 rounded-bl bg-destructive p-0.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                              aria-label={`Remove fabric image ${index + 1}`}
                             >
-                              <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
-                            </div>
-                          ))}
-                        </div>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })()}
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor="new-outfit-fabric-upload"
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                      >
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {newOutfitFabricImages.length > 0 ? "Add More" : "Upload Material Photos"}
+                      </label>
+                      <input
+                        id="new-outfit-fabric-upload"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            setNewOutfitFabricImages((current) => [
+                              ...current,
+                              ...Array.from(e.target.files || []),
+                            ]);
+                          }
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCameraOpen(true)}
+                      >
+                        <Camera className="mr-1.5 h-3.5 w-3.5" />
+                        Take Photo
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1 border-t">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowAddOutfit(false);
+                        setOutfitFormKey((prev) => prev + 1);
+                        setNewOutfitFabricImages([]);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <LoadingButton
+                      type="submit"
+                      size="sm"
+                      loading={addOutfitMutation.isPending}
+                    >
+                      Save Outfit Item
+                    </LoadingButton>
+                  </div>
+                </form>
+              )}
 
-                  {/* Admin assignment controls */}
-                  {isAdmin && !isCompleted && (
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center border-t pt-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        <UserCircle className="h-3 w-3 text-muted-foreground" />
-                        <Select
-                          value={outfit.designerId || "none"}
-                          onValueChange={(value) =>
-                            assignMutation.mutate({ outfitId: outfit.id, designerId: value === "none" ? undefined : value })
-                          }
+              {/* Outfits List */}
+              {(order.outfits || []).length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                  No outfits added to this order yet.
+                </div>
+              ) : (
+                (order.outfits || []).map((outfit: any) => (
+                  <div
+                    key={outfit.id}
+                    className="border rounded-lg p-4 space-y-3 bg-card hover:border-accent transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link
+                          href={`/dashboard/outfits/${outfit.id}`}
+                          className="font-semibold text-base hover:underline flex items-center gap-1.5"
                         >
-                          <SelectTrigger className="h-7 flex-1 rounded px-2 text-xs">
-                            <SelectValue placeholder="No Designer" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Designer</SelectItem>
-                            {designers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                          {outfit.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {outfit.type}{" "}
+                          {outfit.maggamRequired ? "• Maggam Work" : ""}
+                        </p>
+                        {outfit.occasion && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Occasion: {outfit.occasion}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        <UserCircle className="h-3 w-3 text-muted-foreground" />
-                        <Select
-                          value={outfit.masterId || "none"}
-                          onValueChange={(value) =>
-                            assignMutation.mutate({ outfitId: outfit.id, masterId: value === "none" ? undefined : value })
-                          }
+                      <div className="text-right">
+                        <Badge
+                          className={`${getStatusColor(outfit.status)} mb-1`}
                         >
-                          <SelectTrigger className="h-7 flex-1 rounded px-2 text-xs">
-                            <SelectValue placeholder="No Master" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Master</SelectItem>
-                            {masters.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                          {formatStatus(outfit.status)}
+                        </Badge>
+                        <p className="text-sm font-bold">
+                          {outfit.price ? (
+                            `₹${Number(outfit.price).toLocaleString()}`
+                          ) : (
+                            <span className="text-amber-600 text-xs font-normal">
+                              Price Pending
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
 
-        {/* Payments Tab */}
-        {can("read", "payment") && (
-          <TabsContent value="payments" className="space-y-3 mt-4">
-            {!isCompleted && can("create", "payment") && (
-              <div className="flex justify-end">
-                <Button size="sm" onClick={() => setShowAddPayment(!showAddPayment)}>
-                  <CreditCard className="h-3 w-3" /> Add Payment
-                </Button>
+                    {/* Customer Fabric References */}
+                    {(() => {
+                      const fabricRefs = (outfit.references || []).filter(
+                        (r: any) => r.type === "FABRIC",
+                      );
+                      return (
+                        <div className="bg-muted/40 p-2.5 rounded-md text-xs space-y-1.5">
+                          <p className="font-medium text-muted-foreground flex items-center gap-1">
+                            <ImageIcon className="h-3.5 w-3.5" /> Material
+                            Attachments {fabricRefs.length > 0 && `(${fabricRefs.length})`}
+                          </p>
+                          {fabricRefs.length > 0 ? (
+                            <div className="flex gap-2 flex-wrap">
+                              {fabricRefs.map((ref: any, idx: number) => (
+                                <button
+                                  key={ref.id}
+                                  type="button"
+                                  className="h-12 w-12 rounded border overflow-hidden relative focus:ring-2 focus:ring-primary"
+                                  onClick={() => {
+                                    setViewerImages(
+                                      fabricRefs.map((r: any) => ({
+                                        id: r.id,
+                                        url: r.url,
+                                        filename: r.filename,
+                                      })),
+                                    );
+                                    setViewerIndex(idx);
+                                    setViewerOpen(true);
+                                  }}
+                                >
+                                  <img
+                                    src={ref.url}
+                                    alt={ref.filename || "Fabric reference"}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground">
+                              No customer material uploaded yet.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Admin Staff Assignments */}
+                    {isAdmin && !isCompleted && (
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Assigned Designer
+                          </Label>
+                          <Select
+                            value={outfit.designerId || "none"}
+                            onValueChange={(val) =>
+                              assignMutation.mutate({
+                                outfitId: outfit.id,
+                                designerId: val === "none" ? undefined : val,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Unassigned</SelectItem>
+                              {designers.map((d: any) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Assigned Master
+                          </Label>
+                          <Select
+                            value={outfit.masterId || "none"}
+                            onValueChange={(val) =>
+                              assignMutation.mutate({
+                                outfitId: outfit.id,
+                                masterId: val === "none" ? undefined : val,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Unassigned</SelectItem>
+                              {masters.map((m: any) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Key Schedule & Financials */}
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
+          {/* Order Details & Dates */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" /> Key Dates
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between items-center pb-2 border-b">
+                <span className="text-muted-foreground">Ordered Date</span>
+                <span className="font-medium">
+                  {formatDate(order.orderDate)}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between items-center pb-2 border-b">
+                <span className="text-muted-foreground">Trial Date</span>
+                <span className="font-medium text-amber-700">
+                  {formatDate(order.trialDate)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Target Delivery</span>
+                <span className="font-semibold text-primary">
+                  {formatDate(order.deliveryDate)}
+                </span>
+              </div>
 
-            {showAddPayment && (
-              <Card>
-                <CardContent className="pt-4 pb-4">
+              {portalUrl && (
+                <div className="pt-2">
+                  <a
+                    href={portalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Client Tracking Portal <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Payment & Financial Card */}
+          {can("read", "payment") && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" /> Payment
+                  Summary
+                </CardTitle>
+                {!isCompleted && can("create", "payment") && (
+                  <Button
+                    size="sm"
+                    variant={showAddPayment ? "secondary" : "outline"}
+                    className="h-8 text-xs gap-1"
+                    onClick={() => {
+                      setShowAddPayment(!showAddPayment);
+                      setPaymentAmountError("");
+                    }}
+                  >
+                    {showAddPayment ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    {showAddPayment ? "Close" : "Payment"}
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Visual Financial Summary Bar */}
+                <div className="grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-lg text-center">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Total
+                    </span>
+                    <p className="font-bold text-sm">
+                      ₹
+                      {(
+                        Number(order.estimatedAmount) || orderTotal
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Paid
+                    </span>
+                    <p className="font-bold text-sm text-green-600">
+                      ₹{totalPaid.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Balance
+                    </span>
+                    <p
+                      className={`font-bold text-sm ${balance > 0 ? "text-destructive" : "text-green-600"}`}
+                    >
+                      {balance < 0
+                        ? `₹${Math.abs(balance).toLocaleString()} over`
+                        : `₹${balance.toLocaleString()}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Inline Add Payment Form Panel */}
+                {showAddPayment && (
                   <form
+                    key={paymentFormKey}
                     onSubmit={(e) => {
                       e.preventDefault();
                       const form = new FormData(e.currentTarget);
                       const amount = Number(form.get("amount"));
-                      const knownOrderTotal = orderTotal > 0
-                        ? orderTotal
-                        : Number(order.estimatedAmount) || 0;
-                      const balance = knownOrderTotal > 0 ? knownOrderTotal - totalPaid : null;
+
                       if (!Number.isFinite(amount) || amount <= 0) {
-                        setPaymentAmountError("Enter an amount greater than ₹0.");
+                        setPaymentAmountError("Please enter a valid amount.");
                         return;
                       }
-                      if (balance !== null && amount > balance) {
-                        setPaymentAmountError(`Maximum allowed: ₹${Math.max(0, balance).toLocaleString()}.`);
+                      if (balance > 0 && amount > balance) {
+                        setPaymentAmountError(
+                          `Amount exceeds total balance (₹${balance.toLocaleString()})`,
+                        );
                         return;
                       }
+
                       setPaymentAmountError("");
                       addPaymentMutation.mutate({
-                          amount,
-                          method: form.get("method"),
-                          notes: form.get("notes"),
-                          outfitId: form.get("outfitId") === "none" ? undefined : form.get("outfitId"),
-                          transactionRef: form.get("transactionRef") || undefined,
+                        amount,
+                        method: form.get("method"),
+                        notes: form.get("notes"),
+                        outfitId:
+                          form.get("outfitId") === "none"
+                            ? undefined
+                            : form.get("outfitId"),
+                        transactionRef: form.get("transactionRef") || undefined,
                       });
                     }}
-                    className="space-y-3"
+                    className="bg-muted/40 p-3.5 border rounded-lg space-y-3 transition-all"
                   >
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Apply To Outfit</Label>
-                        <Select name="outfitId" defaultValue="none">
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Whole Order" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Whole Order</SelectItem>
+                    <p className="text-xs font-semibold border-b pb-1.5">
+                      Record New Payment
+                    </p>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Allocation</Label>
+                      <Select name="outfitId" defaultValue="none">
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Whole Order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Whole Order</SelectItem>
                           {(order.outfits || []).map((o: any) => (
                             <SelectItem key={o.id} value={o.id}>
-                              {o.name} - {o.price != null ? `₹${Number(o.price).toLocaleString()}` : "Price not set"}
+                              {o.name}{" "}
+                              {o.price
+                                ? `(₹${Number(o.price).toLocaleString()})`
+                                : ""}
                             </SelectItem>
                           ))}
-                          </SelectContent>
-                        </Select>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="amount" className="text-xs">
+                          Amount (₹)
+                        </Label>
+                        <Input
+                          id="amount"
+                          name="amount"
+                          type="number"
+                          placeholder="5000"
+                          min="1"
+                          className="h-8 text-xs"
+                          required
+                          onChange={() =>
+                            paymentAmountError && setPaymentAmountError("")
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Amount (₹)</Label>
-                        <div>
-                          <Input
-                            name="amount"
-                            type="number"
-                            placeholder="5000"
-                            min="1"
-                            step="1"
-                            className={paymentAmountError ? "h-9 border-destructive focus-visible:ring-destructive" : "h-9"}
-                            onChange={() => paymentAmountError && setPaymentAmountError("")}
-                            required
-                          />
-                          {paymentAmountError && (
-                            <p className="mt-1 text-right text-[11px] text-destructive" role="alert">
-                              {paymentAmountError}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Method</Label>
-                        <Select name="method" required defaultValue="CASH">
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select method" />
+                        <Label htmlFor="method" className="text-xs">
+                          Method
+                        </Label>
+                        <Select name="method" defaultValue="UPI" required>
+                          <SelectTrigger id="method" className="h-8 text-xs">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="CASH">Cash</SelectItem>
                             <SelectItem value="UPI">UPI</SelectItem>
                             <SelectItem value="CARD">Card</SelectItem>
-                            <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                            <SelectItem value="BANK_TRANSFER">
+                              Bank Transfer
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Transaction / Ref</Label>
-                        <Input name="transactionRef" placeholder="Txn ref / UPI ID" className="h-9" />
-                      </div>
                     </div>
-                    <Input name="notes" placeholder="Notes (optional)" className="h-9" />
-                    <LoadingButton size="sm" type="submit" loading={addPaymentMutation.isPending} loadingText="Saving..." className="w-full sm:w-auto">
-                      Record Payment
-                    </LoadingButton>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
 
-            {(order.payments || []).length === 0 ? (
-              <Card>
-                <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                  No payments recorded
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="space-y-2">
-                    {(order.payments || []).map((payment: any) => (
-                      <div key={payment.id} className="flex items-start justify-between gap-3 text-sm py-1">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium">{payment.method}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(payment.createdAt)}</p>
-                          {payment.transactionRef && (
-                            <p className="text-xs text-muted-foreground truncate">Ref: {payment.transactionRef}</p>
-                          )}
-                          {payment.outfitId && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              For: {(order.outfits || []).find((o: any) => o.id === payment.outfitId)?.name || "Outfit"}
-                            </p>
-                          )}
-                          {payment.notes && (
-                            <p className="text-xs text-muted-foreground truncate">{payment.notes}</p>
-                          )}
+                    {paymentAmountError && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />{" "}
+                        {paymentAmountError}
+                      </p>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label htmlFor="transactionRef" className="text-xs">
+                        Transaction Ref / UPI ID
+                      </Label>
+                      <Input
+                        id="transactionRef"
+                        name="transactionRef"
+                        placeholder="Optional"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="notes" className="text-xs">
+                        Notes
+                      </Label>
+                      <Input
+                        id="notes"
+                        name="notes"
+                        placeholder="Optional notes"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1 border-t">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          setShowAddPayment(false);
+                          setPaymentFormKey((prev) => prev + 1);
+                          setPaymentAmountError("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <LoadingButton
+                        type="submit"
+                        size="sm"
+                        className="h-7 text-xs"
+                        loading={addPaymentMutation.isPending}
+                      >
+                        Save Payment
+                      </LoadingButton>
+                    </div>
+                  </form>
+                )}
+
+                {/* Individual Payment Transactions */}
+                <div className="space-y-2 pt-2">
+                  {(order.payments || []).length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-2">
+                      No payments recorded.
+                    </p>
+                  ) : (
+                    (order.payments || []).map((p: any) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between text-xs py-2 border-b last:border-0"
+                      >
+                        <div>
+                          <div className="font-medium flex items-center gap-1.5">
+                            <span>{p.method}</span>
+                            {p.transactionRef && (
+                              <span className="text-muted-foreground">
+                                ({p.transactionRef})
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatDate(p.createdAt)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <p className="font-semibold whitespace-nowrap">₹{Number(payment.amount).toLocaleString()}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">
+                            ₹{Number(p.amount).toLocaleString()}
+                          </span>
                           {isAdmin && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                              onClick={() => deletePaymentMutation.mutate(payment.id)}
-                              disabled={deletePaymentMutation.isPending}
-                              title="Void payment"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => deletePaymentMutation.mutate(p.id)}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
                       </div>
-                    ))}
-                    <Separator />
-                    <div className="flex justify-between font-semibold text-sm">
-                      <span>Total Paid</span>
-                      <span>₹{totalPaid.toLocaleString()}</span>
-                    </div>
-                    {(() => {
-                      const estimated = Number(order.estimatedAmount) || orderTotal;
-                      if (estimated > 0 && totalPaid > estimated) {
-                        return (
-                          <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
-                            ⚠ Overpaid by ₹{(totalPaid - estimated).toLocaleString()}
-                          </p>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        )}
-      </Tabs>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Order</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete order {order.orderNumber}? This will permanently remove
-              all outfits, references, dependencies, and payments associated with this order.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteOrderMutation.mutate()}
-            >
-              Delete Order
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CameraCaptureModal
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(file) =>
+          setNewOutfitFabricImages((current) => [...current, file])
+        }
+      />
 
-      {/* Image Viewer */}
+      {/* Global Image Viewer Component */}
       <ImageViewer
         images={viewerImages}
         initialIndex={viewerIndex}

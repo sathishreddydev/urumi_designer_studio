@@ -19,8 +19,8 @@ import {
   X,
   Camera,
   Save,
-  Search,
 } from "lucide-react";
+import { OutfitTypeSelect } from "@/components/outfit-type-select";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,53 +48,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const OUTFIT_TYPE_GROUPS = [
-  {
-    label: "Women",
-    types: [
-      "Bridal Blouse",
-      "Reception Blouse",
-      "Saree Blouse",
-      "Lehenga",
-      "Gown",
-      "Anarkali",
-      "Sharara",
-      "Salwar Suit",
-      "Churidar",
-      "Palazzo Suit",
-      "Half Saree",
-      "Pattu Pavadai",
-      "Pico",
-      "Fall",
-      "Tassels",
-      "Saree Border",
-      "Saree Pallu",
-      "Bridal Veil",
-      "Bridal Dupatta",
-      "Bridal Cape",
-      "Bridal Waist Belt",
-      "Bridal Trail",
-      "Bridal Potli",
-      "Women Other",
-    ],
-  },
-  {
-    label: "Men",
-    types: [
-      "Kurta",
-      "Sherwani",
-      "Nehru Jacket",
-      "Waistcoat",
-      "Shirt",
-      "Trousers",
-      "Dhoti",
-      "Indo-Western",
-      "Men Other",
-    ],
-  },
-  { label: "Other", types: ["Other"] },
-];
 
 // Statuses where outfit fields are still editable
 const EDITABLE_STATUSES = [
@@ -381,7 +334,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         .reduce((s: number, p: any) => s + Number(p.amount), 0) + advance
     : advance;
   const balanceDue = estimatedTotal - totalPaid;
-  const normalizedOutfitTypeSearch = outfitTypeSearch.trim().toLowerCase();
 
   // ── Create mutation ─────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -860,54 +812,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <Label className="text-xs font-semibold">
                           Type <span className="text-destructive">*</span>
                         </Label>
-                        <Select
+                        <OutfitTypeSelect
                           value={outfit.type}
                           onValueChange={(val) =>
                             updateOutfit(index, "type", val)
                           }
                           disabled={isEditMode && !outfit.isNew}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select outfit type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <div className="relative px-2 pb-2">
-                              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                              <Input
-                                value={outfitTypeSearch}
-                                onChange={(e) =>
-                                  setOutfitTypeSearch(e.target.value)
-                                }
-                                onKeyDown={(e) => e.stopPropagation()}
-                                placeholder="Search outfit types..."
-                                className="h-8 pl-8"
-                                aria-label="Search outfit types"
-                              />
-                            </div>
-                            {OUTFIT_TYPE_GROUPS.map((group) => {
-                              const matchingTypes = group.types.filter((type) =>
-                                type
-                                  .toLowerCase()
-                                  .includes(normalizedOutfitTypeSearch),
-                              );
-
-                              if (matchingTypes.length === 0) return null;
-
-                              return (
-                                <div key={group.label}>
-                                  <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
-                                    {group.label}
-                                  </p>
-                                  {matchingTypes.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {type}
-                                    </SelectItem>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
 
                       {/* Price */}
