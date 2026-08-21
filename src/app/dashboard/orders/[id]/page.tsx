@@ -51,6 +51,7 @@ export default function OrderDetailPage() {
   const [viewerImages, setViewerImages] = useState<any[]>([]);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [paymentAmountError, setPaymentAmountError] = useState("");
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
@@ -179,6 +180,9 @@ export default function OrderDetailPage() {
     .filter((p: any) => p.status === "SETTLED" || !p.status) // legacy rows without status count as settled
     .reduce((s: number, p: any) => s + Number(p.amount), 0);
   const orderTotal = (order.outfits || []).reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
+  const missingPriceOutfits = (order.outfits || []).filter(
+    (outfit: any) => outfit.price === null || outfit.price === undefined || String(outfit.price).trim() === "",
+  );
   const isCompleted = order.status === "Completed";
   const portalUrl = order.portalToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/${order.portalToken}`
@@ -207,12 +211,25 @@ export default function OrderDetailPage() {
         </div>
         {can("update", "order") && !isCompleted && (
           <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
-            <Link href={`/dashboard/orders/${params.id}/invoice`}>
-              <Button variant="outline" size="sm" className="text-xs h-8 px-2">
-                <span className="hidden sm:inline">Invoice</span>
-                <span className="sm:hidden">Inv</span>
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8 px-2"
+              onClick={() => {
+                if (missingPriceOutfits.length > 0) {
+                  toast({
+                    variant: "destructive",
+                    title: "Cannot open invoice",
+                    description: `Add prices for: ${missingPriceOutfits.map((outfit: any) => outfit.name).join(", ")}.`,
+                  });
+                  return;
+                }
+                router.push(`/dashboard/orders/${params.id}/invoice`);
+              }}
+            >
+              <span className="hidden sm:inline">Invoice</span>
+              <span className="sm:hidden">Inv</span>
+            </Button>
             <Link href={`/dashboard/orders/${params.id}/edit`}>
               <Button variant="outline" size="sm" className="text-xs h-8 px-2">Edit</Button>
             </Link>
@@ -473,8 +490,22 @@ export default function OrderDetailPage() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       const form = new FormData(e.currentTarget);
+                      const amount = Number(form.get("amount"));
+                      const knownOrderTotal = orderTotal > 0
+                        ? orderTotal
+                        : Number(order.estimatedAmount) || 0;
+                      const balance = knownOrderTotal > 0 ? knownOrderTotal - totalPaid : null;
+                      if (!Number.isFinite(amount) || amount <= 0) {
+                        setPaymentAmountError("Enter an amount greater than ₹0.");
+                        return;
+                      }
+                      if (balance !== null && amount > balance) {
+                        setPaymentAmountError(`Maximum allowed: ₹${Math.max(0, balance).toLocaleString()}.`);
+                        return;
+                      }
+                      setPaymentAmountError("");
                       addPaymentMutation.mutate({
-                          amount: Number(form.get("amount")),
+                          amount,
                           method: form.get("method"),
                           notes: form.get("notes"),
                           outfitId: form.get("outfitId") === "none" ? undefined : form.get("outfitId"),
@@ -486,21 +517,39 @@ export default function OrderDetailPage() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <Label className="text-xs">Apply To Outfit</Label>
-                        <Select name="outfitId">
+                        <Select name="outfitId" defaultValue="none">
                           <SelectTrigger className="h-9">
                             <SelectValue placeholder="Whole Order" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">Whole Order</SelectItem>
                           {(order.outfits || []).map((o: any) => (
-                            <SelectItem key={o.id} value={o.id}>{o.name} - ₹{Number(o.price || 0).toLocaleString()}</SelectItem>
+                            <SelectItem key={o.id} value={o.id}>
+                              {o.name} - {o.price != null ? `₹${Number(o.price).toLocaleString()}` : "Price not set"}
+                            </SelectItem>
                           ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Amount (₹)</Label>
-                        <Input name="amount" type="number" placeholder="5000" min="1" step="1" className="h-9" required />
+                        <div>
+                          <Input
+                            name="amount"
+                            type="number"
+                            placeholder="5000"
+                            min="1"
+                            step="1"
+                            className={paymentAmountError ? "h-9 border-destructive focus-visible:ring-destructive" : "h-9"}
+                            onChange={() => paymentAmountError && setPaymentAmountError("")}
+                            required
+                          />
+                          {paymentAmountError && (
+                            <p className="mt-1 text-right text-[11px] text-destructive" role="alert">
+                              {paymentAmountError}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Method</Label>
