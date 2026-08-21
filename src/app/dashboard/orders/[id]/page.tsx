@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -320,9 +327,14 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="space-y-1 flex-1">
                     <Label className="text-xs">Type</Label>
-                    <select name="type" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm" required>
-                      {OUTFIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <Select name="type" required>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {OUTFIT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-2">
                     <input type="checkbox" name="maggamRequired" id="maggamRequired" className="h-4 w-4" />
@@ -403,29 +415,37 @@ export default function OrderDetailPage() {
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center border-t pt-3">
                       <div className="flex items-center gap-2 flex-1">
                         <UserCircle className="h-3 w-3 text-muted-foreground" />
-                        <select
-                          className="h-7 rounded border border-input bg-background px-2 text-xs flex-1"
-                          value={outfit.designerId || ""}
-                          onChange={(e) =>
-                            assignMutation.mutate({ outfitId: outfit.id, designerId: e.target.value || undefined })
+                        <Select
+                          value={outfit.designerId || "none"}
+                          onValueChange={(value) =>
+                            assignMutation.mutate({ outfitId: outfit.id, designerId: value === "none" ? undefined : value })
                           }
                         >
-                          <option value="">No Designer</option>
-                          {designers.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
+                          <SelectTrigger className="h-7 flex-1 rounded px-2 text-xs">
+                            <SelectValue placeholder="No Designer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Designer</SelectItem>
+                            {designers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex items-center gap-2 flex-1">
                         <UserCircle className="h-3 w-3 text-muted-foreground" />
-                        <select
-                          className="h-7 rounded border border-input bg-background px-2 text-xs flex-1"
-                          value={outfit.masterId || ""}
-                          onChange={(e) =>
-                            assignMutation.mutate({ outfitId: outfit.id, masterId: e.target.value || undefined })
+                        <Select
+                          value={outfit.masterId || "none"}
+                          onValueChange={(value) =>
+                            assignMutation.mutate({ outfitId: outfit.id, masterId: value === "none" ? undefined : value })
                           }
                         >
-                          <option value="">No Master</option>
-                          {masters.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
+                          <SelectTrigger className="h-7 flex-1 rounded px-2 text-xs">
+                            <SelectValue placeholder="No Master" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Master</SelectItem>
+                            {masters.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -457,7 +477,7 @@ export default function OrderDetailPage() {
                           amount: Number(form.get("amount")),
                           method: form.get("method"),
                           notes: form.get("notes"),
-                          outfitId: form.get("outfitId") || undefined,
+                          outfitId: form.get("outfitId") === "none" ? undefined : form.get("outfitId"),
                           transactionRef: form.get("transactionRef") || undefined,
                       });
                     }}
@@ -466,12 +486,17 @@ export default function OrderDetailPage() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <Label className="text-xs">Apply To Outfit</Label>
-                        <select name="outfitId" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                          <option value="">Whole Order</option>
+                        <Select name="outfitId">
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Whole Order" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Whole Order</SelectItem>
                           {(order.outfits || []).map((o: any) => (
-                            <option key={o.id} value={o.id}>{o.name} — ₹{Number(o.price || 0).toLocaleString()}</option>
+                            <SelectItem key={o.id} value={o.id}>{o.name} - ₹{Number(o.price || 0).toLocaleString()}</SelectItem>
                           ))}
-                        </select>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Amount (₹)</Label>
@@ -479,12 +504,17 @@ export default function OrderDetailPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Method</Label>
-                        <select name="method" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm" required>
-                          <option value="CASH">Cash</option>
-                          <option value="UPI">UPI</option>
-                          <option value="CARD">Card</option>
-                          <option value="BANK_TRANSFER">Bank Transfer</option>
-                        </select>
+                        <Select name="method" required defaultValue="CASH">
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CASH">Cash</SelectItem>
+                            <SelectItem value="UPI">UPI</SelectItem>
+                            <SelectItem value="CARD">Card</SelectItem>
+                            <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Transaction / Ref</Label>

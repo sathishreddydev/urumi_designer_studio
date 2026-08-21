@@ -1903,18 +1903,22 @@ function AssignMasterSelect({
   if (!canFetch) return null;
 
   return (
-    <select
-      className="h-8 w-full rounded border border-input bg-background px-2 text-xs"
-      value={currentMasterId || ""}
-      onChange={(e) => onAssign(e.target.value)}
+    <Select
+      value={currentMasterId || "none"}
+      onValueChange={(value) => onAssign(value === "none" ? "" : value)}
     >
-      <option value="">Select Master</option>
+      <SelectTrigger className="h-8 rounded px-2 text-xs">
+        <SelectValue placeholder="Select Master" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Select Master</SelectItem>
       {(staff || []).map((m: any) => (
-        <option key={m.id} value={m.id}>
+        <SelectItem key={m.id} value={m.id}>
           {m.name}
-        </option>
+        </SelectItem>
       ))}
-    </select>
+      </SelectContent>
+    </Select>
   );
 }
 

@@ -16,6 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
@@ -391,18 +398,22 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                     />
                   </div>
                   {orderStatuses.length > 1 && (
-                    <select
+                    <Select
                       value={orderStatusFilter}
-                      onChange={(e) => setOrderStatusFilter(e.target.value)}
-                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                      onValueChange={setOrderStatusFilter}
                     >
-                      <option value="all">All Statuses</option>
+                      <SelectTrigger className="h-9 w-auto px-3 text-sm">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
                       {orderStatuses.map((status: string) => (
-                        <option key={status} value={status}>
+                        <SelectItem key={status} value={status}>
                           {status}
-                        </option>
+                        </SelectItem>
                       ))}
-                    </select>
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
               </CardContent>

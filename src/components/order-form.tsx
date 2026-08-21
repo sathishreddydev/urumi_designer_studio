@@ -1144,16 +1144,20 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       placeholder="0.00"
                       className="bg-background flex-1"
                     />
-                    <select
+                    <Select
                       value={advanceMethod}
-                      onChange={(e) => setAdvanceMethod(e.target.value)}
-                      className="flex h-9 rounded-md border border-input bg-background px-2 text-xs w-28"
+                      onValueChange={setAdvanceMethod}
                     >
-                      <option value="CASH">Cash</option>
-                      <option value="UPI">UPI</option>
-                      <option value="CARD">Card</option>
-                      <option value="BANK_TRANSFER">Bank Transfer</option>
-                    </select>
+                      <SelectTrigger className="h-9 w-28 px-2 text-xs">
+                        <SelectValue placeholder="Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CASH">Cash</SelectItem>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="CARD">Card</SelectItem>
+                        <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

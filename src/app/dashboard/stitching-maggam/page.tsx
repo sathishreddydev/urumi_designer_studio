@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 "use client";
 
 import { useState, useMemo } from "react";
@@ -213,16 +220,20 @@ export default function StitchingMaggamPage() {
             className="pl-9"
           />
         </div>
-        <select
+        <Select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="h-9 sm:h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring sm:w-[160px]"
+          onValueChange={setTypeFilter}
         >
-          <option value="all">All Types</option>
+          <SelectTrigger className="h-9 sm:h-10 sm:w-[160px]">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
           {outfitTypes.map((type) => (
-            <option key={type} value={type}>{type}</option>
+            <SelectItem key={type} value={type}>{type}</SelectItem>
           ))}
-        </select>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Results */}

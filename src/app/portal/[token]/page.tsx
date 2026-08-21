@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import {
@@ -293,18 +300,22 @@ export default function CustomerPortalPage() {
                   />
                 </div>
                 {allOutfitStatuses.length > 1 && (
-                  <select
+                  <Select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-card px-3 text-xs focus:ring-1 focus:ring-primary outline-none"
+                    onValueChange={setStatusFilter}
                   >
-                    <option value="all">All Statuses</option>
+                    <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
                     {allOutfitStatuses.map((status) => (
-                      <option key={status} value={status}>
+                      <SelectItem key={status} value={status}>
                         {formatStatus(status)}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
             )}
