@@ -536,9 +536,9 @@ export default function OutfitDetailPage() {
       </div>
 
       {/* Main Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
         {/* LEFT COLUMN: Metadata & Measurements */}
-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4">
+        <div className="w-full lg:w-[360px] shrink-0 space-y-4 lg:sticky lg:top-4">
           {/* Key Outfit Details */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
@@ -835,24 +835,35 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
-          {/* Customer Material */}
-          <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <CustomerMaterialSection
-              references={fabricRefs}
-              canUpload={canManageCustomerMaterial}
-              isUploading={uploadingType === "FABRIC"}
-              onUpload={(file) =>
-                uploadRefMutation.mutate({ file, type: "FABRIC" })
-              }
-              onDelete={(refId) => deleteRefMutation.mutate(refId)}
-            />
-          </div>
+          {/* Customer Material — accordion */}
+          <Accordion type="single" collapsible defaultValue="material" className="w-full">
+            <AccordionItem value="material" className="rounded-lg border bg-card px-4">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <ImageIcon className="h-4 w-4 text-primary shrink-0" />
+                  Customer Material
+                  {fabricRefs.length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs">{fabricRefs.length}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <CustomerMaterialSection
+                  references={fabricRefs}
+                  canUpload={canManageCustomerMaterial}
+                  isUploading={uploadingType === "FABRIC"}
+                  onUpload={(file) => uploadRefMutation.mutate({ file, type: "FABRIC" })}
+                  onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
 
         </div>
 
         {/* RIGHT COLUMN: Accordion Workflow Sections */}
-        <div className="lg:col-span-8 order-1 lg:order-2">
+        <div className="w-full min-w-0 flex-1">
           <Accordion
             type="multiple"
             defaultValue={role === "MASTER" ? ["references", "dependencies"] : ["references", "dependencies", "design"]}
