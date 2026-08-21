@@ -19,6 +19,7 @@ import {
   X,
   Camera,
   Save,
+  Search,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,16 +49,51 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const OUTFIT_TYPES = [
-  "Bridal Blouse",
-  "Reception Blouse",
-  "Lehenga",
-  "Gown",
-  "Kurta",
-  "Saree Blouse",
-  "Anarkali",
-  "Sharara",
-  "Other",
+const OUTFIT_TYPE_GROUPS = [
+  {
+    label: "Women",
+    types: [
+      "Bridal Blouse",
+      "Reception Blouse",
+      "Saree Blouse",
+      "Lehenga",
+      "Gown",
+      "Anarkali",
+      "Sharara",
+      "Salwar Suit",
+      "Churidar",
+      "Palazzo Suit",
+      "Half Saree",
+      "Pattu Pavadai",
+      "Pico",
+      "Fall",
+      "Tassels",
+      "Saree Border",
+      "Saree Pallu",
+      "Bridal Veil",
+      "Bridal Dupatta",
+      "Bridal Cape",
+      "Bridal Waist Belt",
+      "Bridal Trail",
+      "Bridal Potli",
+      "Women Other",
+    ],
+  },
+  {
+    label: "Men",
+    types: [
+      "Kurta",
+      "Sherwani",
+      "Nehru Jacket",
+      "Waistcoat",
+      "Shirt",
+      "Trousers",
+      "Dhoti",
+      "Indo-Western",
+      "Men Other",
+    ],
+  },
+  { label: "Other", types: ["Other"] },
 ];
 
 // Statuses where outfit fields are still editable
@@ -257,6 +293,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraIndex, setCameraIndex] = useState<number | null>(null);
   const [deleteOutfitId, setDeleteOutfitId] = useState<string | null>(null);
+  const [outfitTypeSearch, setOutfitTypeSearch] = useState("");
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: customersData, isLoading: isLoadingCustomers } = useQuery({
@@ -344,6 +381,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         .reduce((s: number, p: any) => s + Number(p.amount), 0) + advance
     : advance;
   const balanceDue = estimatedTotal - totalPaid;
+  const normalizedOutfitTypeSearch = outfitTypeSearch.trim().toLowerCase();
 
   // ── Create mutation ─────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -443,7 +481,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     },
   });
 
-
   // ── Save (edit) mutation ────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -476,7 +513,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         });
         if (!paymentRes.ok) {
           const err = await paymentRes.json().catch(() => ({}));
-          throw new Error(err.error || "Order saved but payment failed — please add it manually from the order page.");
+          throw new Error(
+            err.error ||
+              "Order saved but payment failed — please add it manually from the order page.",
+          );
         }
       }
 
@@ -690,7 +730,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           <Link href={backUrl} className="hidden sm:block">
-            <Button variant="ghost" size="sm">Cancel</Button>
+            <Button variant="ghost" size="sm">
+              Cancel
+            </Button>
           </Link>
           <Button
             size="sm"
@@ -829,11 +871,41 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                             <SelectValue placeholder="Select outfit type" />
                           </SelectTrigger>
                           <SelectContent>
-                            {OUTFIT_TYPES.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
+                            <div className="relative px-2 pb-2">
+                              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                value={outfitTypeSearch}
+                                onChange={(e) =>
+                                  setOutfitTypeSearch(e.target.value)
+                                }
+                                onKeyDown={(e) => e.stopPropagation()}
+                                placeholder="Search outfit types..."
+                                className="h-8 pl-8"
+                                aria-label="Search outfit types"
+                              />
+                            </div>
+                            {OUTFIT_TYPE_GROUPS.map((group) => {
+                              const matchingTypes = group.types.filter((type) =>
+                                type
+                                  .toLowerCase()
+                                  .includes(normalizedOutfitTypeSearch),
+                              );
+
+                              if (matchingTypes.length === 0) return null;
+
+                              return (
+                                <div key={group.label}>
+                                  <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                                    {group.label}
+                                  </p>
+                                  {matchingTypes.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                      {type}
+                                    </SelectItem>
+                                  ))}
+                                </div>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1155,7 +1227,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <SelectItem value="CASH">Cash</SelectItem>
                         <SelectItem value="UPI">UPI</SelectItem>
                         <SelectItem value="CARD">Card</SelectItem>
-                        <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                        <SelectItem value="BANK_TRANSFER">
+                          Bank Transfer
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
