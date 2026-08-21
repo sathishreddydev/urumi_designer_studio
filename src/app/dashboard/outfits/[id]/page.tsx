@@ -77,15 +77,42 @@ const DEPENDENCY_TYPES = [
 // These are the stitching-specific dimensions that vary per garment,
 // separate from the customer's body measurements.
 const GARMENT_FIELDS: Record<string, string[]> = {
-  "Bridal Blouse":     ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
-  "Reception Blouse":  ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
-  "Saree Blouse":      ["Front Length", "Back Length", "Neck Front", "Neck Back", "Sleeve Round", "Armhole"],
-  Lehenga:             ["Lehenga Length", "Flare / Gher", "Waist Band"],
-  Gown:                ["Full Length", "Yoke Length", "Neck Front", "Neck Back", "Slit Start"],
-  Kurta:               ["Kurti Length", "Neck Front", "Neck Back", "Side Slit Start"],
-  Anarkali:            ["Anarkali Length", "Yoke Length", "Neck Front", "Neck Back", "Flare / Gher"],
-  Sharara:             ["Top Length", "Sharara Length", "Neck Front"],
-  Other:               ["Length", "Neck Front", "Neck Back"],
+  "Bridal Blouse": [
+    "Front Length",
+    "Back Length",
+    "Neck Front",
+    "Neck Back",
+    "Sleeve Round",
+    "Armhole",
+  ],
+  "Reception Blouse": [
+    "Front Length",
+    "Back Length",
+    "Neck Front",
+    "Neck Back",
+    "Sleeve Round",
+    "Armhole",
+  ],
+  "Saree Blouse": [
+    "Front Length",
+    "Back Length",
+    "Neck Front",
+    "Neck Back",
+    "Sleeve Round",
+    "Armhole",
+  ],
+  Lehenga: ["Lehenga Length", "Flare / Gher", "Waist Band"],
+  Gown: ["Full Length", "Yoke Length", "Neck Front", "Neck Back", "Slit Start"],
+  Kurta: ["Kurti Length", "Neck Front", "Neck Back", "Side Slit Start"],
+  Anarkali: [
+    "Anarkali Length",
+    "Yoke Length",
+    "Neck Front",
+    "Neck Back",
+    "Flare / Gher",
+  ],
+  Sharara: ["Top Length", "Sharara Length", "Neck Front"],
+  Other: ["Length", "Neck Front", "Neck Back"],
 };
 
 // Mirrored body section definitions — used for grouped display on outfit detail page
@@ -93,21 +120,49 @@ const BODY_SECTIONS = [
   {
     num: "01",
     title: "UPPER BODY",
-    fields: ["Shoulder Length", "Upper Bust", "Bust", "Lower Bust", "Waist", "Lower Waist", "Hip"],
+    fields: [
+      "Shoulder Length",
+      "Upper Bust",
+      "Bust",
+      "Lower Bust",
+      "Waist",
+      "Lower Waist",
+      "Hip",
+    ],
   },
   {
     num: "02",
     title: "APEX & SLEEVES",
-    fields: ["Apex Point", "Apex Down", "Apex Gap", "Sleeve Length", "Sleeve Loose", "Armhole", "Neck Front", "Neck Back"],
+    fields: [
+      "Apex Point",
+      "Apex Down",
+      "Apex Gap",
+      "Sleeve Length",
+      "Sleeve Loose",
+      "Armhole",
+      "Neck Front",
+      "Neck Back",
+    ],
   },
   {
     num: "03",
     title: "BOTTOM (PANT)",
-    fields: ["Pant Length", "Pant Waist", "Hip / Seat", "Crotch (Rise)", "Thigh", "Knee", "Ankle", "Bottom Loose"],
+    fields: [
+      "Pant Length",
+      "Pant Waist",
+      "Hip / Seat",
+      "Crotch (Rise)",
+      "Thigh",
+      "Knee",
+      "Ankle",
+      "Bottom Loose",
+    ],
   },
 ] as const;
 
-const ALL_BODY_FIELD_NAMES: string[] = BODY_SECTIONS.flatMap((s) => s.fields as unknown as string[]);
+const ALL_BODY_FIELD_NAMES: string[] = BODY_SECTIONS.flatMap(
+  (s) => s.fields as unknown as string[],
+);
 
 export default function OutfitDetailPage() {
   const params = useParams();
@@ -123,12 +178,17 @@ export default function OutfitDetailPage() {
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   // Garment-specific measurements (editable inline)
-  const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
-  const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] = useState(false);
+  const [garmentMeasurements, setGarmentMeasurements] = useState<
+    Record<string, string>
+  >({});
+  const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] =
+    useState(false);
   const [newGarmentField, setNewGarmentField] = useState("");
 
   // Voice notes
-  const [voiceNotes, setVoiceNotes] = useState<{ id: string; url: string; label: string; createdAt: string }[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<
+    { id: string; url: string; label: string; createdAt: string }[]
+  >([]);
 
   // Fetch outfit detail
   const { data: outfit, isLoading } = useQuery({
@@ -143,15 +203,20 @@ export default function OutfitDetailPage() {
   // Seed garment measurements from saved data when outfit loads
   useEffect(() => {
     if (outfit) {
-      const saved = (outfit.garmentMeasurements as Record<string, string>) || {};
+      const saved =
+        (outfit.garmentMeasurements as Record<string, string>) || {};
       // If no saved garment measurements yet, pre-populate fields from the type template
       if (Object.keys(saved).length === 0) {
-        const typeKey = Object.keys(GARMENT_FIELDS).find(
-          (k) => k.toLowerCase() === (outfit.type || "").toLowerCase()
-        ) || outfit.type;
-        const templateFields = GARMENT_FIELDS[typeKey] || GARMENT_FIELDS["Other"] || [];
+        const typeKey =
+          Object.keys(GARMENT_FIELDS).find(
+            (k) => k.toLowerCase() === (outfit.type || "").toLowerCase(),
+          ) || outfit.type;
+        const templateFields =
+          GARMENT_FIELDS[typeKey] || GARMENT_FIELDS["Other"] || [];
         const empty: Record<string, string> = {};
-        templateFields.forEach((f) => { empty[f] = ""; });
+        templateFields.forEach((f) => {
+          empty[f] = "";
+        });
         setGarmentMeasurements(empty);
       } else {
         setGarmentMeasurements(saved);
@@ -342,7 +407,15 @@ export default function OutfitDetailPage() {
 
   // Upload reference
   const uploadRefMutation = useMutation({
-    mutationFn: async ({ file, type, isWorkPhoto }: { file: File; type: string; isWorkPhoto?: boolean }) => {
+    mutationFn: async ({
+      file,
+      type,
+      isWorkPhoto,
+    }: {
+      file: File;
+      type: string;
+      isWorkPhoto?: boolean;
+    }) => {
       const formData = new FormData();
       formData.append("file", file);
       const uploadRes = await fetch("/api/upload", {
@@ -355,12 +428,24 @@ export default function OutfitDetailPage() {
       const res = await fetch(`/api/outfits/${params.id}/references`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, url, filename, isWorkPhoto: isWorkPhoto === true }),
+        body: JSON.stringify({
+          type,
+          url,
+          filename,
+          isWorkPhoto: isWorkPhoto === true,
+        }),
       });
       if (!res.ok) throw new Error("Failed to save reference");
       return res.json();
     },
-    onMutate: async ({ type, isWorkPhoto }: { file: File; type: string; isWorkPhoto?: boolean }) => {
+    onMutate: async ({
+      type,
+      isWorkPhoto,
+    }: {
+      file: File;
+      type: string;
+      isWorkPhoto?: boolean;
+    }) => {
       setUploadingType(isWorkPhoto ? "COMPLETION" : type);
     },
     onSettled: () => {
@@ -411,8 +496,8 @@ export default function OutfitDetailPage() {
       <div className="space-y-4">
         <div className="h-8 w-64 animate-pulse rounded bg-muted" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-4" />
-          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-8" />
+          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-7" />
+          <div className="h-96 animate-pulse rounded bg-muted lg:col-span-5" />
         </div>
       </div>
     );
@@ -493,13 +578,17 @@ export default function OutfitDetailPage() {
             <h1 className="text-sm font-bold sm:text-base lg:text-xl truncate">
               {outfit.name}
             </h1>
-            <Badge className={`${getStatusColor(outfit.status)} shrink-0 text-[10px] sm:text-xs whitespace-nowrap`}>
+            <Badge
+              className={`${getStatusColor(outfit.status)} shrink-0 text-[10px] sm:text-xs whitespace-nowrap`}
+            >
               {formatStatus(outfit.status)}
             </Badge>
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
             {outfit.customer?.name && (
-              <span className="font-medium text-foreground">{outfit.customer.name}</span>
+              <span className="font-medium text-foreground">
+                {outfit.customer.name}
+              </span>
             )}
             {outfit.customer?.name && " · "}
             {outfit.type}
@@ -536,337 +625,16 @@ export default function OutfitDetailPage() {
       </div>
 
       {/* Main Split Layout */}
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Metadata & Measurements */}
-        <div className="w-full lg:w-[360px] shrink-0 space-y-4 lg:sticky lg:top-4">
-          {/* Key Outfit Details */}
-          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
-              <Scissors className="h-4 w-4" /> Outfit Summary
-            </h2>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" /> Trial Date
-                </span>
-                <span className="font-medium">
-                  {formatDate(outfit.trialDate)}
-                </span>
-              </div>
-              <Separator />
-
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" /> Delivery Date
-                </span>
-                <span className="font-medium">
-                  {formatDate(outfit.deliveryDate)}
-                </span>
-              </div>
-              <Separator />
-
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <UserCheck className="h-3.5 w-3.5" /> Designer
-                </span>
-                <span className="font-medium">
-                  {outfit.designer?.name || "Not assigned"}
-                </span>
-              </div>
-              <Separator />
-
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <UserCheck className="h-3.5 w-3.5" /> Master
-                </span>
-                <div className="w-1/2">
-                  {can("update", "outfit") && role !== "MASTER" ? (
-                    <AssignMasterSelect
-                      outfitId={outfit.id}
-                      currentMasterId={outfit.masterId}
-                      onAssign={(masterId) =>
-                        updateMutation.mutate({ masterId })
-                      }
-                    />
-                  ) : (
-                    <span className="font-medium float-right">
-                      {outfit.master?.name || outfit.masterId || "Not assigned"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Measurements */}
-          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
-              <Ruler className="h-4 w-4" /> Measurements
-            </h2>
-
-            {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Body · <span className="normal-case font-normal text-muted-foreground">inches</span></p>
-                {outfit.customerMeasurements && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">v{outfit.customerMeasurements.version}</span>
-                    {outfit.measurementIsSnapshot ? (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">at order time</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50">latest</Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {outfit.customerMeasurements ? (
-                <div className="space-y-1.5">
-                  {!outfit.measurementIsSnapshot && outfit.measurementSnapshotId === null && outfit.customer?.id && role !== "MASTER" && (
-                    <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                      Showing latest — created before snapshots were tracked.
-                    </p>
-                  )}
-
-                  {/* Sectioned body measurements */}
-                  {BODY_SECTIONS.map((section) => {
-                    const vals = outfit.customerMeasurements.values as Record<string, string>;
-                    const entries = (section.fields as unknown as string[])
-                      .map((f) => [f, vals[f]] as [string, string])
-                      .filter(([, v]) => v);
-                    if (!entries.length) return null;
-                    return (
-                      <div key={section.num} className="space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold text-primary/60 tabular-nums">{section.num}</span>
-                          <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">{section.title}</span>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5">
-                          {entries.map(([field, value]) => (
-                            <div key={field} className="flex justify-between items-center border-b border-muted/40 py-0.5">
-                              <span className="text-[11px] text-muted-foreground truncate mr-1">{field}</span>
-                              <span className="text-[11px] font-semibold shrink-0">{value}"</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Custom fields not in standard sections */}
-                  {(() => {
-                    const vals = outfit.customerMeasurements.values as Record<string, string>;
-                    const extras = Object.entries(vals).filter(([k, v]) => !ALL_BODY_FIELD_NAMES.includes(k) && v);
-                    if (!extras.length) return null;
-                    return (
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 pt-1">
-                        {extras.map(([field, value]) => (
-                          <div key={field} className="flex justify-between items-center border-b border-muted/40 py-0.5">
-                            <span className="text-[11px] text-muted-foreground">{field}</span>
-                            <span className="text-[11px] font-semibold">{value}"</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-
-                  {outfit.customer?.id && role !== "MASTER" && (
-                    <Link href={`/dashboard/customers/${outfit.customer.id}`} className="text-[11px] text-primary hover:underline mt-1 inline-block">
-                      Edit body measurements →
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic py-1">
-                  No body measurements.{" "}
-                  {outfit.customer?.id && role !== "MASTER" && (
-                    <Link href={`/dashboard/customers/${outfit.customer.id}`} className="text-primary hover:underline">Add →</Link>
-                  )}
-                </p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* ── GARMENT MEASUREMENTS (outfit-specific, editable) ── */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Garment · <span className="normal-case font-normal">{outfit.type}</span>
-                </p>
-                {garmentMeasurementsDirty && role !== "RECEPTION" && (
-                  <Button
-                    size="xs"
-                    className="h-6 text-[11px] px-2"
-                    onClick={() => {
-                      updateMutation.mutate({ garmentMeasurements });
-                      setGarmentMeasurementsDirty(false);
-                    }}
-                  >
-                    Save
-                  </Button>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">All values in inches.</p>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
-                {Object.entries(garmentMeasurements).map(([field, value]) => {
-                  // Check if body measurements have a value for the same field name
-                  const bodyValue = outfit.customerMeasurements?.values?.[field];
-                  const isDuplicate = bodyValue && bodyValue !== "" && bodyValue !== value && value !== "";
-
-                  // Determine if this is a template field or a custom-added field
-                  const typeKey = Object.keys(GARMENT_FIELDS).find(
-                    (k) => k.toLowerCase() === (outfit.type || "").toLowerCase()
-                  ) || outfit.type;
-                  const templateFields = GARMENT_FIELDS[typeKey] || [];
-                  const isCustomField = !templateFields.includes(field);
-
-                  return (
-                    <div key={field} className="space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <label className="text-[11px] text-muted-foreground truncate">{field}</label>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {/* Body reference hint */}
-                          {bodyValue && bodyValue !== "" && (
-                            <span
-                              className={`text-[9px] px-1 rounded font-medium ${
-                                isDuplicate
-                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                              title={`Body measurement: ${bodyValue}"`}
-                            >
-                              B:{bodyValue}"
-                            </span>
-                          )}
-                          {/* Remove button for custom fields */}
-                          {isCustomField && role !== "RECEPTION" && (
-                            <button
-                              type="button"
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                              onClick={() => {
-                                setGarmentMeasurements((prev) => {
-                                  const copy = { ...prev };
-                                  delete copy[field];
-                                  return copy;
-                                });
-                                setGarmentMeasurementsDirty(true);
-                              }}
-                              title="Remove field"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {role === "RECEPTION" ? (
-                        <p className="h-7 text-xs px-2 flex items-center font-semibold">
-                          {value || "—"}
-                        </p>
-                      ) : (
-                        <Input
-                          value={value}
-                          onChange={(e) => {
-                            setGarmentMeasurements((prev) => ({ ...prev, [field]: e.target.value }));
-                            setGarmentMeasurementsDirty(true);
-                          }}
-                          placeholder="in inches"
-                          inputMode="decimal"
-                          className={`h-7 text-xs px-2 ${
-                            isDuplicate ? "border-amber-400 focus-visible:ring-amber-400" : ""
-                          }`}
-                        />
-                      )}
-                      {/* Conflict warning */}
-                      {isDuplicate && (
-                        <p className="text-[9px] text-amber-600 flex items-center gap-0.5">
-                          <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
-                          Differs from body ({bodyValue}")
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {Object.keys(garmentMeasurements).length === 0 && (
-                <p className="text-xs text-muted-foreground italic">No fields for this garment type.</p>
-              )}
-
-              {/* Add custom garment field — not available to RECEPTION */}
-              {role !== "RECEPTION" && (
-                <div className="flex gap-2 pt-1">
-                  <Input
-                    value={newGarmentField}
-                    onChange={(e) => setNewGarmentField(e.target.value)}
-                    placeholder="Custom field (e.g. Sleeve Round)"
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const key = newGarmentField.trim();
-                        if (!key || key in garmentMeasurements) return;
-                        setGarmentMeasurements((prev) => ({ ...prev, [key]: "" }));
-                        setGarmentMeasurementsDirty(true);
-                        setNewGarmentField("");
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-2 shrink-0"
-                    onClick={() => {
-                      const key = newGarmentField.trim();
-                      if (!key || key in garmentMeasurements) return;
-                      setGarmentMeasurements((prev) => ({ ...prev, [key]: "" }));
-                      setGarmentMeasurementsDirty(true);
-                      setNewGarmentField("");
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Customer Material — accordion */}
-          <Accordion type="single" collapsible defaultValue="material" className="w-full">
-            <AccordionItem value="material" className="rounded-lg border bg-card px-4">
-              <AccordionTrigger className="hover:no-underline py-3">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <ImageIcon className="h-4 w-4 text-primary shrink-0" />
-                  Customer Material
-                  {fabricRefs.length > 0 && (
-                    <Badge variant="outline" className="ml-1 text-xs">{fabricRefs.length}</Badge>
-                  )}
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <CustomerMaterialSection
-                  references={fabricRefs}
-                  canUpload={canManageCustomerMaterial}
-                  isUploading={uploadingType === "FABRIC"}
-                  onUpload={(file) => uploadRefMutation.mutate({ file, type: "FABRIC" })}
-                  onDelete={(refId) => deleteRefMutation.mutate(refId)}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-
-        </div>
-
-        {/* RIGHT COLUMN: Accordion Workflow Sections */}
-        <div className="w-full min-w-0 flex-1">
+        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
           <Accordion
             type="multiple"
-            defaultValue={role === "MASTER" ? ["references", "dependencies"] : ["references", "dependencies", "design"]}
+            defaultValue={
+              role === "MASTER"
+                ? ["references", "dependencies"]
+                : ["references", "dependencies", "design"]
+            }
             className="w-full space-y-4"
           >
             {/* References Section */}
@@ -877,10 +645,16 @@ export default function OutfitDetailPage() {
               <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
                 <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
                   <ImageIcon className="h-4 w-4 text-primary shrink-0" />
-                  {role === "MASTER" ? "Approved References" : "Visual References"}
+                  {role === "MASTER"
+                    ? "Approved References"
+                    : "Visual References"}
                   <Badge variant="outline" className="ml-2 text-xs">
                     {/* Count only PATTERN + MAGGAM refs — FABRIC lives in Customer Material */}
-                    {(outfit.references || []).filter((r: any) => r.type === "PATTERN" || r.type === "MAGGAM").length}
+                    {
+                      (outfit.references || []).filter(
+                        (r: any) => r.type === "PATTERN" || r.type === "MAGGAM",
+                      ).length
+                    }
                   </Badge>
                 </div>
               </AccordionTrigger>
@@ -890,7 +664,8 @@ export default function OutfitDetailPage() {
                   <>
                     {patternRefs.length === 0 && maggamRefs.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-                        No approved references yet. The designer will lock references before production starts.
+                        No approved references yet. The designer will lock
+                        references before production starts.
                       </p>
                     ) : (
                       <>
@@ -948,13 +723,17 @@ export default function OutfitDetailPage() {
                         uploadRefMutation.mutate({ file, type: "PATTERN" })
                       }
                       onSelect={() => {}}
-                      onLock={() => lockRefsMutation.mutate({ type: "PATTERN" })}
+                      onLock={() =>
+                        lockRefsMutation.mutate({ type: "PATTERN" })
+                      }
                       onUnlock={() =>
                         unlockRefsMutation.mutate({ type: "PATTERN" })
                       }
                       onDelete={(refId) => deleteRefMutation.mutate(refId)}
                       onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
-                      onUnlockSingle={(refId) => unlockSingleMutation.mutate(refId)}
+                      onUnlockSingle={(refId) =>
+                        unlockSingleMutation.mutate(refId)
+                      }
                     />
 
                     {outfit.maggamRequired && (
@@ -970,12 +749,16 @@ export default function OutfitDetailPage() {
                           uploadRefMutation.mutate({ file, type: "MAGGAM" })
                         }
                         onSelect={() => {}}
-                        onLock={() => lockRefsMutation.mutate({ type: "MAGGAM" })}
+                        onLock={() =>
+                          lockRefsMutation.mutate({ type: "MAGGAM" })
+                        }
                         onUnlock={() =>
                           unlockRefsMutation.mutate({ type: "MAGGAM" })
                         }
                         onDelete={(refId) => deleteRefMutation.mutate(refId)}
-                        onLockSingle={(refId) => lockSingleMutation.mutate(refId)}
+                        onLockSingle={(refId) =>
+                          lockSingleMutation.mutate(refId)
+                        }
                         onUnlockSingle={(refId) =>
                           unlockSingleMutation.mutate(refId)
                         }
@@ -1227,13 +1010,430 @@ export default function OutfitDetailPage() {
                     canUpload={canUploadCompletion}
                     isUploading={uploadingType === "COMPLETION"}
                     onUpload={(file) =>
-                      uploadRefMutation.mutate({ file, type: "FABRIC", isWorkPhoto: true })
+                      uploadRefMutation.mutate({
+                        file,
+                        type: "FABRIC",
+                        isWorkPhoto: true,
+                      })
                     }
                     onDelete={(refId) => deleteRefMutation.mutate(refId)}
                   />
                 </AccordionContent>
               </AccordionItem>
             )}
+          </Accordion>
+        </div>
+        {/* RIGHT COLUMN: Accordion Workflow Sections */}
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
+          {/* Key Outfit Details */}
+          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+              <Scissors className="h-4 w-4" /> Outfit Summary
+            </h2>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Trial Date
+                </span>
+                <span className="font-medium">
+                  {formatDate(outfit.trialDate)}
+                </span>
+              </div>
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Delivery Date
+                </span>
+                <span className="font-medium">
+                  {formatDate(outfit.deliveryDate)}
+                </span>
+              </div>
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" /> Designer
+                </span>
+                <span className="font-medium">
+                  {outfit.designer?.name || "Not assigned"}
+                </span>
+              </div>
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" /> Master
+                </span>
+                <div className="w-1/2">
+                  {can("update", "outfit") && role !== "MASTER" ? (
+                    <AssignMasterSelect
+                      outfitId={outfit.id}
+                      currentMasterId={outfit.masterId}
+                      onAssign={(masterId) =>
+                        updateMutation.mutate({ masterId })
+                      }
+                    />
+                  ) : (
+                    <span className="font-medium float-right">
+                      {outfit.master?.name || outfit.masterId || "Not assigned"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Measurements */}
+          <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+              <Ruler className="h-4 w-4" /> Measurements
+            </h2>
+
+            {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Body ·{" "}
+                  <span className="normal-case font-normal text-muted-foreground">
+                    inches
+                  </span>
+                </p>
+                {outfit.customerMeasurements && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      v{outfit.customerMeasurements.version}
+                    </span>
+                    {outfit.measurementIsSnapshot ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        at order time
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50"
+                      >
+                        latest
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {outfit.customerMeasurements ? (
+                <div className="space-y-1.5">
+                  {!outfit.measurementIsSnapshot &&
+                    outfit.measurementSnapshotId === null &&
+                    outfit.customer?.id &&
+                    role !== "MASTER" && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        Showing latest — created before snapshots were tracked.
+                      </p>
+                    )}
+
+                  {/* Sectioned body measurements */}
+                  {BODY_SECTIONS.map((section) => {
+                    const vals = outfit.customerMeasurements.values as Record<
+                      string,
+                      string
+                    >;
+                    const entries = (section.fields as unknown as string[])
+                      .map((f) => [f, vals[f]] as [string, string])
+                      .filter(([, v]) => v);
+                    if (!entries.length) return null;
+                    return (
+                      <div key={section.num} className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-primary/60 tabular-nums">
+                            {section.num}
+                          </span>
+                          <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">
+                            {section.title}
+                          </span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5">
+                          {entries.map(([field, value]) => (
+                            <div
+                              key={field}
+                              className="flex justify-between items-center border-b border-muted/40 py-0.5"
+                            >
+                              <span className="text-[11px] text-muted-foreground truncate mr-1">
+                                {field}
+                              </span>
+                              <span className="text-[11px] font-semibold shrink-0">
+                                {value}"
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom fields not in standard sections */}
+                  {(() => {
+                    const vals = outfit.customerMeasurements.values as Record<
+                      string,
+                      string
+                    >;
+                    const extras = Object.entries(vals).filter(
+                      ([k, v]) => !ALL_BODY_FIELD_NAMES.includes(k) && v,
+                    );
+                    if (!extras.length) return null;
+                    return (
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 pt-1">
+                        {extras.map(([field, value]) => (
+                          <div
+                            key={field}
+                            className="flex justify-between items-center border-b border-muted/40 py-0.5"
+                          >
+                            <span className="text-[11px] text-muted-foreground">
+                              {field}
+                            </span>
+                            <span className="text-[11px] font-semibold">
+                              {value}"
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {outfit.customer?.id && role !== "MASTER" && (
+                    <Link
+                      href={`/dashboard/customers/${outfit.customer.id}`}
+                      className="text-[11px] text-primary hover:underline mt-1 inline-block"
+                    >
+                      Edit body measurements →
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-1">
+                  No body measurements.{" "}
+                  {outfit.customer?.id && role !== "MASTER" && (
+                    <Link
+                      href={`/dashboard/customers/${outfit.customer.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      Add →
+                    </Link>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* ── GARMENT MEASUREMENTS (outfit-specific, editable) ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Garment ·{" "}
+                  <span className="normal-case font-normal">{outfit.type}</span>
+                </p>
+                {garmentMeasurementsDirty && role !== "RECEPTION" && (
+                  <Button
+                    size="xs"
+                    className="h-6 text-[11px] px-2"
+                    onClick={() => {
+                      updateMutation.mutate({ garmentMeasurements });
+                      setGarmentMeasurementsDirty(false);
+                    }}
+                  >
+                    Save
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                All values in inches.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                {Object.entries(garmentMeasurements).map(([field, value]) => {
+                  // Check if body measurements have a value for the same field name
+                  const bodyValue =
+                    outfit.customerMeasurements?.values?.[field];
+                  const isDuplicate =
+                    bodyValue &&
+                    bodyValue !== "" &&
+                    bodyValue !== value &&
+                    value !== "";
+
+                  // Determine if this is a template field or a custom-added field
+                  const typeKey =
+                    Object.keys(GARMENT_FIELDS).find(
+                      (k) =>
+                        k.toLowerCase() === (outfit.type || "").toLowerCase(),
+                    ) || outfit.type;
+                  const templateFields = GARMENT_FIELDS[typeKey] || [];
+                  const isCustomField = !templateFields.includes(field);
+
+                  return (
+                    <div key={field} className="space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <label className="text-[11px] text-muted-foreground truncate">
+                          {field}
+                        </label>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {/* Body reference hint */}
+                          {bodyValue && bodyValue !== "" && (
+                            <span
+                              className={`text-[9px] px-1 rounded font-medium ${
+                                isDuplicate
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                              title={`Body measurement: ${bodyValue}"`}
+                            >
+                              B:{bodyValue}"
+                            </span>
+                          )}
+                          {/* Remove button for custom fields */}
+                          {isCustomField && role !== "RECEPTION" && (
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => {
+                                setGarmentMeasurements((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy[field];
+                                  return copy;
+                                });
+                                setGarmentMeasurementsDirty(true);
+                              }}
+                              title="Remove field"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {role === "RECEPTION" ? (
+                        <p className="h-7 text-xs px-2 flex items-center font-semibold">
+                          {value || "—"}
+                        </p>
+                      ) : (
+                        <Input
+                          value={value}
+                          onChange={(e) => {
+                            setGarmentMeasurements((prev) => ({
+                              ...prev,
+                              [field]: e.target.value,
+                            }));
+                            setGarmentMeasurementsDirty(true);
+                          }}
+                          placeholder="in inches"
+                          inputMode="decimal"
+                          className={`h-7 text-xs px-2 ${
+                            isDuplicate
+                              ? "border-amber-400 focus-visible:ring-amber-400"
+                              : ""
+                          }`}
+                        />
+                      )}
+                      {/* Conflict warning */}
+                      {isDuplicate && (
+                        <p className="text-[9px] text-amber-600 flex items-center gap-0.5">
+                          <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                          Differs from body ({bodyValue}")
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {Object.keys(garmentMeasurements).length === 0 && (
+                <p className="text-xs text-muted-foreground italic">
+                  No fields for this garment type.
+                </p>
+              )}
+
+              {/* Add custom garment field — not available to RECEPTION */}
+              {role !== "RECEPTION" && (
+                <div className="flex gap-2 pt-1">
+                  <Input
+                    value={newGarmentField}
+                    onChange={(e) => setNewGarmentField(e.target.value)}
+                    placeholder="Custom field (e.g. Sleeve Round)"
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const key = newGarmentField.trim();
+                        if (!key || key in garmentMeasurements) return;
+                        setGarmentMeasurements((prev) => ({
+                          ...prev,
+                          [key]: "",
+                        }));
+                        setGarmentMeasurementsDirty(true);
+                        setNewGarmentField("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2 shrink-0"
+                    onClick={() => {
+                      const key = newGarmentField.trim();
+                      if (!key || key in garmentMeasurements) return;
+                      setGarmentMeasurements((prev) => ({
+                        ...prev,
+                        [key]: "",
+                      }));
+                      setGarmentMeasurementsDirty(true);
+                      setNewGarmentField("");
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Customer Material — accordion */}
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue="material"
+            className="w-full"
+          >
+            <AccordionItem
+              value="material"
+              className="rounded-lg border bg-card px-4"
+            >
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <ImageIcon className="h-4 w-4 text-primary shrink-0" />
+                  Customer Material
+                  {fabricRefs.length > 0 && (
+                    <Badge variant="outline" className="ml-1 text-xs">
+                      {fabricRefs.length}
+                    </Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <CustomerMaterialSection
+                  references={fabricRefs}
+                  canUpload={canManageCustomerMaterial}
+                  isUploading={uploadingType === "FABRIC"}
+                  onUpload={(file) =>
+                    uploadRefMutation.mutate({ file, type: "FABRIC" })
+                  }
+                  onDelete={(refId) => deleteRefMutation.mutate(refId)}
+                />
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </div>
@@ -1529,9 +1729,9 @@ function ReferenceSection({
                   onClick={() => setCameraOpen(true)}
                 >
                   <span className="inline-flex items-center gap-1.5">
-  <Camera className="h-3.5 w-3.5" />
-  Take Photo
-</span>
+                    <Camera className="h-3.5 w-3.5" />
+                    Take Photo
+                  </span>
                 </Button>
                 <CameraCaptureModal
                   open={cameraOpen}
@@ -2089,12 +2289,20 @@ function DesignNotesSection({
   readOnly?: boolean;
   isLocked?: boolean;
   voiceNotes?: { id: string; url: string; label: string; createdAt: string }[];
-  onVoiceNotesChange?: (notes: { id: string; url: string; label: string; createdAt: string }[]) => void;
+  onVoiceNotesChange?: (
+    notes: { id: string; url: string; label: string; createdAt: string }[],
+  ) => void;
 }) {
-  const [designerNotes, setDesignerNotes] = useState(outfit.designerNotes || "");
-  const [specialInstructions, setSpecialInstructions] = useState(outfit.specialInstructions || "");
+  const [designerNotes, setDesignerNotes] = useState(
+    outfit.designerNotes || "",
+  );
+  const [specialInstructions, setSpecialInstructions] = useState(
+    outfit.specialInstructions || "",
+  );
   const [trialNotes, setTrialNotes] = useState(outfit.trialNotes || "");
-  const [alterationNotes, setAlterationNotes] = useState(outfit.alterationNotes || "");
+  const [alterationNotes, setAlterationNotes] = useState(
+    outfit.alterationNotes || "",
+  );
   const [localVoiceNotes, setLocalVoiceNotes] = useState(voiceNotes || []);
   const [saving, setSaving] = useState(false);
 
@@ -2109,7 +2317,13 @@ function DesignNotesSection({
       setLocalVoiceNotes(voiceNotes || []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outfit.designerNotes, outfit.specialInstructions, outfit.trialNotes, outfit.alterationNotes, readOnly]);
+  }, [
+    outfit.designerNotes,
+    outfit.specialInstructions,
+    outfit.trialNotes,
+    outfit.alterationNotes,
+    readOnly,
+  ]);
 
   // After a successful save, sync voice notes back in edit mode too
   useEffect(() => {
@@ -2140,7 +2354,7 @@ function DesignNotesSection({
       {
         onSuccess: () => setSaving(false),
         onError: () => setSaving(false),
-      }
+      },
     );
     onVoiceNotesChange?.(localVoiceNotes);
   }
@@ -2163,43 +2377,63 @@ function DesignNotesSection({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Design notes, neck pattern, embellishments</span>
+            <span className="text-[11px] text-muted-foreground">
+              Design notes, neck pattern, embellishments
+            </span>
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  setDesignerNotes((prev: string) => prev ? prev + " " + text : text);
+                  setDesignerNotes((prev: string) =>
+                    prev ? prev + " " + text : text,
+                  );
                 }}
               />
             )}
           </div>
           <Textarea
             value={designerNotes}
-            placeholder={readOnly ? "No designer instructions recorded." : "Design notes, neck pattern preferences, embellishments..."}
+            placeholder={
+              readOnly
+                ? "No designer instructions recorded."
+                : "Design notes, neck pattern preferences, embellishments..."
+            }
             rows={3}
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => { if (!readOnly) setDesignerNotes(e.target.value); }}
+            onChange={(e) => {
+              if (!readOnly) setDesignerNotes(e.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Special tailoring instructions</span>
+            <span className="text-[11px] text-muted-foreground">
+              Special tailoring instructions
+            </span>
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  setSpecialInstructions((prev: string) => prev ? prev + " " + text : text);
+                  setSpecialInstructions((prev: string) =>
+                    prev ? prev + " " + text : text,
+                  );
                 }}
               />
             )}
           </div>
           <Textarea
             value={specialInstructions}
-            placeholder={readOnly ? "No special instructions recorded." : "Special tailoring instructions..."}
+            placeholder={
+              readOnly
+                ? "No special instructions recorded."
+                : "Special tailoring instructions..."
+            }
             rows={2}
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => { if (!readOnly) setSpecialInstructions(e.target.value); }}
+            onChange={(e) => {
+              if (!readOnly) setSpecialInstructions(e.target.value);
+            }}
           />
         </div>
       </div>
@@ -2214,43 +2448,63 @@ function DesignNotesSection({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Fit feedback during trial</span>
+            <span className="text-[11px] text-muted-foreground">
+              Fit feedback during trial
+            </span>
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  setTrialNotes((prev: string) => prev ? prev + " " + text : text);
+                  setTrialNotes((prev: string) =>
+                    prev ? prev + " " + text : text,
+                  );
                 }}
               />
             )}
           </div>
           <Textarea
             value={trialNotes}
-            placeholder={readOnly ? "No trial notes recorded." : "Fit feedback during trial..."}
+            placeholder={
+              readOnly
+                ? "No trial notes recorded."
+                : "Fit feedback during trial..."
+            }
             rows={2}
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => { if (!readOnly) setTrialNotes(e.target.value); }}
+            onChange={(e) => {
+              if (!readOnly) setTrialNotes(e.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Alteration fixes</span>
+            <span className="text-[11px] text-muted-foreground">
+              Alteration fixes
+            </span>
             {!readOnly && (
               <VoiceToTextButton
                 onTranscript={(text) => {
-                  setAlterationNotes((prev: string) => prev ? prev + " " + text : text);
+                  setAlterationNotes((prev: string) =>
+                    prev ? prev + " " + text : text,
+                  );
                 }}
               />
             )}
           </div>
           <Textarea
             value={alterationNotes}
-            placeholder={readOnly ? "No alteration notes recorded." : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."}
+            placeholder={
+              readOnly
+                ? "No alteration notes recorded."
+                : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."
+            }
             rows={2}
             readOnly={readOnly}
             className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => { if (!readOnly) setAlterationNotes(e.target.value); }}
+            onChange={(e) => {
+              if (!readOnly) setAlterationNotes(e.target.value);
+            }}
           />
         </div>
       </div>
@@ -2263,17 +2517,23 @@ function DesignNotesSection({
           Voice Notes
         </Label>
         <p className="text-[11px] text-muted-foreground">
-          Record verbal instructions — plays back for the tailor in the workshop.
+          Record verbal instructions — plays back for the tailor in the
+          workshop.
         </p>
         <VoiceNoteRecorder
           notes={localVoiceNotes}
           label="Design & Fitting"
           canRecord={!readOnly && !isLocked}
           onAdd={(note) => {
-            setLocalVoiceNotes((prev: typeof localVoiceNotes) => [...prev, note]);
+            setLocalVoiceNotes((prev: typeof localVoiceNotes) => [
+              ...prev,
+              note,
+            ]);
           }}
           onDelete={(id) => {
-            setLocalVoiceNotes((prev: typeof localVoiceNotes) => prev.filter((n) => n.id !== id));
+            setLocalVoiceNotes((prev: typeof localVoiceNotes) =>
+              prev.filter((n) => n.id !== id),
+            );
           }}
         />
       </div>
