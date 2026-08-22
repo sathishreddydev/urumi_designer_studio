@@ -206,7 +206,7 @@ function StatCard({
         <div className={`shrink-0 ml-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{icon}</div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        <div className={`text-lg font-bold sm:text-xl ${highlight ? "text-primary" : ""}`}>{value}</div>
+        <div className={`text-lg font-bold ${highlight ? "text-primary" : ""}`}>{value}</div>
       </CardContent>
     </Card>
   );

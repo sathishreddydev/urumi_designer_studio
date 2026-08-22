@@ -86,7 +86,7 @@ export default function CustomersPage() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  <CardContent className="space-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Phone className="h-3 w-3" /> {customer.mobile}
                     </div>

@@ -642,13 +642,13 @@ export default function OutfitDetailPage() {
               value="references"
               className="border rounded-lg bg-card px-3 sm:px-4"
             >
-              <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
-                <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+              <AccordionTrigger className="hover:no-underline py-2">
+                <div className="flex items-center gap-2 text-sm font-semibold">
                   <ImageIcon className="h-4 w-4 text-primary shrink-0" />
                   {role === "MASTER"
                     ? "Approved References"
                     : "Visual References"}
-                  <Badge variant="outline" className="ml-2 text-xs">
+                  <Badge variant="outline" className="ml-1 text-[10px]">
                     {/* Count only PATTERN + MAGGAM refs — FABRIC lives in Customer Material */}
                     {
                       (outfit.references || []).filter(
@@ -775,11 +775,11 @@ export default function OutfitDetailPage() {
                 value="dependencies"
                 className="border rounded-lg bg-card px-3 sm:px-4"
               >
-                <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
-                  <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+                <AccordionTrigger className="hover:no-underline py-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
                     <Layers className="h-4 w-4 text-primary shrink-0" />
                     Material Dependencies
-                    <Badge variant="outline" className="ml-2 text-xs">
+                    <Badge variant="outline" className="ml-1 text-[10px]">
                       {(outfit.dependencies || []).length}
                     </Badge>
                   </div>
@@ -803,12 +803,16 @@ export default function OutfitDetailPage() {
                           <div className="flex-1 space-y-1">
                             <Label className="text-xs">Raise Dependency</Label>
                             <Select name="type">
-                              <SelectTrigger className="h-9">
+                              <SelectTrigger className="h-8 rounded px-2 text-xs">
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                               <SelectContent>
                                 {DEPENDENCY_TYPES.map((t) => (
-                                  <SelectItem key={t} value={t}>
+                                  <SelectItem
+                                    className="text-xs"
+                                    key={t}
+                                    value={t}
+                                  >
                                     {t}
                                   </SelectItem>
                                 ))}
@@ -818,7 +822,7 @@ export default function OutfitDetailPage() {
                           <Input
                             name="notes"
                             placeholder="Notes"
-                            className="h-9 flex-1"
+                            className="h-9 flex-1 text-xs rounded px-2"
                           />
                           <LoadingButton
                             size="sm"
@@ -923,8 +927,8 @@ export default function OutfitDetailPage() {
                 value="design"
                 className="border rounded-lg bg-card px-3 sm:px-4"
               >
-                <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
-                  <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
                     <FileText className="h-4 w-4 text-primary shrink-0" />
                     Design & Fitting Instructions
                   </div>
@@ -947,8 +951,8 @@ export default function OutfitDetailPage() {
               value="timeline"
               className="border rounded-lg bg-card px-3 sm:px-4"
             >
-              <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
-                <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
                   <History className="h-4 w-4 text-primary shrink-0" />
                   Production Timeline
                 </div>
@@ -995,8 +999,8 @@ export default function OutfitDetailPage() {
                 value="completion"
                 className="border rounded-lg bg-card px-3 sm:px-4"
               >
-                <AccordionTrigger className="hover:no-underline py-3 sm:py-4">
-                  <div className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
                     <Camera className="h-4 w-4 text-primary shrink-0" />
                     Completion Photos
                     <Badge variant="outline" className="ml-2 text-xs">
@@ -1027,11 +1031,11 @@ export default function OutfitDetailPage() {
         <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
           {/* Key Outfit Details */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+            <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
               <Scissors className="h-4 w-4" /> Outfit Summary
             </h2>
 
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-xs">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Trial Date
@@ -1087,14 +1091,14 @@ export default function OutfitDetailPage() {
 
           {/* Measurements */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+            <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
               <Ruler className="h-4 w-4" /> Measurements
             </h2>
 
             {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Body ·{" "}
                   <span className="normal-case font-normal text-muted-foreground">
                     inches
@@ -1152,7 +1156,7 @@ export default function OutfitDetailPage() {
                           <span className="text-[9px] font-bold text-primary/60 tabular-nums">
                             {section.num}
                           </span>
-                          <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">
+                          <span className="text-[9px] font-bold text-muted-foreground">
                             {section.title}
                           </span>
                           <div className="flex-1 h-px bg-border" />
@@ -1234,7 +1238,7 @@ export default function OutfitDetailPage() {
             {/* ── GARMENT MEASUREMENTS (outfit-specific, editable) ── */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Garment ·{" "}
                   <span className="normal-case font-normal">{outfit.type}</span>
                 </p>
@@ -1690,7 +1694,7 @@ function ReferenceSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
           {title}
         </h3>
         {canUpload && (
@@ -1911,12 +1915,14 @@ function AssignMasterSelect({
         <SelectValue placeholder="Select Master" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="none">Select Master</SelectItem>
-      {(staff || []).map((m: any) => (
-        <SelectItem key={m.id} value={m.id}>
-          {m.name}
+        <SelectItem value="none" className="text-xs">
+          Select Master
         </SelectItem>
-      ))}
+        {(staff || []).map((m: any) => (
+          <SelectItem key={m.id} value={m.id} className="text-xs">
+            {m.name}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
@@ -1953,12 +1959,12 @@ function CustomerMaterialSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        {/* <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
           Customer Material
-        </h3>
+        </h3> */}
 
         {canUpload && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             {isUploading ? (
               <LoadingButton
                 size="sm"
@@ -2126,7 +2132,7 @@ function CompletionPhotosSection({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-xs font-semibold text-muted-foreground">
             Completion Photos
           </h3>
           <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
@@ -2375,7 +2381,7 @@ function DesignNotesSection({
     <div className="space-y-4">
       {/* Designer Instructions */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+        <Label className="text-xs font-semibold text-muted-foreground">
           Designer Instructions
         </Label>
 
@@ -2394,20 +2400,24 @@ function DesignNotesSection({
               />
             )}
           </div>
-          <Textarea
-            value={designerNotes}
-            placeholder={
-              readOnly
-                ? "No designer instructions recorded."
-                : "Design notes, neck pattern preferences, embellishments..."
-            }
-            rows={3}
-            readOnly={readOnly}
-            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => {
-              if (!readOnly) setDesignerNotes(e.target.value);
-            }}
-          />
+          <div className="px-2">
+            <Textarea
+              value={designerNotes}
+              placeholder={
+                readOnly
+                  ? "No designer instructions recorded."
+                  : "Design notes, neck pattern preferences, embellishments..."
+              }
+              rows={3}
+              readOnly={readOnly}
+              className={
+                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
+              }
+              onChange={(e) => {
+                if (!readOnly) setDesignerNotes(e.target.value);
+              }}
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -2425,20 +2435,24 @@ function DesignNotesSection({
               />
             )}
           </div>
-          <Textarea
-            value={specialInstructions}
-            placeholder={
-              readOnly
-                ? "No special instructions recorded."
-                : "Special tailoring instructions..."
-            }
-            rows={2}
-            readOnly={readOnly}
-            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => {
-              if (!readOnly) setSpecialInstructions(e.target.value);
-            }}
-          />
+          <div className="px-2">
+            <Textarea
+              value={specialInstructions}
+              placeholder={
+                readOnly
+                  ? "No special instructions recorded."
+                  : "Special tailoring instructions..."
+              }
+              rows={2}
+              readOnly={readOnly}
+              className={
+                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
+              }
+              onChange={(e) => {
+                if (!readOnly) setSpecialInstructions(e.target.value);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -2446,7 +2460,7 @@ function DesignNotesSection({
 
       {/* Trial & Alterations */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+        <Label className="text-xs font-semibold text-muted-foreground">
           Trial & Alterations
         </Label>
 
@@ -2465,20 +2479,24 @@ function DesignNotesSection({
               />
             )}
           </div>
-          <Textarea
-            value={trialNotes}
-            placeholder={
-              readOnly
-                ? "No trial notes recorded."
-                : "Fit feedback during trial..."
-            }
-            rows={2}
-            readOnly={readOnly}
-            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => {
-              if (!readOnly) setTrialNotes(e.target.value);
-            }}
-          />
+          <div className="px-2">
+            <Textarea
+              value={trialNotes}
+              placeholder={
+                readOnly
+                  ? "No trial notes recorded."
+                  : "Fit feedback during trial..."
+              }
+              rows={2}
+              readOnly={readOnly}
+              className={
+                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
+              }
+              onChange={(e) => {
+                if (!readOnly) setTrialNotes(e.target.value);
+              }}
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -2496,20 +2514,24 @@ function DesignNotesSection({
               />
             )}
           </div>
-          <Textarea
-            value={alterationNotes}
-            placeholder={
-              readOnly
-                ? "No alteration notes recorded."
-                : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."
-            }
-            rows={2}
-            readOnly={readOnly}
-            className={readOnly ? "bg-muted/40 cursor-default resize-none" : ""}
-            onChange={(e) => {
-              if (!readOnly) setAlterationNotes(e.target.value);
-            }}
-          />
+          <div className="px-2">
+            <Textarea
+              value={alterationNotes}
+              placeholder={
+                readOnly
+                  ? "No alteration notes recorded."
+                  : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."
+              }
+              rows={2}
+              readOnly={readOnly}
+              className={
+                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
+              }
+              onChange={(e) => {
+                if (!readOnly) setAlterationNotes(e.target.value);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -2517,7 +2539,7 @@ function DesignNotesSection({
 
       {/* Voice Notes */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+        <Label className="text-xs font-semibold text-muted-foreground">
           Voice Notes
         </Label>
         <p className="text-[11px] text-muted-foreground">

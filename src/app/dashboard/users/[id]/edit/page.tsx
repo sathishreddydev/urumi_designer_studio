@@ -94,7 +94,7 @@ export default function EditUserPage() {
         <Link href="/dashboard/users">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <h1 className="text-2xl font-bold lg:text-3xl">Edit User</h1>
+        <h1 className="text-2xl font-bold">Edit User</h1>
       </div>
 
       <Card>
