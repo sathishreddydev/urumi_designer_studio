@@ -1,10 +1,21 @@
 "use client";
 
+import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LogOut, MonitorSmartphone, Plus, UserCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -81,6 +92,7 @@ function UserCard({
   toggleMutation: { mutate: (variables: { id: string; active: boolean }) => void };
 }) {
   const queryClient = useQueryClient();
+  const [pendingSessionId, setPendingSessionId] = React.useState<string | null | undefined>(undefined);
   const { data: sessions = [] } = useQuery({
     queryKey: ["user-sessions", user.id],
     queryFn: async () => {
@@ -90,17 +102,15 @@ function UserCard({
     },
   });
 
-  async function revoke(sessionId?: string) {
-    const message = sessionId
-      ? "Sign out this device?"
-      : `Sign out ${user.name} from all devices?`;
-    if (!window.confirm(message)) return;
+  async function revoke() {
+    const sessionId = pendingSessionId;
     await fetch(`/api/users/${user.id}/sessions`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionId ? { sessionId } : {}),
     });
     queryClient.invalidateQueries({ queryKey: ["user-sessions", user.id] });
+    setPendingSessionId(undefined);
   }
 
   return (
@@ -144,7 +154,7 @@ function UserCard({
                         <span>{sessions.length} active device{sessions.length === 1 ? "" : "s"}</span>
                       </div>
                       {sessions.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={() => revoke()}>
+                        <Button variant="outline" size="sm" onClick={() => setPendingSessionId(null)}>
                           <LogOut className="h-4 w-4" /> Sign out all
                         </Button>
                       )}
@@ -154,7 +164,7 @@ function UserCard({
                         {sessions.map((session: any) => (
                           <div key={session.id} className="flex items-center justify-between gap-2 text-xs">
                             <span className="truncate">{session.deviceName} - {new Date(session.lastActiveAt).toLocaleString()}</span>
-                            <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => revoke(session.id)}>
+                            <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => setPendingSessionId(session.id)}>
                               Sign out
                             </Button>
                           </div>
@@ -162,6 +172,22 @@ function UserCard({
                       </div>
                     )}
                 </div>
+                  <AlertDialog open={pendingSessionId !== undefined} onOpenChange={(open) => !open && setPendingSessionId(undefined)}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Sign out device{pendingSessionId === null ? "s" : ""}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {pendingSessionId === null
+                            ? `This will sign ${user.name} out of all active devices.`
+                            : "This device will need to sign in again."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={revoke}>Sign out</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
               </CardContent>
     </Card>
   );
