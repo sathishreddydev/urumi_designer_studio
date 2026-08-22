@@ -118,7 +118,7 @@ export default function OutfitsPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-xs min-w-[640px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
@@ -145,14 +145,14 @@ export default function OutfitsPage() {
                     >
                       <td className="px-4 py-3 max-w-[180px]">
                         <p className="font-medium truncate">{outfit.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] text-muted-foreground">
                           {outfit.type}{outfit.maggamRequired && " · M"}
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-sm max-w-[130px] truncate">
+                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[130px] truncate">
                         {outfit.customerName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {outfit.orderNumber || "—"}
                       </td>
                       <td className="px-4 py-3">

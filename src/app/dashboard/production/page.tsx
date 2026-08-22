@@ -85,7 +85,7 @@ export default function ProductionPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-sm min-w-[520px]">
+            <table className="w-full text-xs min-w-[520px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
@@ -114,7 +114,7 @@ export default function ProductionPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          <Badge className={`${getStatusColor(outfit.status)} text-xs whitespace-nowrap`}>
+                          <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap`}>
                             {formatStatus(outfit.status)}
                           </Badge>
                           {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
@@ -123,7 +123,7 @@ export default function ProductionPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={isUrgent ? "text-red-600 font-medium text-sm" : "text-muted-foreground text-sm"}>
+                        <span className={isUrgent ? "text-red-600 font-medium text-xs" : "text-muted-foreground text-xs"}>
                           {formatDate(outfit.deliveryDate)}
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>

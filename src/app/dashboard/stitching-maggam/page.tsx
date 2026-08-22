@@ -249,7 +249,7 @@ export default function StitchingMaggamPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
+            <table className="w-full text-xs min-w-[560px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
@@ -282,20 +282,20 @@ export default function StitchingMaggamPage() {
                           <p className="text-xs text-muted-foreground">{outfit.orderNumber}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-sm max-w-[130px] truncate">
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-[130px] truncate">
                         {outfit.customerName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-sm">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">
                         {outfit.type}
                         {outfit.maggamRequired && <span className="text-pink-600 ml-1">· M</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={isUrgent ? "text-red-600 font-medium text-sm" : "text-muted-foreground text-sm"}>
+                        <span className={isUrgent ? "text-red-600 font-medium text-xs" : "text-muted-foreground text-xs"}>
                           {formatDate(outfit.deliveryDate)}
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-sm max-w-[120px] truncate">
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-[120px] truncate">
                         {outfit.masterName || outfit.designerName || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
