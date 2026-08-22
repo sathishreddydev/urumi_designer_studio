@@ -20,8 +20,8 @@ export default function ConsultationsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold lg:text-3xl">Consultations</h1>
-        <p className="text-sm text-muted-foreground">New outfits awaiting design consultation</p>
+        <h1 className="text-2xl font-bold">Consultations</h1>
+        <p className="text-xs text-muted-foreground">New outfits awaiting design consultation</p>
       </div>
 
       {isLoading ? (

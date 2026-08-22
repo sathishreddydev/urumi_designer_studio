@@ -80,7 +80,7 @@ export default function EditCustomerPage() {
         <Link href={`/dashboard/customers/${params.id}`}>
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <h1 className="text-2xl font-bold lg:text-3xl">Edit Customer</h1>
+        <h1 className="text-2xl font-bold">Edit Customer</h1>
       </div>
 
       <Card>

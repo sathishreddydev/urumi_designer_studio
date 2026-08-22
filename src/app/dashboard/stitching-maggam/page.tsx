@@ -142,8 +142,8 @@ export default function StitchingMaggamPage() {
     <div className="space-y-5">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Stitching &amp; Maggam</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold">Stitching &amp; Maggam</h1>
+        <p className="text-xs text-muted-foreground">
           Track maggam work, fabric cutting, and stitching progress
         </p>
       </div>

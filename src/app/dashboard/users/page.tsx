@@ -46,8 +46,8 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold lg:text-3xl">Users</h1>
-          <p className="text-sm text-muted-foreground">Manage team members and roles</p>
+          <h1 className="text-2xl font-bold">Users</h1>
+          <p className="text-xs text-muted-foreground">Manage team members and roles</p>
         </div>
         <Link href="/dashboard/users/new">
           <Button className="w-full sm:w-auto">

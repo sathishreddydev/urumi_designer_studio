@@ -31,8 +31,8 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold lg:text-3xl">Appointments</h1>
-        <p className="text-sm text-muted-foreground">Upcoming trials and deliveries</p>
+        <h1 className="text-2xl font-bold">Appointments</h1>
+        <p className="text-xs text-muted-foreground">Upcoming trials and deliveries</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

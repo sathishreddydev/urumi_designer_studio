@@ -68,8 +68,8 @@ export default function OutfitsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Outfits</h1>
-        <p className="text-sm text-muted-foreground">{total} total</p>
+        <h1 className="text-2xl font-bold">Outfits</h1>
+        <p className="text-xs text-muted-foreground">{total} total</p>
       </div>
 
       {/* Filters */}

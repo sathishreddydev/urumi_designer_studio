@@ -67,10 +67,10 @@ export default function ProductionPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">
+        <h1 className="text-2xl font-bold">
           {role === "MASTER" ? "My Production Cards" : "Production"}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {outfits.length} outfit(s) in production pipeline
         </p>
       </div>

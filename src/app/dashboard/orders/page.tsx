@@ -56,8 +56,8 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex gap-3 items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">Orders</h1>
-          <p className="text-sm text-muted-foreground">{data?.total || 0} total</p>
+          <h1 className="text-2xl font-bold">Orders</h1>
+          <p className="text-xs text-muted-foreground">{data?.total || 0} total</p>
         </div>
         <Link href="/dashboard/orders/new">
           <Button className="w-full sm:w-auto" size="sm">
@@ -112,7 +112,7 @@ export default function OrdersPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-sm min-w-[600px]">
+            <table className="w-full text-xs min-w-[600px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th>
@@ -137,8 +137,8 @@ export default function OrdersPage() {
                     >
                       <td className="px-4 py-3 font-medium whitespace-nowrap">{order.orderNumber}</td>
                       <td className="px-4 py-3 max-w-[160px]">
-                        <p className="text-sm truncate">{order.customerName}</p>
-                        <p className="text-xs text-muted-foreground">{order.customerMobile}</p>
+                        <p className="text-xs truncate">{order.customerName}</p>
+                        <p className="text-[10px] text-muted-foreground">{order.customerMobile}</p>
                       </td>
                       <td className="px-4 py-3">
                         <Badge className={`${getStatusColor(order.status)} whitespace-nowrap text-xs`}>

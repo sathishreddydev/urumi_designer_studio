@@ -33,8 +33,8 @@ export default function CustomersPage() {
     <div className="space-y-4">
       <div className="flex gap-3 items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold lg:text-3xl">Customers</h1>
-          <p className="text-sm text-muted-foreground">{data?.total || 0} total</p>
+          <h1 className="text-2xl font-bold">Customers</h1>
+          <p className="text-xs text-muted-foreground">{data?.total || 0} total</p>
         </div>
         <Link href="/dashboard/customers/new">
           <Button className="w-full sm:w-auto">

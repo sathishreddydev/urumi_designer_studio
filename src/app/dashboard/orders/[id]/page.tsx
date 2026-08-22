@@ -297,7 +297,7 @@ export default function OrderDetailPage() {
     : null;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="font-sans space-y-6 max-w-7xl mx-auto pb-10">
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
         <div className="flex items-center gap-3">
@@ -314,14 +314,14 @@ export default function OrderDetailPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight">
+              <h1 className="text-lg font-bold leading-6 tracking-tight sm:text-xl">
                 {order.orderNumber}
               </h1>
-              <Badge className={getStatusColor(order.status)}>
+              <Badge className={`${getStatusColor(order.status)} text-xs leading-4`}>
                 {order.status}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-1 text-xs leading-4 text-muted-foreground">
               Customer:{" "}
               <span className="font-medium text-foreground">
                 {order.customer?.name}
@@ -337,6 +337,7 @@ export default function OrderDetailPage() {
             <Button
               variant="outline"
               size="sm"
+              className="text-xs"
               onClick={() => {
                 if (missingPriceOutfits.length > 0) {
                   toast({
@@ -352,7 +353,7 @@ export default function OrderDetailPage() {
               Invoice
             </Button>
             <Link href={`/dashboard/orders/${params.id}/edit`}>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="text-xs">
                 Edit
               </Button>
             </Link>
@@ -360,7 +361,7 @@ export default function OrderDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                className="text-xs text-destructive border-destructive/20 hover:bg-destructive/10"
                 onClick={() => setShowDeleteConfirm((prev) => !prev)}
               >
                 <Trash2 className="h-4 w-4 sm:mr-1" />
@@ -405,10 +406,10 @@ export default function OrderDetailPage() {
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Outfits Workspace */}
-        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
+        <div className="font-sans text-sm lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">
                 <Shirt className="h-4 w-4 text-primary" />
                 Outfits ({order.outfits?.length || 0})
               </CardTitle>
@@ -448,12 +449,12 @@ export default function OrderDetailPage() {
                   }}
                   className="bg-muted/40 p-4 border rounded-lg space-y-4 my-2 transition-all"
                 >
-                  <p className="text-sm font-semibold border-b pb-2">
+                  <p className="text-sm font-semibold leading-5 border-b pb-2">
                     New Outfit Details
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="name">Item Name</Label>
+                      <Label className="text-xs font-semibold" htmlFor="name">Item Name</Label>
                       <Input
                         id="name"
                         name="name"
@@ -462,11 +463,11 @@ export default function OrderDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="type">Type</Label>
+                      <Label className="text-xs font-semibold" htmlFor="type">Type</Label>
                       <OutfitTypeSelect name="type" required />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="occasion">Occasion</Label>
+                      <Label className="text-xs font-semibold" htmlFor="occasion">Occasion</Label>
                       <Input
                         id="occasion"
                         name="occasion"
@@ -474,7 +475,7 @@ export default function OrderDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="price">Estimated Price (₹)</Label>
+                      <Label className="text-xs font-semibold" htmlFor="price">Estimated Price (₹)</Label>
                       <Input
                         id="price"
                         name="price"
@@ -486,7 +487,7 @@ export default function OrderDetailPage() {
                     </div>
                     {isAdmin && (
                       <div className="space-y-1.5">
-                        <Label htmlFor="designerId">Assigned Designer</Label>
+                        <Label className="text-xs font-semibold" htmlFor="designerId">Assigned Designer</Label>
                         <Select name="designerId" defaultValue="none">
                           <SelectTrigger id="designerId">
                             <SelectValue placeholder="Assign later..." />
@@ -512,7 +513,7 @@ export default function OrderDetailPage() {
                     />
                     <Label
                       htmlFor="maggamRequired"
-                      className="text-sm font-normal"
+                      className="text-xs font-medium leading-4"
                     >
                       Requires Maggam Work
                     </Label>
@@ -553,7 +554,7 @@ export default function OrderDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <label
                         htmlFor="new-outfit-fabric-upload"
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium leading-4 transition-colors hover:bg-muted"
                       >
                         <ImagePlus className="h-3.5 w-3.5" />
                         {newOutfitFabricImages.length > 0 ? "Add More" : "Upload Material Photos"}
@@ -624,7 +625,7 @@ export default function OrderDetailPage() {
                       <div>
                         <Link
                           href={`/dashboard/outfits/${outfit.id}`}
-                          className="font-semibold text-base hover:underline flex items-center gap-1.5"
+                          className="text-sm font-semibold leading-5 hover:underline flex items-center gap-1.5"
                         >
                           {outfit.name}
                         </Link>
@@ -644,7 +645,7 @@ export default function OrderDetailPage() {
                         >
                           {formatStatus(outfit.status)}
                         </Badge>
-                        <p className="text-sm font-bold">
+                        <p className="text-sm font-bold leading-5">
                           {outfit.price ? (
                             `₹${Number(outfit.price).toLocaleString()}`
                           ) : (
@@ -707,7 +708,7 @@ export default function OrderDetailPage() {
                     {isAdmin && !isCompleted && (
                       <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs">
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">
+                          <Label className="text-[11px] leading-4 text-muted-foreground">
                             Assigned Designer
                           </Label>
                           <Select
@@ -733,7 +734,7 @@ export default function OrderDetailPage() {
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">
+                          <Label className="text-[11px] leading-4 text-muted-foreground">
                             Assigned Master
                           </Label>
                           <Select
@@ -768,30 +769,30 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Right Column: Key Schedule & Financials */}
-        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
+        <div className="font-sans text-sm lg:col-span-5 space-y-4 lg:sticky lg:top-4 order-1 lg:order-2">
           {/* Order Details & Dates */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" /> Key Dates
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="space-y-3 text-sm leading-5">
               <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-muted-foreground">Ordered Date</span>
-                <span className="font-medium">
+                <span className="text-xs text-muted-foreground">Ordered Date</span>
+                <span className="text-sm font-medium">
                   {formatDate(order.orderDate)}
                 </span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-muted-foreground">Trial Date</span>
-                <span className="font-medium text-amber-700">
+                <span className="text-xs text-muted-foreground">Trial Date</span>
+                <span className="text-sm font-medium text-amber-700">
                   {formatDate(order.trialDate)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Target Delivery</span>
-                <span className="font-semibold text-primary">
+                <span className="text-xs text-muted-foreground">Target Delivery</span>
+                <span className="text-sm font-semibold text-primary">
                   {formatDate(order.deliveryDate)}
                 </span>
               </div>
@@ -815,7 +816,7 @@ export default function OrderDetailPage() {
           {can("read", "payment") && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-primary" /> Payment
                   Summary
                 </CardTitle>
@@ -838,11 +839,11 @@ export default function OrderDetailPage() {
                   </Button>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 text-sm leading-5">
                 {/* Visual Financial Summary Bar */}
                 <div className="grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-lg text-center">
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[11px] leading-4 text-muted-foreground uppercase tracking-wider">
                       Total
                     </span>
                     <p className="font-bold text-sm">
@@ -853,7 +854,7 @@ export default function OrderDetailPage() {
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[11px] leading-4 text-muted-foreground uppercase tracking-wider">
                       Paid
                     </span>
                     <p className="font-bold text-sm text-green-600">
@@ -861,7 +862,7 @@ export default function OrderDetailPage() {
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[11px] leading-4 text-muted-foreground uppercase tracking-wider">
                       Balance
                     </span>
                     <p

@@ -52,8 +52,8 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} />
@@ -85,8 +85,8 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Designer Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
+          <h1 className="text-2xl font-bold ">Designer Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
 
         {/* Needs attention */}
@@ -139,8 +139,8 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Production Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {stats.name}</p>
+          <h1 className="text-2xl font-bold">Production Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
 
         {/* Summary row */}

@@ -62,18 +62,18 @@ export function OutfitTypeSelect({
       disabled={disabled}
       onValueChange={onValueChange}
     >
-      <SelectTrigger>
+      <SelectTrigger className="font-[inherit] text-sm leading-5">
         <SelectValue placeholder="Select outfit type" />
       </SelectTrigger>
       <SelectContent>
-        <div className="sticky top-0 z-10 flex justify-end bg-popover px-2 pb-2 pt-1">
+        <div className="sticky top-0 z-10 flex justify-end bg-popover px-2 pb-2 pt-1 font-[inherit]">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => event.stopPropagation()}
             placeholder="Search outfit types..."
-            className="h-8 w-full pl-8 sm:w-[220px]"
+            className="h-8 w-full pl-8 text-xs leading-4 sm:w-[220px]"
             aria-label="Search outfit types"
           />
         </div>
@@ -85,11 +85,15 @@ export function OutfitTypeSelect({
 
           return (
             <div key={group.label}>
-              <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+              <p className="px-2 py-1 text-xs font-semibold leading-4 text-muted-foreground">
                 {group.label}
               </p>
               {matchingTypes.map((type) => (
-                <SelectItem key={type} value={type}>
+                <SelectItem
+                  key={type}
+                  value={type}
+                  className="font-[inherit] text-sm leading-5"
+                >
                   {type}
                 </SelectItem>
               ))}
