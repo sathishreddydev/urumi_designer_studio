@@ -117,14 +117,8 @@ function UserCard({
     if (!response.ok && response.status !== 401) {
       throw new Error("Failed to sign out device");
     }
-
-    // If revoking own session(s) → log out cleanly and redirect
-    if (user.id === currentUserId) {
-      await fetch("/api/auth/logout", { method: "POST" });
-      window.location.href = "/login";
-      return;
-    }
-
+    // SSE will handle redirecting the revoked device(s) to /login automatically.
+    // Just refresh the sessions list.
     queryClient.invalidateQueries({ queryKey: ["user-sessions", user.id] });
     setPendingSessionId(undefined);
   }

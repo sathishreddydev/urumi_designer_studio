@@ -7,11 +7,12 @@
 type EventListener = (event: AppEvent) => void;
 
 export interface AppEvent {
-  type: "outfit_updated" | "order_updated" | "dependency_updated" | "payment_added" | "payment_deleted" | "reference_updated" | "customer_updated" | "outfit_deleted" | "customer_feedback";
+  type: "outfit_updated" | "order_updated" | "dependency_updated" | "payment_added" | "payment_deleted" | "reference_updated" | "customer_updated" | "outfit_deleted" | "customer_feedback" | "session_revoked";
   outfitId?: string;
   orderId?: string;
   customerId?: string;
   userId?: string;
+  sessionId?: string;
   timestamp: number;
 }
 

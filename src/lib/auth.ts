@@ -18,6 +18,7 @@ export interface SessionUser {
   name: string;
   email: string;
   role: Role;
+  sessionId?: string; // current session token ID
 }
 
 export async function createToken(user: SessionUser, sessionId: string): Promise<string> {
@@ -52,7 +53,7 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
 
     if (!activeSession) return null;
     await db.update(sessions).set({ lastActiveAt: new Date() }).where(eq(sessions.id, sessionId));
-    return user;
+    return { ...user, sessionId };
   } catch {
     return null;
   }

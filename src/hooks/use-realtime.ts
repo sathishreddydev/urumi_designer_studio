@@ -77,13 +77,32 @@ export function useRealtime() {
             queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
             break;
 
+          case "session_revoked":
+            // If this device's session was revoked, force logout
+            if (data.userId || data.sessionId) {
+              // Fetch current session to check if we're the target
+              fetch("/api/auth/me")
+                .then((r) => r.json())
+                .then((me) => {
+                  const targetedByUserId = data.sessionId === undefined && me.id === data.userId;
+                  const targetedBySessionId = data.sessionId && me.sessionId === data.sessionId;
+                  if (targetedByUserId || targetedBySessionId) {
+                    // Our session was revoked — clear cookie and redirect
+                    fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+                      window.location.href = "/login";
+                    });
+                  }
+                })
+                .catch(() => {
+                  // /me returns 401 → session already invalid → go to login
+                  window.location.href = "/login";
+                });
+            }
+            break;
+
           case "customer_feedback":
             queryClient.invalidateQueries({ queryKey: ["outfit", data.outfitId] });
             queryClient.invalidateQueries({ queryKey: ["outfits"] });
-            break;
-
-          case "connected":
-            // Initial connection, no action needed
             break;
         }
       } catch {

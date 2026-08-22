@@ -58,5 +58,14 @@ export async function DELETE(
       ...(sessionId ? [eq(sessions.id, sessionId)] : []),
     ));
 
+  // Emit event so revoked device(s) get pushed to logout via SSE
+  const { eventBus } = await import("@/lib/events");
+  eventBus.emit({
+    type: "session_revoked",
+    userId: id,
+    sessionId: sessionId ?? undefined, // undefined = all sessions for this user
+    timestamp: Date.now(),
+  });
+
   return NextResponse.json({ success: true });
 }
