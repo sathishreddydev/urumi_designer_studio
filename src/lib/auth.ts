@@ -33,7 +33,11 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const sessionId = (payload as { sessionId?: string }).sessionId;
     const user = (payload as { user?: SessionUser }).user;
-    if (!sessionId || !user) return null;
+    if (!user) return null;
+
+    // Keep tokens issued before persisted sessions were introduced valid until they expire.
+    // New logins always include a session ID and can be revoked by an administrator.
+    if (!sessionId) return user;
 
     const [activeSession] = await db
       .select({ userId: sessions.userId })
