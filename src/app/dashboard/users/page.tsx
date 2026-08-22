@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserCircle } from "lucide-react";
+import { LogOut, MonitorSmartphone, Plus, UserCircle } from "lucide-react";
 import Link from "next/link";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -65,7 +65,46 @@ export default function UsersPage() {
       ) : (
         <div className="space-y-3">
           {users?.map((user: any) => (
-            <Card key={user.id}>
+            <UserCard key={user.id} user={user} toggleMutation={toggleMutation} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserCard({
+  user,
+  toggleMutation,
+}: {
+  user: any;
+  toggleMutation: { mutate: (variables: { id: string; active: boolean }) => void };
+}) {
+  const queryClient = useQueryClient();
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["user-sessions", user.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${user.id}/sessions`);
+      if (!res.ok) throw new Error("Failed to fetch sessions");
+      return res.json();
+    },
+  });
+
+  async function revoke(sessionId?: string) {
+    const message = sessionId
+      ? "Sign out this device?"
+      : `Sign out ${user.name} from all devices?`;
+    if (!window.confirm(message)) return;
+    await fetch(`/api/users/${user.id}/sessions`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionId ? { sessionId } : {}),
+    });
+    queryClient.invalidateQueries({ queryKey: ["user-sessions", user.id] });
+  }
+
+  return (
+    <Card>
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -98,11 +137,32 @@ export default function UsersPage() {
                     </Link>
                   </div>
                 )}
+                <div className="ml-[52px] mt-3 border-t pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                        <MonitorSmartphone className="h-4 w-4 shrink-0" />
+                        <span>{sessions.length} active device{sessions.length === 1 ? "" : "s"}</span>
+                      </div>
+                      {sessions.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => revoke()}>
+                          <LogOut className="h-4 w-4" /> Sign out all
+                        </Button>
+                      )}
+                    </div>
+                    {sessions.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {sessions.map((session: any) => (
+                          <div key={session.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="truncate">{session.deviceName} - {new Date(session.lastActiveAt).toLocaleString()}</span>
+                            <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => revoke(session.id)}>
+                              Sign out
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
               </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }

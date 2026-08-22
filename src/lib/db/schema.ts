@@ -72,6 +72,18 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const sessions = pgTable("sessions", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("ses")),
+  userId: varchar("user_id", { length: 20 }).references(() => users.id).notNull(),
+  deviceName: text("device_name").notNull(),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const customers = pgTable("customers", {
   id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("cst")),
   name: text("name").notNull(),
@@ -228,6 +240,7 @@ export const auditLogs = pgTable("audit_logs", {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Order = typeof orders.$inferSelect;

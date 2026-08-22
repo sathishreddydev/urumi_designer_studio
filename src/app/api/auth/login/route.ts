@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { createToken } from "@/lib/auth";
+import { createSession, createToken } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { loginLimiter, getClientIp } from "@/lib/rate-limit";
 
@@ -49,19 +49,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    const token = await createToken({
+    const sessionUser = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-    });
+    } as const;
+    const { sessionId, expiresAt } = await createSession(sessionUser, request);
+    const token = await createToken(sessionUser, sessionId);
 
     const response = NextResponse.json({ success: true });
     response.cookies.set("session-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: Math.floor((expiresAt.getTime() - Date.now()) / 1000),
       path: "/",
     });
 
