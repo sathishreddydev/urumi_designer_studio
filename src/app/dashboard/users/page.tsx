@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogOut, MonitorSmartphone, Plus, UserCircle } from "lucide-react";
 import Link from "next/link";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "bg-red-100 text-red-700",
@@ -28,6 +29,8 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const { session } = usePermissions();
+  const currentUserId = session?.id;
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users"],
@@ -76,7 +79,7 @@ export default function UsersPage() {
       ) : (
         <div className="space-y-3">
           {users?.map((user: any) => (
-            <UserCard key={user.id} user={user} toggleMutation={toggleMutation} />
+            <UserCard key={user.id} user={user} currentUserId={currentUserId} toggleMutation={toggleMutation} />
           ))}
         </div>
       )}
@@ -86,9 +89,11 @@ export default function UsersPage() {
 
 function UserCard({
   user,
+  currentUserId,
   toggleMutation,
 }: {
   user: any;
+  currentUserId: string | undefined;
   toggleMutation: { mutate: (variables: { id: string; active: boolean }) => void };
 }) {
   const queryClient = useQueryClient();
@@ -97,18 +102,29 @@ function UserCard({
     queryKey: ["user-sessions", user.id],
     queryFn: async () => {
       const res = await fetch(`/api/users/${user.id}/sessions`);
-      if (!res.ok) throw new Error("Failed to fetch sessions");
+      if (!res.ok) return [];
       return res.json();
     },
   });
 
   async function revoke() {
     const sessionId = pendingSessionId;
-    await fetch(`/api/users/${user.id}/sessions`, {
+    const response = await fetch(`/api/users/${user.id}/sessions`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionId ? { sessionId } : {}),
     });
+    if (!response.ok && response.status !== 401) {
+      throw new Error("Failed to sign out device");
+    }
+
+    // If revoking own session(s) → log out cleanly and redirect
+    if (user.id === currentUserId) {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+      return;
+    }
+
     queryClient.invalidateQueries({ queryKey: ["user-sessions", user.id] });
     setPendingSessionId(undefined);
   }

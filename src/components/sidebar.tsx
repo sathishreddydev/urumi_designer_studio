@@ -141,8 +141,11 @@ export function Sidebar({ role, userName }: SidebarProps) {
               size="sm"
               className="justify-start gap-2 flex-1 min-w-0"
               onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                window.location.href = "/login";
+                try {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                } finally {
+                  window.location.replace("/login");
+                }
               }}
             >
               <LogOut className="h-4 w-4 shrink-0" />

@@ -2,47 +2,61 @@ import { NextResponse } from "next/server";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sessions } from "@/lib/db/schema";
-import { withPermission } from "@/lib/api-guard";
+import { getSession } from "@/lib/auth";
 
-export const GET = withPermission(
-  { resource: "user", action: "read" },
-  async (_request, { params }) => {
-    const { id } = await params;
-    const activeSessions = await db
-      .select({
-        id: sessions.id,
-        deviceName: sessions.deviceName,
-        ipAddress: sessions.ipAddress,
-        lastActiveAt: sessions.lastActiveAt,
-        createdAt: sessions.createdAt,
-      })
-      .from(sessions)
-      .where(and(
-        eq(sessions.userId, id),
-        isNull(sessions.revokedAt),
-        gt(sessions.expiresAt, new Date()),
-      ));
+// Helper: only ADMIN can manage sessions
+async function requireAdmin() {
+  const session = await getSession();
+  if (!session) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (session.role !== "ADMIN") return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  return { session };
+}
 
-    return NextResponse.json(activeSessions);
-  }
-);
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAdmin();
+  if (auth.error) return auth.error;
 
-export const DELETE = withPermission(
-  { resource: "user", action: "update" },
-  async (request, { params }) => {
-    const { id } = await params;
-    const body = await request.json().catch(() => ({}));
-    const sessionId = typeof body.sessionId === "string" ? body.sessionId : null;
+  const { id } = await params;
+  const activeSessions = await db
+    .select({
+      id: sessions.id,
+      deviceName: sessions.deviceName,
+      ipAddress: sessions.ipAddress,
+      lastActiveAt: sessions.lastActiveAt,
+      createdAt: sessions.createdAt,
+    })
+    .from(sessions)
+    .where(and(
+      eq(sessions.userId, id),
+      isNull(sessions.revokedAt),
+      gt(sessions.expiresAt, new Date()),
+    ));
 
-    await db
-      .update(sessions)
-      .set({ revokedAt: new Date() })
-      .where(and(
-        eq(sessions.userId, id),
-        isNull(sessions.revokedAt),
-        ...(sessionId ? [eq(sessions.id, sessionId)] : []),
-      ));
+  return NextResponse.json(activeSessions);
+}
 
-    return NextResponse.json({ success: true });
-  }
-);
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAdmin();
+  if (auth.error) return auth.error;
+
+  const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const sessionId = typeof body.sessionId === "string" ? body.sessionId : null;
+
+  await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(
+      eq(sessions.userId, id),
+      isNull(sessions.revokedAt),
+      ...(sessionId ? [eq(sessions.id, sessionId)] : []),
+    ));
+
+  return NextResponse.json({ success: true });
+}

@@ -75,10 +75,10 @@ export async function createSession(user: SessionUser, request: Request) {
 }
 
 export async function revokeCurrentSession() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session-token")?.value;
-  if (!token) return;
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("session-token")?.value;
+    if (!token) return;
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const sessionId = (payload as { sessionId?: string }).sessionId;
     if (sessionId) await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
