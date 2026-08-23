@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
   Select,
   SelectContent,
@@ -16,8 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
-import { Shirt, Calendar, AlertTriangle, Search, X } from "lucide-react";
+import { Shirt, Calendar, AlertTriangle, Search, X, ArrowRight } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const ALL_STATUSES = [
   "DRAFT",
@@ -40,14 +42,90 @@ const ALL_STATUSES = [
 
 const LIMIT = 20;
 
+// ─── Per-Outfit Status Updater ───────────────────────────────────────────────
+
+function OutfitStatusUpdater({
+  outfitId,
+  onSuccess,
+}: {
+  outfitId: string;
+  onSuccess: () => void;
+}) {
+  const { data: transitions } = useQuery({
+    queryKey: ["outfit-transitions", outfitId],
+    queryFn: async () => {
+      const res = await fetch(`/api/outfits/${outfitId}/transition`);
+      if (!res.ok) return { availableTransitions: [] };
+      return res.json();
+    },
+  });
+
+  const transitionMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const res = await fetch(`/api/outfits/${outfitId}/transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Transition failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      onSuccess();
+      toast({ title: "Status updated" });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Failed", description: error.message });
+    },
+  });
+
+  const available: { status: string; label: string }[] =
+    transitions?.availableTransitions ?? [];
+
+  if (available.length === 0) return <span className="text-[11px] text-muted-foreground">—</span>;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {available.map((t) => (
+        <LoadingButton
+          key={t.status}
+          size="sm"
+          variant="outline"
+          className="h-6 gap-1 px-2 text-[11px] bg-background"
+          loading={
+            transitionMutation.isPending &&
+            transitionMutation.variables === t.status
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            transitionMutation.mutate(t.status);
+          }}
+        >
+          <ArrowRight className="h-2.5 w-2.5" />
+          {t.label}
+        </LoadingButton>
+      ))}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function OutfitsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  const queryKey = ["outfits", status, search, page];
+
   const { data, isLoading } = useQuery({
-    queryKey: ["outfits", status, search, page],
+    queryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status && status !== "all") params.set("status", status);
@@ -63,6 +141,11 @@ export default function OutfitsPage() {
   const outfits = data?.outfits || [];
   const total = data?.total || 0;
   const hasFilters = status || search;
+
+  function invalidate(outfitId: string) {
+    queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
+  }
 
   return (
     <div className="space-y-4">
@@ -118,7 +201,7 @@ export default function OutfitsPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-xs min-w-[640px]">
+            <table className="w-full text-xs min-w-[800px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
@@ -128,6 +211,7 @@ export default function OutfitsPage() {
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Designer</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Master</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Move to</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -177,6 +261,12 @@ export default function OutfitsPage() {
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>
                       </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <OutfitStatusUpdater
+                          outfitId={outfit.id}
+                          onSuccess={() => invalidate(outfit.id)}
+                        />
+                      </td>
                     </tr>
                   );
                 })}
@@ -193,9 +283,9 @@ export default function OutfitsPage() {
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
               return (
-                <Link key={outfit.id} href={`/dashboard/outfits/${outfit.id}`} className="block">
-                  <div className="rounded-xl border bg-card shadow-sm p-4 active:scale-[0.99] transition-all hover:shadow-md">
-                    {/* Top row: name + status badge */}
+                <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md">
+                  {/* Top row: name + status badge */}
+                  <Link href={`/dashboard/outfits/${outfit.id}`} className="block">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
@@ -221,8 +311,8 @@ export default function OutfitsPage() {
                       </div>
                     </div>
 
-                    {/* Bottom row: delivery + master */}
-                    <div className="flex items-center gap-x-3 ml-5">
+                    {/* Delivery + master */}
+                    <div className="flex items-center gap-x-3 ml-5 mb-2">
                       {outfit.deliveryDate && (
                         <span className={`text-[11px] flex items-center gap-0.5 whitespace-nowrap ${isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
                           <Calendar className="h-3 w-3 shrink-0" />
@@ -236,8 +326,17 @@ export default function OutfitsPage() {
                         </p>
                       )}
                     </div>
+                  </Link>
+
+                  {/* Move to row — outside Link to prevent navigation */}
+                  <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 mt-1">
+                    <span className="text-[11px] font-medium text-muted-foreground shrink-0">Move to</span>
+                    <OutfitStatusUpdater
+                      outfitId={outfit.id}
+                      onSuccess={() => invalidate(outfit.id)}
+                    />
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

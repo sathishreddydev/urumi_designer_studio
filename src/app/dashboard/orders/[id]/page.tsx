@@ -20,6 +20,7 @@ import {
 
 import {
   ArrowLeft,
+  ArrowRight,
   CreditCard,
   Shirt,
   Trash2,
@@ -31,7 +32,6 @@ import {
   ExternalLink,
   Plus,
   AlertTriangle,
-  ChevronDown,
   ChevronUp,
 } from "lucide-react";
 
@@ -42,6 +42,92 @@ import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
 import { CameraCaptureModal } from "@/components/camera-capture-modal";
 import { OutfitTypeSelect } from "@/components/outfit-type-select";
+
+// ─── Per-Outfit Status Updater ───────────────────────────────────────────────
+
+function OutfitStatusUpdater({
+  outfitId,
+  orderId,
+  disabled,
+}: {
+  outfitId: string;
+  orderId: string;
+  disabled?: boolean;
+}) {
+  const queryClient = useQueryClient();
+
+  const { data: transitions } = useQuery({
+    queryKey: ["outfit-transitions", outfitId],
+    queryFn: async () => {
+      const res = await fetch(`/api/outfits/${outfitId}/transition`);
+      if (!res.ok) return { availableTransitions: [] };
+      return res.json();
+    },
+    enabled: !disabled,
+  });
+
+  const transitionMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const res = await fetch(`/api/outfits/${outfitId}/transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Transition failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+      queryClient.invalidateQueries({
+        queryKey: ["outfit-transitions", outfitId],
+      });
+      toast({ title: "Status updated" });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: error.message,
+      });
+    },
+  });
+
+  const available: { status: string; label: string }[] =
+    transitions?.availableTransitions ?? [];
+
+  if (disabled || available.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-2">
+      <span className="text-[11px] font-medium text-muted-foreground">
+        Move to
+      </span>
+      <div className="flex flex-wrap justify-end gap-1.5">
+        {available.map((t) => (
+          <LoadingButton
+            key={t.status}
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2.5 text-xs bg-background"
+            loading={
+              transitionMutation.isPending &&
+              transitionMutation.variables === t.status
+            }
+            onClick={() => transitionMutation.mutate(t.status)}
+          >
+            <ArrowRight className="h-3 w-3" />
+            {t.label}
+          </LoadingButton>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -63,7 +149,9 @@ export default function OrderDetailPage() {
   const [paymentAmountError, setPaymentAmountError] = useState("");
   const [outfitFormKey, setOutfitFormKey] = useState(0);
   const [paymentFormKey, setPaymentFormKey] = useState(0);
-  const [newOutfitFabricImages, setNewOutfitFabricImages] = useState<File[]>([]);
+  const [newOutfitFabricImages, setNewOutfitFabricImages] = useState<File[]>(
+    [],
+  );
   const [cameraOpen, setCameraOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery({
@@ -317,7 +405,9 @@ export default function OrderDetailPage() {
               <h1 className="text-lg font-bold leading-6 tracking-tight sm:text-xl">
                 {order.orderNumber}
               </h1>
-              <Badge className={`${getStatusColor(order.status)} text-xs leading-4`}>
+              <Badge
+                className={`${getStatusColor(order.status)} text-xs leading-4`}
+              >
                 {order.status}
               </Badge>
             </div>
@@ -441,9 +531,14 @@ export default function OrderDetailPage() {
                       name: form.get("name"),
                       type: form.get("type"),
                       occasion: form.get("occasion") || undefined,
-                      price: form.get("price") ? Number(form.get("price")) : undefined,
+                      price: form.get("price")
+                        ? Number(form.get("price"))
+                        : undefined,
                       maggamRequired: form.get("maggamRequired") === "on",
-                      designerId: form.get("designerId") === "none" ? undefined : form.get("designerId"),
+                      designerId:
+                        form.get("designerId") === "none"
+                          ? undefined
+                          : form.get("designerId"),
                       fabricImages: newOutfitFabricImages,
                     });
                   }}
@@ -454,7 +549,9 @@ export default function OrderDetailPage() {
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="name">Item Name</Label>
+                      <Label className="text-xs font-semibold" htmlFor="name">
+                        Item Name
+                      </Label>
                       <Input
                         id="name"
                         name="name"
@@ -463,11 +560,18 @@ export default function OrderDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="type">Type</Label>
+                      <Label className="text-xs font-semibold" htmlFor="type">
+                        Type
+                      </Label>
                       <OutfitTypeSelect name="type" required />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="occasion">Occasion</Label>
+                      <Label
+                        className="text-xs font-semibold"
+                        htmlFor="occasion"
+                      >
+                        Occasion
+                      </Label>
                       <Input
                         id="occasion"
                         name="occasion"
@@ -475,7 +579,9 @@ export default function OrderDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="price">Estimated Price (₹)</Label>
+                      <Label className="text-xs font-semibold" htmlFor="price">
+                        Estimated Price (₹)
+                      </Label>
                       <Input
                         id="price"
                         name="price"
@@ -487,13 +593,20 @@ export default function OrderDetailPage() {
                     </div>
                     {isAdmin && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold" htmlFor="designerId">Assigned Designer</Label>
+                        <Label
+                          className="text-xs font-semibold"
+                          htmlFor="designerId"
+                        >
+                          Assigned Designer
+                        </Label>
                         <Select name="designerId" defaultValue="none">
                           <SelectTrigger id="designerId">
                             <SelectValue placeholder="Assign later..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Assign later...</SelectItem>
+                            <SelectItem value="none">
+                              Assign later...
+                            </SelectItem>
                             {designers.map((designer: any) => (
                               <SelectItem key={designer.id} value={designer.id}>
                                 {designer.name}
@@ -524,12 +637,16 @@ export default function OrderDetailPage() {
                       Customer Material Images
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Upload photos of the customer's fabric material (optional).
+                      Upload photos of the customer's fabric material
+                      (optional).
                     </p>
                     {newOutfitFabricImages.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {newOutfitFabricImages.map((file, index) => (
-                          <div key={`${file.name}-${index}`} className="relative group h-16 w-16 overflow-hidden rounded-md border">
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="relative group h-16 w-16 overflow-hidden rounded-md border"
+                          >
                             <img
                               src={URL.createObjectURL(file)}
                               alt={`Fabric ${index + 1}`}
@@ -539,7 +656,9 @@ export default function OrderDetailPage() {
                               type="button"
                               onClick={() =>
                                 setNewOutfitFabricImages((current) =>
-                                  current.filter((_, fileIndex) => fileIndex !== index),
+                                  current.filter(
+                                    (_, fileIndex) => fileIndex !== index,
+                                  ),
                                 )
                               }
                               className="absolute right-0 top-0 rounded-bl bg-destructive p-0.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
@@ -554,10 +673,12 @@ export default function OrderDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <label
                         htmlFor="new-outfit-fabric-upload"
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium leading-4 transition-colors hover:bg-muted"
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium leading-4 transition-colors hover:bg-muted"
                       >
                         <ImagePlus className="h-3.5 w-3.5" />
-                        {newOutfitFabricImages.length > 0 ? "Add More" : "Upload Material Photos"}
+                        {newOutfitFabricImages.length > 0
+                          ? "Add More"
+                          : "Upload Material Photos"}
                       </label>
                       <input
                         id="new-outfit-fabric-upload"
@@ -621,8 +742,9 @@ export default function OrderDetailPage() {
                     key={outfit.id}
                     className="border rounded-lg p-4 space-y-3 bg-card hover:border-accent transition-colors"
                   >
+                    {/* Card header: name left, price + status right */}
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <Link
                           href={`/dashboard/outfits/${outfit.id}`}
                           className="text-sm font-semibold leading-5 hover:underline flex items-center gap-1.5"
@@ -639,10 +761,8 @@ export default function OrderDetailPage() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
-                        <Badge
-                          className={`${getStatusColor(outfit.status)} mb-1`}
-                        >
+                      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                        <Badge className={getStatusColor(outfit.status)}>
                           {formatStatus(outfit.status)}
                         </Badge>
                         <p className="text-sm font-bold leading-5">
@@ -657,6 +777,13 @@ export default function OrderDetailPage() {
                       </div>
                     </div>
 
+                    {/* Status transition row — full width, visually separate */}
+                    <OutfitStatusUpdater
+                      outfitId={outfit.id}
+                      orderId={params.id as string}
+                      disabled={isCompleted || !can("update", "outfit")}
+                    />
+
                     {/* Customer Fabric References */}
                     {(() => {
                       const fabricRefs = (outfit.references || []).filter(
@@ -666,7 +793,8 @@ export default function OrderDetailPage() {
                         <div className="bg-muted/40 p-2.5 rounded-md text-xs space-y-1.5">
                           <p className="font-medium text-muted-foreground flex items-center gap-1">
                             <ImageIcon className="h-3.5 w-3.5" /> Material
-                            Attachments {fabricRefs.length > 0 && `(${fabricRefs.length})`}
+                            Attachments{" "}
+                            {fabricRefs.length > 0 && `(${fabricRefs.length})`}
                           </p>
                           {fabricRefs.length > 0 ? (
                             <div className="flex gap-2 flex-wrap">
@@ -779,19 +907,25 @@ export default function OrderDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm leading-5">
               <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-xs text-muted-foreground">Ordered Date</span>
+                <span className="text-xs text-muted-foreground">
+                  Ordered Date
+                </span>
                 <span className="text-sm font-medium">
                   {formatDate(order.orderDate)}
                 </span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b">
-                <span className="text-xs text-muted-foreground">Trial Date</span>
+                <span className="text-xs text-muted-foreground">
+                  Trial Date
+                </span>
                 <span className="text-sm font-medium text-amber-700">
                   {formatDate(order.trialDate)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Target Delivery</span>
+                <span className="text-xs text-muted-foreground">
+                  Target Delivery
+                </span>
                 <span className="text-sm font-semibold text-primary">
                   {formatDate(order.deliveryDate)}
                 </span>
@@ -816,7 +950,7 @@ export default function OrderDetailPage() {
           {can("read", "payment") && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-primary" /> Payment
                   Summary
                 </CardTitle>
