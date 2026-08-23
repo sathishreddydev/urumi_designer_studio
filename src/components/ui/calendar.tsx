@@ -211,7 +211,6 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
           }}
           components={{
             Caption: () => caption,
-            Nav: () => null,
           }}
           {...props}
         />
