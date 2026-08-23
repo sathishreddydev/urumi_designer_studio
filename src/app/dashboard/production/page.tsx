@@ -5,15 +5,36 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Shirt, Calendar, AlertTriangle, ArrowRight } from "lucide-react";
+import { Shirt, Calendar, AlertTriangle, ArrowRight, Search } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
+
+const PRODUCTION_STATUSES = [
+  "WAITING_FOR_DEPENDENCIES",
+  "PRODUCTION_READY",
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+];
 
 export default function ProductionPage() {
   const queryClient = useQueryClient();
   const { role, session } = usePermissions();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["production-outfits"],
@@ -60,8 +81,17 @@ export default function ProductionPage() {
   }
 
   const outfits = (data || []).filter((outfit: any) => {
-    if (role !== "MASTER") return true;
-    return !outfit.masterId || outfit.masterId === session?.id;
+    if (role === "MASTER" && outfit.masterId && outfit.masterId !== session?.id) return false;
+    if (statusFilter && outfit.status !== statusFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !outfit.name?.toLowerCase().includes(q) &&
+        !outfit.customerName?.toLowerCase().includes(q) &&
+        !outfit.orderNumber?.toLowerCase().includes(q)
+      ) return false;
+    }
+    return true;
   });
 
   return (
@@ -73,6 +103,30 @@ export default function ProductionPage() {
         <p className="text-xs text-muted-foreground">
           {outfits.length} outfit(s) in production pipeline
         </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by outfit, customer or order..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="All Stages" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Stages</SelectItem>
+            {PRODUCTION_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {outfits.length === 0 ? (

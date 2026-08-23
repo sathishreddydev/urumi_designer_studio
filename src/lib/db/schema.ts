@@ -236,6 +236,29 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ─── CONSULTATIONS ───────────────────────────────────────────────────────────
+
+export type OutfitIdea = {
+  id: string;
+  type: string;
+  notes: string;
+  estimatedPrice: number | null;
+  fabricSwatches: string[]; // uploaded image URLs
+};
+
+export const consultations = pgTable("consultations", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("con")),
+  customerId: varchar("customer_id", { length: 20 }).references(() => customers.id).notNull(),
+  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
+  status: text("status").notNull().default("draft"), // draft | converted | cancelled
+  notes: text("notes"),
+  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
+  convertedOrderId: varchar("converted_order_id", { length: 20 }).references(() => orders.id),
+  outfitIdeas: jsonb("outfit_ideas").$type<OutfitIdea[]>().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;

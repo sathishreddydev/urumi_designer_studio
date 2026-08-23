@@ -500,8 +500,6 @@ export default function CustomerPortalPage() {
                                 <PortalUpload
                                   outfitId={outfit.id}
                                   token={params.token as string}
-                                  type="PATTERN"
-                                  title="Share Inspiration Photos"
                                 />
                               </div>
                             )}
@@ -862,20 +860,23 @@ function CameraCaptureModal({
 
 // ─── PORTAL UPLOAD ──────────────────────────────────────────────────────
 
+const UPLOAD_TYPES = [
+  { value: "PATTERN", label: "Inspiration / Pattern", icon: "✨" },
+  { value: "MAGGAM",  label: "Maggam Reference",      icon: "🪡" },
+  { value: "FABRIC",  label: "My Fabric / Material",  icon: "🧵" },
+] as const;
+
 function PortalUpload({
   outfitId,
   token,
-  type,
-  title,
 }: {
   outfitId: string;
   token: string;
-  type: "PATTERN" | "FABRIC";
-  title: string;
 }) {
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [uploaded, setUploaded] = useState<{ url: string; type: string }[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<"PATTERN" | "MAGGAM" | "FABRIC">("PATTERN");
 
   async function handleUpload(files: FileList | File | null) {
     if (!files) return;
@@ -888,7 +889,7 @@ function PortalUpload({
         const formData = new FormData();
         formData.append("file", file);
         formData.append("outfitId", outfitId);
-        formData.append("type", type);
+        formData.append("type", selectedType);
 
         const res = await fetch(`/api/portal/${token}/upload`, {
           method: "POST",
@@ -897,7 +898,7 @@ function PortalUpload({
 
         if (res.ok) {
           const data = await res.json();
-          setUploaded((prev) => [...prev, data.url]);
+          setUploaded((prev) => [...prev, { url: data.url, type: selectedType }]);
         }
       } catch {
         // Handle upload errors per file
@@ -907,24 +908,39 @@ function PortalUpload({
     setUploading(false);
   }
 
+  const currentType = UPLOAD_TYPES.find((t) => t.value === selectedType)!;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-        <Sparkles className="h-3.5 w-3.5 text-primary" /> {title}
+        <Sparkles className="h-3.5 w-3.5 text-primary" /> Share Your References
       </p>
 
+      {/* Type selector pills */}
+      <div className="flex flex-wrap gap-1.5">
+        {UPLOAD_TYPES.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => setSelectedType(t.value)}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+              selectedType === t.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <span>{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Uploaded previews */}
       {uploaded.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {uploaded.map((url, i) => (
-            <div
-              key={i}
-              className="relative h-12 w-12 rounded border overflow-hidden shrink-0"
-            >
-              <img
-                src={url}
-                alt="Uploaded reference"
-                className="object-cover w-full h-full"
-              />
+          {uploaded.map((item, i) => (
+            <div key={i} className="relative h-12 w-12 rounded border overflow-hidden shrink-0">
+              <img src={item.url} alt="Uploaded reference" className="object-cover w-full h-full" />
               <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
                 <Check className="h-2 w-2 text-white" />
               </div>
@@ -944,11 +960,7 @@ function PortalUpload({
           >
             <span>
               <Upload className="h-3.5 w-3.5 mr-1.5" />
-              {uploading
-                ? "Uploading..."
-                : type === "FABRIC"
-                  ? "Upload Material"
-                  : "Upload Photos"}
+              {uploading ? "Uploading..." : "Upload Photos"}
             </span>
           </Button>
           <input
