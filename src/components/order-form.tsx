@@ -19,6 +19,7 @@ import {
   X,
   Camera,
   Save,
+  CalendarIcon,
 } from "lucide-react";
 import { OutfitTypeSelect } from "@/components/outfit-type-select";
 
@@ -38,6 +39,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -237,8 +241,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   // ── Form State ──────────────────────────────────────────────────────────────
   const [customerId, setCustomerId] = useState(preselectedCustomerId);
-  const [trialDate, setTrialDate] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
+  const [trialDate, setTrialDate] = useState<Date | undefined>(undefined);
+  const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(undefined);
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceMethod, setAdvanceMethod] = useState("CASH");
   const [notes, setNotes] = useState("");
@@ -288,14 +292,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     if (!order) return;
 
     setTrialDate(
-      order.trialDate
-        ? new Date(order.trialDate).toISOString().split("T")[0]
-        : "",
+      order.trialDate ? new Date(order.trialDate) : undefined,
     );
     setDeliveryDate(
-      order.deliveryDate
-        ? new Date(order.deliveryDate).toISOString().split("T")[0]
-        : "",
+      order.deliveryDate ? new Date(order.deliveryDate) : undefined,
     );
     setNotes(order.notes || "");
 
@@ -349,8 +349,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId,
-          trialDate: trialDate || undefined,
-          deliveryDate: deliveryDate || undefined,
+          trialDate: trialDate?.toISOString() || undefined,
+          deliveryDate: deliveryDate?.toISOString() || undefined,
           estimatedAmount: calculatedTotal > 0 ? calculatedTotal : undefined,
           advanceAmount: advanceAmount ? Number(advanceAmount) : undefined,
           notes: notes || undefined,
@@ -370,8 +370,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             occasion: outfit.occasion || undefined,
             price: outfit.price ? Number(outfit.price) : undefined,
             maggamRequired: outfit.maggamRequired,
-            deliveryDate: deliveryDate || undefined,
-            trialDate: trialDate || undefined,
+            deliveryDate: deliveryDate?.toISOString() || undefined,
+            trialDate: trialDate?.toISOString() || undefined,
             designerId: outfit.designerId || undefined,
           }),
         });
@@ -440,8 +440,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          trialDate: trialDate || undefined,
-          deliveryDate: deliveryDate || undefined,
+          trialDate: trialDate?.toISOString() || undefined,
+          deliveryDate: deliveryDate?.toISOString() || undefined,
           estimatedAmount: estimatedTotal > 0 ? estimatedTotal : undefined,
           notes,
         }),
@@ -489,8 +489,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               occasion: outfit.occasion || undefined,
               price: outfit.price ? Number(outfit.price) : undefined,
               maggamRequired: outfit.maggamRequired,
-              deliveryDate: deliveryDate || undefined,
-              trialDate: trialDate || undefined,
+              deliveryDate: deliveryDate?.toISOString() || undefined,
+              trialDate: trialDate?.toISOString() || undefined,
               designerId: outfit.designerId || undefined,
             }),
           });
@@ -528,8 +528,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               price: outfit.price ? Number(outfit.price) : undefined,
               maggamRequired: outfit.maggamRequired,
               designerId: outfit.designerId || undefined,
-              deliveryDate: deliveryDate || undefined,
-              trialDate: trialDate || undefined,
+              deliveryDate: deliveryDate?.toISOString() || undefined,
+              trialDate: trialDate?.toISOString() || undefined,
             }),
           });
 
@@ -1087,19 +1087,67 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Trial Date</Label>
-                  <Input
-                    type="date"
-                    value={trialDate}
-                    onChange={(e) => setTrialDate(e.target.value)}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start text-left font-normal text-xs h-9 ${!trialDate && "text-muted-foreground"}`}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                        {trialDate ? format(trialDate, "dd MMM yyyy") : "Pick a date"}
+                        {trialDate && (
+                          <span
+                            role="button"
+                            aria-label="Clear trial date"
+                            className="ml-auto opacity-50 hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); setTrialDate(undefined); }}
+                          >
+                            <X className="h-3 w-3" />
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker
+                        mode="single"
+                        selected={trialDate}
+                        onSelect={setTrialDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Delivery Date</Label>
-                  <Input
-                    type="date"
-                    value={deliveryDate}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start text-left font-normal text-xs h-9 ${!deliveryDate && "text-muted-foreground"}`}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                        {deliveryDate ? format(deliveryDate, "dd MMM yyyy") : "Pick a date"}
+                        {deliveryDate && (
+                          <span
+                            role="button"
+                            aria-label="Clear delivery date"
+                            className="ml-auto opacity-50 hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); setDeliveryDate(undefined); }}
+                          >
+                            <X className="h-3 w-3" />
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker
+                        mode="single"
+                        selected={deliveryDate}
+                        onSelect={setDeliveryDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 

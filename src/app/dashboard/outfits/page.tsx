@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -17,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
-import { Shirt, Calendar, AlertTriangle, Search, X, ArrowRight } from "lucide-react";
+import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, ArrowRight, Clock, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -120,9 +123,12 @@ export default function OutfitsPage() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  const queryKey = ["outfits", status, search, page];
+  const queryKey = ["outfits", status, search, deadline, customDate?.toISOString(), page];
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -130,6 +136,12 @@ export default function OutfitsPage() {
       const params = new URLSearchParams();
       if (status && status !== "all") params.set("status", status);
       if (search) params.set("search", search);
+      if (deadline) {
+        params.set("deadline", deadline);
+      } else if (customDate) {
+        params.set("deadline", "custom");
+        params.set("deadlineDate", customDate.toISOString());
+      }
       params.set("page", String(page));
       params.set("limit", String(LIMIT));
       const res = await fetch(`/api/outfits?${params}`);
@@ -140,12 +152,23 @@ export default function OutfitsPage() {
 
   const outfits = data?.outfits || [];
   const total = data?.total || 0;
-  const hasFilters = status || search;
+  const hasFilters = status || search || deadline || customDate;
+
+  function clearAll() {
+    setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPage(1);
+  }
 
   function invalidate(outfitId: string) {
     queryClient.invalidateQueries({ queryKey });
     queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
   }
+
+  const DEADLINE_PILLS = [
+    { value: "overdue",  label: "Overdue",   icon: <AlertTriangle className="h-3 w-3" />, className: "text-red-600 border-red-300 bg-red-50 hover:bg-red-100 data-[active=true]:bg-red-600 data-[active=true]:text-white data-[active=true]:border-red-600" },
+    { value: "today",    label: "Today",     icon: <Clock className="h-3 w-3" />,         className: "text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500" },
+    { value: "tomorrow", label: "Tomorrow",  icon: <CalendarIcon className="h-3 w-3" />,  className: "text-blue-600 border-blue-300 bg-blue-50 hover:bg-blue-100 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600" },
+    { value: "week",     label: "This Week", icon: <CalendarIcon className="h-3 w-3" />,  className: "text-violet-600 border-violet-300 bg-violet-50 hover:bg-violet-100 data-[active=true]:bg-violet-600 data-[active=true]:text-white data-[active=true]:border-violet-600" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -155,33 +178,172 @@ export default function OutfitsPage() {
         <p className="text-xs text-muted-foreground">{total} total</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row">
+      {/* ── FILTERS ─────────────────────────────────────────────────────── */}
+
+      {/* Mobile: search + toggle row */}
+      <div className="flex gap-2 sm:hidden">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by outfit name or customer..."
+            placeholder="Search outfits..."
             className="pl-9"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {ALL_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {hasFilters && (
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setStatus(""); setSearch(""); setPage(1); }}>
-            <X className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5 px-3"
+          onClick={() => setFiltersOpen((v) => !v)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Filters
+          {(deadline || customDate || status) && (
+            <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+              {[deadline, customDate, status && status !== "all" ? status : ""].filter(Boolean).length}
+            </span>
+          )}
+          <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+        </Button>
+      </div>
+
+      {/* Mobile: collapsible panel */}
+      {filtersOpen && (
+        <div className="sm:hidden rounded-xl border bg-card p-3 space-y-3 shadow-sm">
+          {/* Status */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Status</p>
+            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+              <SelectTrigger className="w-full h-8 text-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {ALL_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Deadline pills */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Deadline</p>
+            <div className="flex flex-wrap gap-1.5">
+              {DEADLINE_PILLS.map((pill) => {
+                const isActive = deadline === pill.value;
+                return (
+                  <button
+                    key={pill.value}
+                    data-active={isActive}
+                    onClick={() => { setDeadline(isActive ? "" : pill.value); setCustomDate(undefined); setPage(1); }}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
+                  >
+                    {pill.icon}
+                    {pill.label}
+                    {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
+                  </button>
+                );
+              })}
+
+              {/* Date picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    data-active={!!customDate}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors text-muted-foreground border-border bg-background data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary"
+                  >
+                    <CalendarIcon className="h-3 w-3" />
+                    {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
+                    {customDate && (
+                      <span role="button" onClick={(e) => { e.stopPropagation(); setCustomDate(undefined); setPage(1); }} className="ml-0.5 opacity-70">
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <Calendar mode="single" selected={customDate} onSelect={(d) => { setCustomDate(d); setDeadline(""); setPage(1); }} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Clear all */}
+          {hasFilters && (
+            <button onClick={clearAll} className="text-xs text-muted-foreground underline underline-offset-2">
+              Clear all filters
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Desktop: always-visible filters */}
+      <div className="hidden sm:flex flex-col gap-2">
+        {/* Pills row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {DEADLINE_PILLS.map((pill) => {
+            const isActive = deadline === pill.value;
+            return (
+              <button
+                key={pill.value}
+                data-active={isActive}
+                onClick={() => { setDeadline(isActive ? "" : pill.value); setCustomDate(undefined); setPage(1); }}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${pill.className}`}
+              >
+                {pill.icon}
+                {pill.label}
+                {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
+              </button>
+            );
+          })}
+
+          {/* Date picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                data-active={!!customDate}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors text-muted-foreground border-border bg-background hover:bg-muted data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary"
+              >
+                <CalendarIcon className="h-3 w-3" />
+                {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
+                {customDate && (
+                  <span role="button" aria-label="Clear date" onClick={(e) => { e.stopPropagation(); setCustomDate(undefined); setPage(1); }} className="ml-0.5 opacity-70 hover:opacity-100">
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-0">
+              <Calendar mode="single" selected={customDate} onSelect={(d) => { setCustomDate(d); setDeadline(""); setPage(1); }} initialFocus />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Search + status row */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by outfit name or customer..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {ALL_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Content */}
@@ -315,7 +477,7 @@ export default function OutfitsPage() {
                     <div className="flex items-center gap-x-3 ml-5 mb-2">
                       {outfit.deliveryDate && (
                         <span className={`text-[11px] flex items-center gap-0.5 whitespace-nowrap ${isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                          <Calendar className="h-3 w-3 shrink-0" />
+                          <CalendarIcon className="h-3 w-3 shrink-0" />
                           {formatDate(outfit.deliveryDate)}
                           {isUrgent && <AlertTriangle className="h-3 w-3 ml-0.5" />}
                         </span>

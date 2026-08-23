@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { outfits, orders, customers, users, customerMeasurements } from "@/lib/db/schema";
-import { eq, count, desc, inArray, ilike, and as drizzleAnd } from "drizzle-orm";
+import { eq, count, desc, asc, inArray, ilike, and as drizzleAnd, gte, lt, isNotNull } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { outfitSchema } from "@/lib/validations";
 import { eventBus } from "@/lib/events";
@@ -13,9 +13,17 @@ export const GET = withPermission(
     const orderId = searchParams.get("orderId") || "";
     const status = searchParams.get("status") || "";
     const search = searchParams.get("search") || "";
+    const deadline = searchParams.get("deadline") || ""; // "overdue" | "today" | "tomorrow" | "week"
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
+
+    // ── Deadline range helpers ──────────────────────────────────────────────
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const startOfDayAfter = new Date(startOfTomorrow.getTime() + 24 * 60 * 60 * 1000);
+    const endOfWeek = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const conditions: any[] = [];
 
@@ -48,13 +56,54 @@ export const GET = withPermission(
       conditions.push(ilike(outfits.name, `%${search}%`));
     }
 
+    // Deadline filter — applied on deliveryDate
+    if (deadline === "overdue") {
+      conditions.push(isNotNull(outfits.deliveryDate));
+      conditions.push(lt(outfits.deliveryDate, startOfToday));
+      // Exclude already-completed outfits
+      conditions.push(
+        inArray(outfits.status, [
+          "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES",
+          "PRODUCTION_READY", "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW",
+          "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC",
+        ] as any)
+      );
+    } else if (deadline === "today") {
+      conditions.push(isNotNull(outfits.deliveryDate));
+      conditions.push(gte(outfits.deliveryDate, startOfToday));
+      conditions.push(lt(outfits.deliveryDate, startOfTomorrow));
+    } else if (deadline === "tomorrow") {
+      conditions.push(isNotNull(outfits.deliveryDate));
+      conditions.push(gte(outfits.deliveryDate, startOfTomorrow));
+      conditions.push(lt(outfits.deliveryDate, startOfDayAfter));
+    } else if (deadline === "week") {
+      conditions.push(isNotNull(outfits.deliveryDate));
+      conditions.push(gte(outfits.deliveryDate, startOfToday));
+      conditions.push(lt(outfits.deliveryDate, endOfWeek));
+    } else if (deadline === "custom") {
+      const rawDate = searchParams.get("deadlineDate");
+      if (rawDate) {
+        const picked = new Date(rawDate);
+        const startOfPicked = new Date(picked.getFullYear(), picked.getMonth(), picked.getDate());
+        const startOfNext = new Date(startOfPicked.getTime() + 24 * 60 * 60 * 1000);
+        conditions.push(isNotNull(outfits.deliveryDate));
+        conditions.push(gte(outfits.deliveryDate, startOfPicked));
+        conditions.push(lt(outfits.deliveryDate, startOfNext));
+      }
+    }
+
     const condition = conditions.length > 0 ? drizzleAnd(...conditions) : undefined;
+
+    // When deadline filter is active, sort by deliveryDate ASC (most urgent first)
+    const ordering = (deadline && deadline !== "")
+      ? [asc(outfits.deliveryDate), desc(outfits.priority)]
+      : [desc(outfits.priority), desc(outfits.createdAt)];
 
     const outfitsList = await db
       .select()
       .from(outfits)
       .where(condition)
-      .orderBy(desc(outfits.priority), desc(outfits.createdAt))
+      .orderBy(...ordering)
       .limit(limit)
       .offset(offset);
 
