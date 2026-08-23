@@ -108,18 +108,19 @@ function MonthGrid({ current, onSelect, onYearClick }: {
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   const fromYear: number = (props as any).fromYear ?? 2000;
   const toYear: number   = (props as any).toYear   ?? new Date().getFullYear() + 5;
+  const selected = (props as { selected?: unknown }).selected;
 
   const [view, setView] = React.useState<CalendarView>("day");
   const [month, setMonth] = React.useState<Date>(() => {
-    if (props.selected instanceof Date) return props.selected;
+    if (selected instanceof Date) return selected;
     if (props.defaultMonth) return props.defaultMonth;
     return new Date();
   });
 
   // Keep month in sync when the selected prop changes from outside
   React.useEffect(() => {
-    if (props.selected instanceof Date) setMonth(props.selected);
-  }, [props.selected]);
+    if (selected instanceof Date) setMonth(selected);
+  }, [selected]);
 
   function prevMonth() {
     if (view === "year")  { setMonth((m) => addYears(m, -12)); return; }
@@ -210,7 +211,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
             ...classNames,
           }}
           components={{
-            Caption: () => caption,
+            MonthCaption: () => caption,
           }}
           {...props}
         />
