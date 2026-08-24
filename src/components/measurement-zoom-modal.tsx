@@ -7,11 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Ruler, Calculator } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-
+import { Calculator } from "./calculator";
 // ─── Body measurement sections ───────────────────────────────────────────────
-
+import { Ruler } from "lucide-react";
 const BODY_MEASUREMENT_SECTIONS = [
   {
     num: "01",
@@ -57,7 +56,7 @@ const BODY_MEASUREMENT_SECTIONS = [
 ] as const;
 
 const ALL_BODY_FIELDS: string[] = BODY_MEASUREMENT_SECTIONS.flatMap(
-  (s) => s.fields as unknown as string[]
+  (s) => s.fields as unknown as string[],
 );
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -94,8 +93,8 @@ export function MeasurementZoomModal({
   const measurements = customer.measurements?.length
     ? customer.measurements
     : customer.measurement
-    ? [customer.measurement]
-    : [];
+      ? [customer.measurement]
+      : [];
 
   const saved =
     measurements.length > 0
@@ -104,12 +103,8 @@ export function MeasurementZoomModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      {/*
-        w-[95vw] on mobile → full-width with small margin
-        sm:max-w-2xl  → medium screens
-        lg:max-w-5xl  → large screens (measurements + calculator side by side)
-      */}
-      <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-5xl h-[95vh] sm:h-[90vh] lg:h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+
+      <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-5xl h-[95vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* ── Header ── */}
         <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -147,7 +142,6 @@ export function MeasurementZoomModal({
                         <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
                           {section.title}
                         </span>
-                        <div className="flex-1 h-px bg-border" />
                       </div>
 
                       {/* 2 cols on mobile, 3 on sm+ */}
@@ -173,7 +167,7 @@ export function MeasurementZoomModal({
                 {/* Custom fields */}
                 {(() => {
                   const extras = Object.entries(saved).filter(
-                    ([k, v]) => !ALL_BODY_FIELDS.includes(k) && v
+                    ([k, v]) => !ALL_BODY_FIELDS.includes(k) && v,
                   );
                   if (!extras.length) return null;
                   return (
@@ -213,166 +207,9 @@ export function MeasurementZoomModal({
             )}
           </div>
 
-          {/* ── Divider ── */}
-          <div className="hidden lg:block w-px bg-border shrink-0" />
-          <div className="block lg:hidden h-px bg-border shrink-0" />
-
-          {/* Calculator panel — sticky, never scrolls, measurements scroll beside it */}
-          <div className="lg:w-72 shrink-0 flex flex-col px-5 py-4 bg-muted/20">
-            <div className="flex items-center gap-2 mb-4">
-              <Calculator className="h-4 w-4 text-primary shrink-0" />
-              <h3 className="text-sm font-semibold">Calculator</h3>
-            </div>
-            <MeasurementCalculator />
-          </div>
+          <Calculator />
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ─── Calculator ───────────────────────────────────────────────────────────────
-
-function MeasurementCalculator() {
-  const [display, setDisplay] = useState("0");
-  const [previousValue, setPreviousValue] = useState<number | null>(null);
-  const [operation, setOperation] = useState<string | null>(null);
-  const [waitingForOperand, setWaitingForOperand] = useState(true);
-
-  function inputDigit(digit: string) {
-    if (waitingForOperand) {
-      setDisplay(digit);
-      setWaitingForOperand(false);
-    } else {
-      setDisplay(display === "0" ? digit : display + digit);
-    }
-  }
-
-  function inputDecimal() {
-    if (waitingForOperand) {
-      setDisplay("0.");
-      setWaitingForOperand(false);
-      return;
-    }
-    if (!display.includes(".")) {
-      setDisplay(display + ".");
-    }
-  }
-
-  function handleOperator(nextOp: string) {
-    const current = parseFloat(display);
-    if (previousValue !== null && operation && !waitingForOperand) {
-      const result = compute(previousValue, current, operation);
-      setDisplay(String(result));
-      setPreviousValue(result);
-    } else {
-      setPreviousValue(current);
-    }
-    setOperation(nextOp);
-    setWaitingForOperand(true);
-  }
-
-  function handleEquals() {
-    if (previousValue === null || !operation) return;
-    const current = parseFloat(display);
-    const result = compute(previousValue, current, operation);
-    setDisplay(String(result));
-    setPreviousValue(null);
-    setOperation(null);
-    setWaitingForOperand(true);
-  }
-
-  function handleClear() {
-    setDisplay("0");
-    setPreviousValue(null);
-    setOperation(null);
-    setWaitingForOperand(true);
-  }
-
-  function handleBackspace() {
-    if (waitingForOperand) return;
-    const next = display.length > 1 ? display.slice(0, -1) : "0";
-    setDisplay(next);
-    if (next === "0") setWaitingForOperand(true);
-  }
-
-  function compute(a: number, b: number, op: string): number {
-    let result: number;
-    switch (op) {
-      case "+": result = a + b; break;
-      case "−": result = a - b; break;
-      case "×": result = a * b; break;
-      case "÷": result = b !== 0 ? a / b : 0; break;
-      default: result = b;
-    }
-    // Avoid floating-point noise
-    return Math.round(result * 100000) / 100000;
-  }
-
-  // ── Styles ──
-  const cell  = "flex items-center justify-center rounded-xl font-semibold select-none cursor-pointer transition-all active:scale-95 h-11 text-base";
-  const num   = `${cell} bg-background border border-border text-foreground shadow-sm hover:bg-muted`;
-  const op    = `${cell} bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20`;
-  const eq    = `${cell} col-span-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md text-lg`;
-  const ac    = `${cell} bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-400`;
-  const bk    = `${cell} bg-muted border border-border text-muted-foreground hover:bg-muted/60`;
-
-  return (
-    <div className="space-y-3">
-      {/* Display */}
-      <div className="rounded-xl bg-background border border-border px-4 py-3 shadow-inner">
-        {/* Expression line */}
-        <div className="min-h-[18px] text-right">
-          {operation && previousValue !== null ? (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {previousValue} {operation}
-            </span>
-          ) : (
-            <span className="text-xs text-transparent select-none">·</span>
-          )}
-        </div>
-        {/* Main number */}
-        <div className="text-right">
-          <span className="text-3xl font-bold tabular-nums tracking-tight break-all">
-            {display}
-          </span>
-        </div>
-      </div>
-
-      {/* Buttons — 4-column grid */}
-      <div className="grid grid-cols-4 gap-2">
-        {/* Row 1: AC  ⌫  ÷  × */}
-        <button className={ac} onClick={handleClear}>AC</button>
-        <button className={bk} onClick={handleBackspace}>⌫</button>
-        <button className={op} onClick={() => handleOperator("÷")}>÷</button>
-        <button className={op} onClick={() => handleOperator("×")}>×</button>
-
-        {/* Row 2: 7  8  9  − */}
-        <button className={num} onClick={() => inputDigit("7")}>7</button>
-        <button className={num} onClick={() => inputDigit("8")}>8</button>
-        <button className={num} onClick={() => inputDigit("9")}>9</button>
-        <button className={op}  onClick={() => handleOperator("−")}>−</button>
-
-        {/* Row 3: 4  5  6  + */}
-        <button className={num} onClick={() => inputDigit("4")}>4</button>
-        <button className={num} onClick={() => inputDigit("5")}>5</button>
-        <button className={num} onClick={() => inputDigit("6")}>6</button>
-        <button className={op}  onClick={() => handleOperator("+")}>+</button>
-
-        {/* Row 4: 1  2  3  0 */}
-        <button className={num} onClick={() => inputDigit("1")}>1</button>
-        <button className={num} onClick={() => inputDigit("2")}>2</button>
-        <button className={num} onClick={() => inputDigit("3")}>3</button>
-        <button className={num} onClick={() => inputDigit("0")}>0</button>
-
-        {/* Row 5: .  =  = (spans 2) */}
-        <button className={num} onClick={inputDecimal}>.</button>
-        <button className={eq}  onClick={handleEquals}>=</button>
-      </div>
-
-      <p className="text-[11px] text-center text-muted-foreground pt-1">
-        Quick calculations for measurements
-      </p>
-    </div>
   );
 }
