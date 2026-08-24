@@ -15,8 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Shirt, Calendar, AlertTriangle, ArrowRight, Search } from "lucide-react";
+import { Shirt, Calendar, AlertTriangle, ArrowRight, Search, ImageOff } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
+import { ImageViewer } from "@/components/image-viewer";
 
 const PRODUCTION_STATUSES = [
   "WAITING_FOR_DEPENDENCIES",
@@ -35,6 +36,11 @@ export default function ProductionPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
+  // Image viewer
+  const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["production-outfits"],
@@ -144,6 +150,7 @@ export default function ProductionPage() {
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Type</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Material</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
                   <th className="text-right px-4 py-3 font-medium">Action</th>
@@ -165,6 +172,30 @@ export default function ProductionPage() {
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {outfit.type}
                         {outfit.maggamRequired && <span className="text-pink-600 ml-1">· M</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {outfit.customerMaterialImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewerImages(outfit.customerMaterialImages || [{ id: outfit.customerMaterialImageUrl, url: outfit.customerMaterialImageUrl }]);
+                              setViewerIndex(0);
+                              setViewerOpen(true);
+                            }}
+                            className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <img src={outfit.customerMaterialImageUrl} alt="Material" className="h-full w-full object-cover" />
+                            {outfit.customerMaterialImages?.length > 1 && (
+                              <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
+                                {outfit.customerMaterialImages.length}
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
+                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
@@ -237,6 +268,28 @@ export default function ProductionPage() {
                       {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
                         <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
                       )}
+                      {outfit.customerMaterialImageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewerImages(outfit.customerMaterialImages || [{ id: outfit.customerMaterialImageUrl, url: outfit.customerMaterialImageUrl }]);
+                            setViewerIndex(0);
+                            setViewerOpen(true);
+                          }}
+                          className="relative mt-1 block h-10 w-10 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <img src={outfit.customerMaterialImageUrl} alt="Material" className="h-full w-full object-cover" />
+                          {outfit.customerMaterialImages?.length > 1 && (
+                            <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
+                              {outfit.customerMaterialImages.length}
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
+                          <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -277,6 +330,13 @@ export default function ProductionPage() {
           </div>
         </>
       )}
+
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { outfits, orders, customers, users, customerMeasurements } from "@/lib/db/schema";
+import { outfits, orders, customers, users, customerMeasurements, referenceImages } from "@/lib/db/schema";
 import { eq, count, desc, asc, inArray, ilike, and as drizzleAnd, gte, lt, isNotNull } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { outfitSchema } from "@/lib/validations";
@@ -138,12 +138,29 @@ export const GET = withPermission(
           masterName = m?.name || "";
         }
 
+        // Fetch all customer material images (FABRIC type, not a work photo)
+        const materialRefs = await db
+          .select({ id: referenceImages.id, url: referenceImages.url })
+          .from(referenceImages)
+          .where(
+            drizzleAnd(
+              eq(referenceImages.outfitId, outfit.id),
+              eq(referenceImages.type, "FABRIC"),
+              eq(referenceImages.isWorkPhoto, false)
+            )
+          )
+          .orderBy(asc(referenceImages.createdAt));
+        const customerMaterialImageUrl = materialRefs[0]?.url ?? null;
+        const customerMaterialImages = materialRefs;
+
         return {
           ...outfit,
           customerName,
           orderNumber: order?.orderNumber || "",
           designerName,
           masterName,
+          customerMaterialImageUrl,
+          customerMaterialImages,
         };
       })
     );

@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
-import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, ArrowRight, Clock, SlidersHorizontal, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, ArrowRight, Clock, SlidersHorizontal, ChevronDown, ImageOff } from "lucide-react";
+import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -127,6 +129,17 @@ export default function OutfitsPage() {
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
+
+  // Image viewer state
+  const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  function openViewer(images: { id: string; url: string }[], index = 0) {
+    setViewerImages(images);
+    setViewerIndex(index);
+    setViewerOpen(true);
+  }
 
   const queryKey = ["outfits", status, search, deadline, customDate?.toISOString(), page];
 
@@ -370,6 +383,7 @@ export default function OutfitsPage() {
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Material</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Designer</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Master</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
@@ -410,6 +424,35 @@ export default function OutfitsPage() {
                             <Badge variant="destructive" className="text-[10px] whitespace-nowrap">BLOCKED</Badge>
                           )}
                         </div>
+                      </td>
+                      <td
+                        className="px-4 py-3"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                      >
+                        {outfit.customerMaterialImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openViewer(outfit.customerMaterialImages, 0); }}
+                            className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <Image
+                              src={outfit.customerMaterialImageUrl}
+                              alt="Customer material"
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                            {outfit.customerMaterialImages?.length > 1 && (
+                              <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
+                                {outfit.customerMaterialImages.length}
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
+                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs max-w-[100px] truncate">
                         {outfit.designerName || "—"}
@@ -470,6 +513,30 @@ export default function OutfitsPage() {
                         {isBlocked && (
                           <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
                         )}
+                        {outfit.customerMaterialImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(outfit.customerMaterialImages, 0); }}
+                            className="relative mt-1 block h-10 w-10 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <Image
+                              src={outfit.customerMaterialImageUrl}
+                              alt="Customer material"
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                            {outfit.customerMaterialImages?.length > 1 && (
+                              <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
+                                {outfit.customerMaterialImages.length}
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="mt-1 flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
+                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -506,6 +573,13 @@ export default function OutfitsPage() {
           <Pagination page={page} total={total} limit={LIMIT} onPageChange={setPage} />
         </>
       )}
+
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 }

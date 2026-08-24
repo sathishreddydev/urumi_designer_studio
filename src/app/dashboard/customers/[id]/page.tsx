@@ -48,6 +48,7 @@ import {
   Camera,
   Upload,
 } from "lucide-react";
+import { ImageViewer } from "@/components/image-viewer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -131,6 +132,11 @@ export default function CustomerDetailPage({
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [measurementFileReading, setMeasurementFileReading] = useState(false);
   const [measurementCameraOpen, setMeasurementCameraOpen] = useState(false);
+
+  // Image viewer state (for fabric reference thumbnails on outfit rows)
+  const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   // Voice callback — passed to MeasurementVoiceInput component
   const voiceOnResult = useCallback((matched: Record<string, string>, custom: Record<string, string>, raw: string) => {
@@ -535,10 +541,21 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                                       if (fabricRefs.length === 0) return null;
                                       return (
                                         <div className="flex items-center gap-1 mt-1">
-                                          {fabricRefs.slice(0, 3).map((ref: any) => (
-                                            <div key={ref.id} className="h-5 w-5 rounded-sm overflow-hidden border border-border shrink-0">
+                                          {fabricRefs.slice(0, 3).map((ref: any, idx: number) => (
+                                            <button
+                                              key={ref.id}
+                                              type="button"
+                                              className="h-5 w-5 rounded-sm overflow-hidden border border-border shrink-0 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setViewerImages(fabricRefs.map((r: any) => ({ id: r.id, url: r.url })));
+                                                setViewerIndex(idx);
+                                                setViewerOpen(true);
+                                              }}
+                                            >
                                               <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
-                                            </div>
+                                            </button>
                                           ))}
                                           {fabricRefs.length > 3 && (
                                             <span className="text-[9px] text-muted-foreground">+{fabricRefs.length - 3}</span>
@@ -1042,6 +1059,13 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 }
