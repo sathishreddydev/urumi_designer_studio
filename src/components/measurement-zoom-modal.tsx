@@ -109,7 +109,7 @@ export function MeasurementZoomModal({
         sm:max-w-2xl  → medium screens
         lg:max-w-5xl  → large screens (measurements + calculator side by side)
       */}
-      <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-5xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-5xl h-[95vh] sm:h-[90vh] lg:h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* ── Header ── */}
         <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
