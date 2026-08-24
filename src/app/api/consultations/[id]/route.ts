@@ -73,7 +73,7 @@ export const POST = withPermission(
       return NextResponse.json({ error: "Already converted to an order" }, { status: 400 });
     }
 
-    // Create the order
+    // Create the order — use consultation's expected dates, overrideable from body
     let order: any;
     let retries = 3;
     while (retries > 0) {
@@ -85,8 +85,12 @@ export const POST = withPermission(
             customerId: consultation.customerId,
             estimatedAmount: consultation.estimatedAmount,
             notes: consultation.notes || undefined,
-            deliveryDate: body.deliveryDate ? new Date(body.deliveryDate) : null,
-            trialDate: body.trialDate ? new Date(body.trialDate) : null,
+            deliveryDate: body.deliveryDate
+              ? new Date(body.deliveryDate)
+              : consultation.expectedDeliveryDate ?? null,
+            trialDate: body.trialDate
+              ? new Date(body.trialDate)
+              : consultation.expectedTrialDate ?? null,
           })
           .returning();
         break;

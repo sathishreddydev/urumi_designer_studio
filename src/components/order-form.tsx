@@ -1112,6 +1112,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         mode="single"
                         selected={trialDate}
                         onSelect={setTrialDate}
+                        disabled={isEditMode ? undefined : { before: new Date() }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -1144,6 +1145,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         mode="single"
                         selected={deliveryDate}
                         onSelect={setDeliveryDate}
+                        disabled={isEditMode ? undefined : { before: new Date() }}
                         initialFocus
                       />
                     </PopoverContent>

@@ -57,7 +57,7 @@ export const POST = withPermission(
   { resource: "order", action: "create" },
   async (request, { session }) => {
     const body = await request.json();
-    const { customerId, notes, outfitIdeas, estimatedAmount } = body;
+    const { customerId, notes, outfitIdeas, estimatedAmount, consultationDate, expectedDeliveryDate, expectedTrialDate } = body;
 
     if (!customerId) {
       return NextResponse.json({ error: "customerId is required" }, { status: 400 });
@@ -72,6 +72,9 @@ export const POST = withPermission(
         estimatedAmount: estimatedAmount ? String(estimatedAmount) : null,
         outfitIdeas: outfitIdeas || [],
         status: "draft",
+        consultationDate: consultationDate ? new Date(consultationDate) : null,
+        expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
+        expectedTrialDate: expectedTrialDate ? new Date(expectedTrialDate) : null,
       })
       .returning();
 

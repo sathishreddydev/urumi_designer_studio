@@ -100,6 +100,14 @@ export const POST = withAuth(async (request, { params, session }) => {
   // Execute the transition
   await executeTransition(id, newStatus as OutfitStatus, session.id, notes);
 
+  // Stamp actual timestamps when key statuses are reached
+  if (newStatus === "TRIAL") {
+    await db.update(outfits).set({ trialedAt: new Date() }).where(eq(outfits.id, id));
+  }
+  if (newStatus === "DELIVERED") {
+    await db.update(outfits).set({ deliveredAt: new Date() }).where(eq(outfits.id, id));
+  }
+
   // Return updated available transitions
   const nextTransitions = await getAvailableTransitions(
     id,

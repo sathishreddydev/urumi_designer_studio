@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,33 +13,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { OutfitTypeSelect } from "@/components/outfit-type-select";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingButton } from "@/components/ui/loading-button";
 import {
   Search, Plus, Trash2, ShoppingBag, Shirt, User,
-  ChevronRight, ClipboardList, X, Edit3, IndianRupee,
+  ChevronRight, ClipboardList, X, IndianRupee, ArrowLeft,
+  CalendarIcon, Package, CalendarCheck,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -63,16 +52,22 @@ type Consultation = {
   estimatedAmount: string | null;
   convertedOrderId: string | null;
   outfitIdeas: OutfitIdea[];
+  consultationDate: string | null;
+  expectedDeliveryDate: string | null;
+  expectedTrialDate: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
-// ─── New Consultation Dialog ──────────────────────────────────────────────────
-function NewConsultationDialog({ onClose }: { onClose: () => void }) {
-  const queryClient = useQueryClient();
+// ─── New Consultation Form (inline panel) ─────────────────────────────────────
+function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () => void }) {
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [notes, setNotes] = useState("");
+  const [consultationDate, setConsultationDate] = useState<Date | undefined>(new Date());
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined);
+  const [expectedTrialDate, setExpectedTrialDate] = useState<Date | undefined>(undefined);
   const [ideas, setIdeas] = useState<OutfitIdea[]>([
     { id: crypto.randomUUID(), type: "", notes: "", estimatedPrice: null, fabricSwatches: [] },
   ]);
@@ -88,8 +83,6 @@ function NewConsultationDialog({ onClose }: { onClose: () => void }) {
     enabled: customerSearch.length > 1,
   });
 
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-
   const mutation = useMutation({
     mutationFn: async () => {
       const validIdeas = ideas.filter((i) => i.type);
@@ -102,195 +95,244 @@ function NewConsultationDialog({ onClose }: { onClose: () => void }) {
           notes: notes || null,
           outfitIdeas: validIdeas,
           estimatedAmount: total > 0 ? total : null,
+          consultationDate: consultationDate?.toISOString() ?? null,
+          expectedDeliveryDate: expectedDeliveryDate?.toISOString() ?? null,
+          expectedTrialDate: expectedTrialDate?.toISOString() ?? null,
         }),
       });
       if (!res.ok) throw new Error("Failed to create consultation");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["consultations"] });
-      toast({ title: "Consultation created" });
-      onClose();
+      toast({ title: "Consultation saved" });
+      onSaved();
     },
-    onError: () => toast({ variant: "destructive", title: "Failed to create consultation" }),
+    onError: () => toast({ variant: "destructive", title: "Failed to save consultation" }),
   });
 
   function addIdea() {
-    setIdeas((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), type: "", notes: "", estimatedPrice: null, fabricSwatches: [] },
-    ]);
+    setIdeas((p) => [...p, { id: crypto.randomUUID(), type: "", notes: "", estimatedPrice: null, fabricSwatches: [] }]);
   }
-
   function updateIdea(id: string, field: keyof OutfitIdea, value: any) {
-    setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, [field]: value } : i)));
+    setIdeas((p) => p.map((i) => (i.id === id ? { ...i, [field]: value } : i)));
   }
-
   function removeIdea(id: string) {
-    setIdeas((prev) => prev.filter((i) => i.id !== id));
+    setIdeas((p) => p.filter((i) => i.id !== id));
   }
 
   const totalEstimate = ideas.reduce((s, i) => s + (i.estimatedPrice || 0), 0);
 
   return (
-    <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>New Consultation</DialogTitle>
-      </DialogHeader>
+    <div className="space-y-5">
+      {/* Back arrow + title */}
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCancel}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h2 className="text-lg font-semibold">New Consultation</h2>
+      </div>
 
-      <div className="space-y-4 pt-2">
-        {/* Customer picker */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold">Customer *</Label>
-          {selectedCustomer ? (
-            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
-              <div>
-                <p className="text-sm font-medium">{selectedCustomer.name}</p>
-                <p className="text-xs text-muted-foreground">{selectedCustomer.mobile}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => { setSelectedCustomer(null); setCustomerId(""); }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+      {/* Customer */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Customer *</Label>
+        {selectedCustomer ? (
+          <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">{selectedCustomer.name}</p>
+              <p className="text-xs text-muted-foreground">{selectedCustomer.mobile}</p>
             </div>
-          ) : (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search customer by name or mobile..."
-                className="pl-9"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-              />
-              {customerResults?.customers?.length > 0 && (
-                <div className="absolute top-full z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
-                  {customerResults.customers.map((c: any) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                      onClick={() => {
-                        setSelectedCustomer(c);
-                        setCustomerId(c.id);
-                        setCustomerSearch("");
-                      }}
-                    >
-                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="font-medium">{c.name}</p>
-                        <p className="text-xs text-muted-foreground">{c.mobile}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* General notes */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold">Consultation Notes</Label>
-          <Textarea
-            placeholder="Occasion, style preferences, special requests..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="text-sm resize-none"
-          />
-        </div>
-
-        <Separator />
-
-        {/* Outfit ideas */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold">Outfit Ideas</Label>
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={addIdea}>
-              <Plus className="h-3 w-3" /> Add Outfit
+            <Button variant="ghost" size="icon" className="h-7 w-7"
+              onClick={() => { setSelectedCustomer(null); setCustomerId(""); }}>
+              <X className="h-3.5 w-3.5" />
             </Button>
           </div>
-
-          {ideas.map((idea, idx) => (
-            <div key={idea.id} className="rounded-lg border p-3 space-y-2 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Outfit {idx + 1}</span>
-                {ideas.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => removeIdea(idea.id)}
+        ) : (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or mobile..."
+              className="pl-9"
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+            />
+            {customerResults?.customers?.length > 0 && (
+              <div className="absolute top-full z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
+                {customerResults.customers.map((c: any) => (
+                  <button key={c.id} type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                    onClick={() => { setSelectedCustomer(c); setCustomerId(c.id); setCustomerSearch(""); }}
                   >
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                    <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="font-medium">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">{c.mobile}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Notes</Label>
+        <Textarea
+          placeholder="Occasion, style preferences, special requests..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          className="text-sm resize-none"
+        />
+      </div>
+
+      {/* Dates */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Consultation date */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Consultation Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={`w-full justify-start text-left font-normal text-xs h-9 ${!consultationDate && "text-muted-foreground"}`}>
+                <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                {consultationDate ? format(consultationDate, "dd MMM yyyy") : "Today"}
+                {consultationDate && (
+                  <span role="button" className="ml-auto opacity-50 hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); setConsultationDate(undefined); }}>
+                    <X className="h-3 w-3" />
+                  </span>
                 )}
-              </div>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarPicker mode="single" selected={consultationDate} onSelect={setConsultationDate} initialFocus />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Type *</Label>
-                  <OutfitTypeSelect
-                    value={idea.type}
-                    onValueChange={(v) => updateIdea(idea.id, "type", v)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Est. Price (₹)</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={idea.estimatedPrice ?? ""}
-                    onChange={(e) =>
-                      updateIdea(idea.id, "estimatedPrice", e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="h-9 text-sm"
-                  />
-                </div>
-              </div>
+        {/* Expected trial date */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Expected Trial</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={`w-full justify-start text-left font-normal text-xs h-9 ${!expectedTrialDate && "text-muted-foreground"}`}>
+                <CalendarCheck className="mr-2 h-3.5 w-3.5 shrink-0" />
+                {expectedTrialDate ? format(expectedTrialDate, "dd MMM yyyy") : "Pick a date"}
+                {expectedTrialDate && (
+                  <span role="button" className="ml-auto opacity-50 hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); setExpectedTrialDate(undefined); }}>
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarPicker
+                mode="single"
+                selected={expectedTrialDate}
+                onSelect={setExpectedTrialDate}
+                disabled={{ before: new Date() }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
+        {/* Expected delivery date */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Expected Delivery</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={`w-full justify-start text-left font-normal text-xs h-9 ${!expectedDeliveryDate && "text-muted-foreground"}`}>
+                <Package className="mr-2 h-3.5 w-3.5 shrink-0" />
+                {expectedDeliveryDate ? format(expectedDeliveryDate, "dd MMM yyyy") : "Pick a date"}
+                {expectedDeliveryDate && (
+                  <span role="button" className="ml-auto opacity-50 hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); setExpectedDeliveryDate(undefined); }}>
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarPicker
+                mode="single"
+                selected={expectedDeliveryDate}
+                onSelect={setExpectedDeliveryDate}
+                disabled={{ before: new Date() }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Outfit ideas */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">Outfit Ideas</Label>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={addIdea}>
+            <Plus className="h-3 w-3" /> Add
+          </Button>
+        </div>
+
+        {ideas.map((idea, idx) => (
+          <div key={idea.id} className="rounded-lg border p-3 space-y-2 bg-muted/20">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Outfit {idx + 1}</span>
+              {ideas.length > 1 && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeIdea(idea.id)}>
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Notes / Fabric preference</Label>
-                <Input
-                  placeholder="e.g. Raw silk, heavy zari, mirror work..."
-                  value={idea.notes}
-                  onChange={(e) => updateIdea(idea.id, "notes", e.target.value)}
-                  className="h-8 text-xs"
+                <Label className="text-[11px] text-muted-foreground">Type *</Label>
+                <OutfitTypeSelect value={idea.type} onValueChange={(v) => updateIdea(idea.id, "type", v)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Est. Price (₹)</Label>
+                <Input type="number" placeholder="0" className="h-9 text-sm"
+                  value={idea.estimatedPrice ?? ""}
+                  onChange={(e) => updateIdea(idea.id, "estimatedPrice", e.target.value ? Number(e.target.value) : null)}
                 />
               </div>
             </div>
-          ))}
-
-          {/* Total */}
-          {totalEstimate > 0 && (
-            <div className="flex justify-end items-center gap-2 text-sm font-semibold">
-              <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Total Estimate: ₹{totalEstimate.toLocaleString()}</span>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Notes / Fabric preference</Label>
+              <Input placeholder="e.g. Raw silk, heavy zari, mirror work..." className="h-8 text-xs"
+                value={idea.notes}
+                onChange={(e) => updateIdea(idea.id, "notes", e.target.value)}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        ))}
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <LoadingButton
-            className="flex-1"
-            loading={mutation.isPending}
-            disabled={!customerId}
-            onClick={() => mutation.mutate()}
-          >
-            Save Consultation
-          </LoadingButton>
-        </div>
+        {totalEstimate > 0 && (
+          <div className="flex justify-end items-center gap-1.5 text-sm font-semibold">
+            <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
+            Total Estimate: ₹{totalEstimate.toLocaleString()}
+          </div>
+        )}
       </div>
-    </DialogContent>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-1">
+        <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <LoadingButton className="flex-1" loading={mutation.isPending} disabled={!customerId}
+          onClick={() => mutation.mutate()}>
+          Save Consultation
+        </LoadingButton>
+      </div>
+    </div>
   );
 }
 
-// ─── Consultation Detail Card ─────────────────────────────────────────────────
+// ─── Consultation Card ────────────────────────────────────────────────────────
 function ConsultationCard({ consultation }: { consultation: Consultation }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -304,10 +346,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Conversion failed");
-      }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Failed"); }
       return res.json();
     },
     onSuccess: (data) => {
@@ -330,15 +369,12 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
     onError: () => toast({ variant: "destructive", title: "Failed to cancel" }),
   });
 
-  const totalEstimate = consultation.outfitIdeas?.reduce(
-    (s, i) => s + (i.estimatedPrice || 0), 0
-  ) ?? 0;
+  const totalEstimate = consultation.outfitIdeas?.reduce((s, i) => s + (i.estimatedPrice || 0), 0) ?? 0;
 
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="pt-4 pb-3 space-y-3">
-          {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
@@ -358,14 +394,36 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
             </div>
           </div>
 
-          {/* Notes */}
           {consultation.notes && (
             <p className="text-xs text-muted-foreground bg-muted/40 rounded px-2.5 py-1.5 line-clamp-2">
               {consultation.notes}
             </p>
           )}
 
-          {/* Outfit ideas */}
+          {/* Dates row */}
+          {(consultation.consultationDate || consultation.expectedTrialDate || consultation.expectedDeliveryDate) && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {consultation.consultationDate && (
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <CalendarIcon className="h-3 w-3" />
+                  {formatDate(consultation.consultationDate)}
+                </span>
+              )}
+              {consultation.expectedTrialDate && (
+                <span className="flex items-center gap-1 text-[11px] text-blue-600">
+                  <CalendarCheck className="h-3 w-3" />
+                  Trial: {formatDate(consultation.expectedTrialDate)}
+                </span>
+              )}
+              {consultation.expectedDeliveryDate && (
+                <span className="flex items-center gap-1 text-[11px] text-amber-600">
+                  <Package className="h-3 w-3" />
+                  Delivery: {formatDate(consultation.expectedDeliveryDate)}
+                </span>
+              )}
+            </div>
+          )}
+
           {consultation.outfitIdeas?.length > 0 && (
             <div className="space-y-1">
               {consultation.outfitIdeas.map((idea, i) => (
@@ -373,9 +431,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <Shirt className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="font-medium truncate">{idea.type || "Unnamed"}</span>
-                    {idea.notes && (
-                      <span className="text-muted-foreground truncate hidden sm:inline">· {idea.notes}</span>
-                    )}
+                    {idea.notes && <span className="text-muted-foreground truncate hidden sm:inline">· {idea.notes}</span>}
                   </div>
                   {idea.estimatedPrice && (
                     <span className="font-medium shrink-0 ml-2">₹{idea.estimatedPrice.toLocaleString()}</span>
@@ -385,35 +441,21 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
             </div>
           )}
 
-          {/* Footer: total + actions */}
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="text-xs text-muted-foreground">
               {consultation.outfitIdeas?.length || 0} outfit{consultation.outfitIdeas?.length !== 1 ? "s" : ""}
-              {totalEstimate > 0 && (
-                <span className="ml-2 font-semibold text-foreground">
-                  · ₹{totalEstimate.toLocaleString()} est.
-                </span>
-              )}
+              {totalEstimate > 0 && <span className="ml-2 font-semibold text-foreground">· ₹{totalEstimate.toLocaleString()} est.</span>}
             </div>
 
             {consultation.status === "draft" && (
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-destructive hover:text-destructive"
-                  onClick={() => setConfirmCancel(true)}
-                >
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive"
+                  onClick={() => setConfirmCancel(true)}>
                   Cancel
                 </Button>
-                <LoadingButton
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  loading={convertMutation.isPending}
-                  onClick={() => setConfirmConvert(true)}
-                >
-                  <ShoppingBag className="h-3 w-3" />
-                  Convert to Order
+                <LoadingButton size="sm" className="h-7 text-xs gap-1"
+                  loading={convertMutation.isPending} onClick={() => setConfirmConvert(true)}>
+                  <ShoppingBag className="h-3 w-3" /> Convert to Order
                 </LoadingButton>
               </div>
             )}
@@ -429,15 +471,13 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
         </CardContent>
       </Card>
 
-      {/* Convert confirm */}
       <AlertDialog open={confirmConvert} onOpenChange={setConfirmConvert}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Convert to Order?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will create a new order for <strong>{consultation.customerName}</strong> with{" "}
+              Creates a new order for <strong>{consultation.customerName}</strong> with{" "}
               {consultation.outfitIdeas?.length || 0} outfit(s) in DRAFT status.
-              You can update dates and details on the order page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -449,21 +489,16 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Cancel confirm */}
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel consultation?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will mark the consultation as cancelled. It won't be deleted.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Marks it as cancelled. It won't be deleted.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go back</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => { setConfirmCancel(false); cancelMutation.mutate(); }}
-            >
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { setConfirmCancel(false); cancelMutation.mutate(); }}>
               Cancel consultation
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -473,9 +508,10 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ConsultationsPage() {
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("draft");
 
@@ -486,26 +522,38 @@ export default function ConsultationsPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/consultations?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed");
       return res.json() as Promise<Consultation[]>;
     },
   });
 
   const consultationList = data || [];
 
+  // ── When form is open, show only the form ────────────────────────────
+  if (showForm) {
+    return (
+      <div className="max-w-xl">
+        <NewConsultationForm
+          onCancel={() => setShowForm(false)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["consultations"] });
+            setShowForm(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ── List view ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">Consultations</h1>
-          <p className="text-xs text-muted-foreground">
-            Pre-order discussions with customers
-          </p>
+          <p className="text-xs text-muted-foreground">Pre-order discussions with customers</p>
         </div>
-        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setNewDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New Consultation
+        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setShowForm(true)}>
+          <Plus className="h-4 w-4" /> New Consultation
         </Button>
       </div>
 
@@ -513,15 +561,11 @@ export default function ConsultationsPage() {
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by customer or notes..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <Input placeholder="Search by customer or notes..." className="pl-9"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[160px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -536,21 +580,17 @@ export default function ConsultationsPage() {
       {/* List */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-lg bg-muted" />
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-lg bg-muted" />)}
         </div>
       ) : consultationList.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center space-y-2">
             <ClipboardList className="h-8 w-8 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">
-              {statusFilter === "draft"
-                ? "No pending consultations — create one to get started"
-                : "No consultations found"}
+              {statusFilter === "draft" ? "No pending consultations" : "No consultations found"}
             </p>
             {statusFilter === "draft" && (
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => setNewDialogOpen(true)}>
+              <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowForm(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" /> New Consultation
               </Button>
             )}
@@ -558,16 +598,9 @@ export default function ConsultationsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {consultationList.map((c) => (
-            <ConsultationCard key={c.id} consultation={c} />
-          ))}
+          {consultationList.map((c) => <ConsultationCard key={c.id} consultation={c} />)}
         </div>
       )}
-
-      {/* New consultation dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-        <NewConsultationDialog onClose={() => setNewDialogOpen(false)} />
-      </Dialog>
     </div>
   );
 }

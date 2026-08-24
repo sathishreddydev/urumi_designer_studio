@@ -1040,9 +1040,14 @@ export default function OutfitDetailPage() {
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Trial Date
                 </span>
-                <span className="font-medium">
-                  {formatDate(outfit.trialDate)}
-                </span>
+                <div className="text-right">
+                  <span className="font-medium">{formatDate(outfit.trialDate)}</span>
+                  {outfit.trialedAt && (
+                    <p className="text-[10px] text-green-600 mt-0.5">
+                      Trialed: {formatDate(outfit.trialedAt)}
+                    </p>
+                  )}
+                </div>
               </div>
               <Separator />
 
@@ -1050,9 +1055,14 @@ export default function OutfitDetailPage() {
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Delivery Date
                 </span>
-                <span className="font-medium">
-                  {formatDate(outfit.deliveryDate)}
-                </span>
+                <div className="text-right">
+                  <span className="font-medium">{formatDate(outfit.deliveryDate)}</span>
+                  {outfit.deliveredAt && (
+                    <p className="text-[10px] text-green-600 mt-0.5">
+                      Delivered: {formatDate(outfit.deliveredAt)}
+                    </p>
+                  )}
+                </div>
               </div>
               <Separator />
 

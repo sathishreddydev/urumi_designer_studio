@@ -139,6 +139,10 @@ export const outfits = pgTable("outfits", {
   garmentMeasurements: jsonb("garment_measurements").$type<Record<string, string>>(),
   // Voice notes — array of { id, url, label, createdAt } recorded on the outfit
   voiceNotes: jsonb("voice_notes").$type<{ id: string; url: string; label: string; createdAt: string }[]>(),
+  // Actual timestamps stamped automatically on status transition.
+  // *Date fields = planned dates set by staff; *At fields = actual event timestamps.
+  trialedAt: timestamp("trialed_at"),
+  deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -255,6 +259,9 @@ export const consultations = pgTable("consultations", {
   estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
   convertedOrderId: varchar("converted_order_id", { length: 20 }).references(() => orders.id),
   outfitIdeas: jsonb("outfit_ideas").$type<OutfitIdea[]>().default([]),
+  consultationDate: timestamp("consultation_date"),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  expectedTrialDate: timestamp("expected_trial_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
