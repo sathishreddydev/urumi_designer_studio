@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { outfits, orders, customers } from "@/lib/db/schema";
-import { eq, and, lt, isNotNull, notInArray } from "drizzle-orm";
+import { eq, and, lt, lte, isNotNull, notInArray } from "drizzle-orm";
 import { withAuth } from "@/lib/api-guard";
 
 export const GET = withAuth(async (_request, { session }) => {
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  // MASTER only sees deadlines for their assigned outfits
-  const masterFilter = session.role === "MASTER"
-    ? eq(outfits.masterId, session.id)
-    : undefined;
+  // Scope outfits to the logged-in user for role-specific views
+  const scopeFilter =
+    session.role === "MASTER"
+      ? eq(outfits.masterId, session.id)
+      : session.role === "DESIGNER"
+      ? eq(outfits.designerId, session.id)
+      : undefined; // ADMIN / RECEPTION see everything
 
-  // DESIGNER only sees deadlines for their assigned outfits
-  const designerFilter = session.role === "DESIGNER"
-    ? eq(outfits.designerId, session.id)
-    : undefined;
-
-  const scopeFilter = masterFilter ?? designerFilter;
-
-  // Get outfits that are NOT delivered and have a delivery date that's past or within 3 days
+  // --- Delivery deadlines: past or within 3 days, not yet delivered/ready ---
   const overdueOutfits = await db
     .select({
       id: outfits.id,
@@ -46,7 +42,7 @@ export const GET = withAuth(async (_request, { session }) => {
       )
     );
 
-  // Categorize
+  // Categorize delivery alerts
   const overdue = overdueOutfits
     .filter((o) => o.deliveryDate && new Date(o.deliveryDate) < now)
     .sort((a, b) => new Date(a.deliveryDate!).getTime() - new Date(b.deliveryDate!).getTime());
@@ -58,9 +54,11 @@ export const GET = withAuth(async (_request, { session }) => {
   // IDs already shown in delivery sections — exclude from trials to prevent duplication
   const deliveryAlertIds = new Set([...overdue, ...dueSoon].map((o) => o.id));
 
-  // Trial dates approaching — not relevant for MASTER (they don't handle trials)
-  // Skip for MASTER to keep their dashboard focused on production.
-  // Exclude outfits already shown in overdue/dueSoon to avoid the same outfit appearing twice.
+  // --- Trial alerts: not relevant for MASTER (they don't handle fittings) ---
+  // Includes:
+  //   1. Outfits currently IN a trial (status = TRIAL) — active fittings happening now
+  //   2. Upcoming trial dates within 7 days (production complete, trial not yet started)
+  // Uses the same scopeFilter so each role only sees their own outfits.
   const upcomingTrials = session.role === "MASTER" ? [] : await (async () => {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const trials = await db
@@ -80,13 +78,22 @@ export const GET = withAuth(async (_request, { session }) => {
       .where(
         and(
           isNotNull(outfits.trialDate),
-          lt(outfits.trialDate, sevenDaysFromNow),
-          notInArray(outfits.status, ["DELIVERED", "READY_FOR_DELIVERY", "TRIAL"]),
-          designerFilter
+          // Show if: currently in TRIAL status, OR trial date is within 7 days
+          // We fetch trialDate <= 7 days from now (covers past trial dates for active trials too)
+          lte(outfits.trialDate, sevenDaysFromNow),
+          notInArray(outfits.status, ["DELIVERED", "READY_FOR_DELIVERY", "ALTERATION", "QC"]),
+          scopeFilter
         )
       );
-    // Drop any outfit already shown under delivery alerts
-    return trials.filter((o) => !deliveryAlertIds.has(o.id));
+    // Drop any outfit already shown under delivery alerts to avoid duplicates
+    return trials
+      .filter((o) => !deliveryAlertIds.has(o.id))
+      .sort((a, b) => {
+        // Active trials (TRIAL status) first, then by trial date ascending
+        if (a.status === "TRIAL" && b.status !== "TRIAL") return -1;
+        if (b.status === "TRIAL" && a.status !== "TRIAL") return 1;
+        return new Date(a.trialDate!).getTime() - new Date(b.trialDate!).getTime();
+      });
   })();
 
   return NextResponse.json({

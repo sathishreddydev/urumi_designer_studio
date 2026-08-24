@@ -305,7 +305,7 @@ async function updateOrderStatus(outfitId: string) {
   } else if (statuses.every((s) => s === "READY_FOR_DELIVERY" || s === "DELIVERED")) {
     orderStatus = "Ready For Delivery";
   } else if (statuses.some((s) =>
-    ["PATTERN_DRAFTING", "MAGGAM_WORK", "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED"].includes(s)
+    ["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED"].includes(s)
   )) {
     orderStatus = "In Production";
   } else if (statuses.some((s) => s === "TRIAL" || s === "ALTERATION" || s === "QC")) {

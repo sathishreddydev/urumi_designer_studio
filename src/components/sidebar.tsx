@@ -60,10 +60,11 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   MASTER: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
-    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Dashboard",          href: "/dashboard",                   icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Production",         href: "/dashboard/production",        icon: <Scissors className="h-5 w-5" /> },
+    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam",  icon: <Sparkles className="h-5 w-5" /> },
+    { label: "Outfits",         href: "/dashboard/outfits",           icon: <Shirt className="h-5 w-5" /> },
+    { label: "Blockers",           href: "/dashboard/blockers",          icon: <AlertTriangle className="h-5 w-5" /> },
   ],
 };
 
@@ -118,7 +119,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                pathname === item.href
+                (item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href))
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground"
               )}

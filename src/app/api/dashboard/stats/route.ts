@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { customers, orders, outfits } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
+import { eq, count, ne } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
     const [{ total: activeOrders }] = await db
       .select({ total: count() })
       .from(orders)
-      .where(eq(orders.status, "Active"));
+      .where(ne(orders.status, "Completed"));
 
     const statusCounts = await db
       .select({ status: outfits.status, count: count() })
@@ -35,9 +35,13 @@ export async function GET() {
       inProduction:
         (counts["PATTERN_DRAFTING"] || 0) +
         (counts["MAGGAM_WORK"] || 0) +
+        (counts["MAGGAM_REVIEW"] || 0) +
         (counts["FABRIC_CUTTING"] || 0) +
         (counts["STITCHING"] || 0),
+      productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
       pendingTrials: counts["TRIAL"] || 0,
+      alterations: counts["ALTERATION"] || 0,
+      qc: counts["QC"] || 0,
       readyForDelivery: counts["READY_FOR_DELIVERY"] || 0,
       delivered: counts["DELIVERED"] || 0,
     });
@@ -97,9 +101,10 @@ export async function GET() {
       stitching: counts["STITCHING"] || 0,
       // Done — waiting for designer QC
       productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
-      // Total active (everything except completed)
+      // Fully delivered outfits assigned to this master
+      delivered: counts["DELIVERED"] || 0,
+      // Active = outfits the master is actively working on (excludes PRODUCTION_READY queue and completed)
       totalActive:
-        (counts["PRODUCTION_READY"] || 0) +
         (counts["PATTERN_DRAFTING"] || 0) +
         (counts["MAGGAM_WORK"] || 0) +
         (counts["MAGGAM_REVIEW"] || 0) +

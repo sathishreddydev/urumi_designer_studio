@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, ArrowRight, 
 import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const ALL_STATUSES = [
   "DRAFT",
@@ -123,7 +124,11 @@ function OutfitStatusUpdater({
 export default function OutfitsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState("");
+  const searchParams = useSearchParams();
+  const { isMaster } = usePermissions();
+
+  // Initialise status from the URL ?status= param so dashboard links land correctly
+  const [status, setStatus] = useState(searchParams.get("status") || "");
   const [search, setSearch] = useState("");
   const [deadline, setDeadline] = useState("");
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
@@ -387,7 +392,7 @@ export default function OutfitsPage() {
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Designer</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Master</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Move to</th>
+                  {!isMaster && <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Move to</th>}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -466,14 +471,15 @@ export default function OutfitsPage() {
                           {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                         </span>
                       </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <OutfitStatusUpdater
-                          outfitId={outfit.id}
-                          onSuccess={() => invalidate(outfit.id)}
-                        />
-                      </td>
-                    </tr>
-                  );
+                      {!isMaster && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <OutfitStatusUpdater
+                            outfitId={outfit.id}
+                            onSuccess={() => invalidate(outfit.id)}
+                          />
+                        </td>
+                      )}
+                    </tr>                  );
                 })}
               </tbody>
             </table>
@@ -557,14 +563,16 @@ export default function OutfitsPage() {
                     </div>
                   </Link>
 
-                  {/* Move to row — outside Link to prevent navigation */}
-                  <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 mt-1">
-                    <span className="text-[11px] font-medium text-muted-foreground shrink-0">Move to</span>
-                    <OutfitStatusUpdater
-                      outfitId={outfit.id}
-                      onSuccess={() => invalidate(outfit.id)}
-                    />
-                  </div>
+                  {/* Move to row — outside Link to prevent navigation; hidden for MASTER */}
+                  {!isMaster && (
+                    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 mt-1">
+                      <span className="text-[11px] font-medium text-muted-foreground shrink-0">Move to</span>
+                      <OutfitStatusUpdater
+                        outfitId={outfit.id}
+                        onSuccess={() => invalidate(outfit.id)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

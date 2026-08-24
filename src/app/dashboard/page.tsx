@@ -49,22 +49,62 @@ export default function DashboardPage() {
   }
 
   if (stats.role === "ADMIN" || stats.role === "RECEPTION") {
+    // Post-production items that need attention
+    const postProduction =
+      (stats.productionCompleted || 0) +
+      (stats.pendingTrials || 0) +
+      (stats.alterations || 0) +
+      (stats.qc || 0);
+
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-xs text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} />
-          <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-4 w-4" />} />
-          <StatCard title="Total Outfits" value={stats.totalOutfits} icon={<Shirt className="h-4 w-4" />} />
-          <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-4 w-4" />} />
-          <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-4 w-4" />} />
-          <StatCard title="Pending Trials" value={stats.pendingTrials} icon={<AlertTriangle className="h-4 w-4" />} />
-          <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} />
-          <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} />
+
+        {/* Overview */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Overview</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} href="/dashboard/customers" />
+            <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-4 w-4" />} href="/dashboard/orders" />
+            <StatCard title="Total Outfits" value={stats.totalOutfits} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" />
+          </div>
         </div>
+
+        {/* Production pipeline */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Production Pipeline</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-4 w-4" />} href="/dashboard/production" highlight={stats.productionReady > 0} />
+            <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-4 w-4" />} href="/dashboard/production" />
+            <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href="/dashboard/outfits" highlight={stats.readyForDelivery > 0} />
+          </div>
+        </div>
+
+        {/* Trials & finishing */}
+        {postProduction > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Trials &amp; Finishing</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {stats.productionCompleted > 0 && (
+                <StatCard title="Schedule Trial" value={stats.productionCompleted} icon={<AlertTriangle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.pendingTrials > 0 && (
+                <StatCard title="Active Trials" value={stats.pendingTrials} icon={<Users className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.alterations > 0 && (
+                <StatCard title="Alterations" value={stats.alterations} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+              {stats.qc > 0 && (
+                <StatCard title="QC" value={stats.qc} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+              )}
+            </div>
+          </div>
+        )}
+
         <DashboardReports />
         <DeadlineAlerts />
       </div>
@@ -136,6 +176,10 @@ export default function DashboardPage() {
   }
 
   if (stats.role === "MASTER") {
+    const hasActiveWork =
+      stats.patternDrafting + stats.maggamWork + stats.maggamReview +
+      stats.fabricCutting + stats.stitching > 0;
+
     return (
       <div className="space-y-6">
         <div>
@@ -153,30 +197,58 @@ export default function DashboardPage() {
             highlight={stats.productionReady > 0}
           />
           <StatCard
-            title="Active Work"
+            title="In Progress"
             value={stats.totalActive}
             icon={<Clock className="h-4 w-4" />}
             href="/dashboard/stitching-maggam"
           />
           <StatCard
-            title="Done / QC Pending"
+            title="Done / Awaiting QC"
             value={stats.productionCompleted}
             icon={<CheckCircle className="h-4 w-4" />}
             href="/dashboard/production"
+            highlight={stats.productionCompleted > 0}
           />
         </div>
 
-        {/* Stage breakdown */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Stage Breakdown</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard title="Pattern Drafting"  value={stats.patternDrafting}  icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
-            <StatCard title="Maggam Work"       value={stats.maggamWork}       icon={<Shirt className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
-            <StatCard title="Maggam Review"     value={stats.maggamReview}     icon={<Clock className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
-            <StatCard title="Fabric Cutting"    value={stats.fabricCutting}    icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
-            <StatCard title="Stitching"         value={stats.stitching}        icon={<Shirt className="h-4 w-4" />}    href="/dashboard/stitching-maggam" />
+        {/* Stage breakdown — only shown when there's active work */}
+        {hasActiveWork && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Stage Breakdown</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {stats.patternDrafting > 0 && (
+                <StatCard title="Pattern Drafting" value={stats.patternDrafting} icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+              )}
+              {stats.maggamWork > 0 && (
+                <StatCard title="Maggam Work" value={stats.maggamWork} icon={<Shirt className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+              )}
+              {stats.maggamReview > 0 && (
+                <StatCard title="Maggam Review" value={stats.maggamReview} icon={<Clock className="h-4 w-4" />} href="/dashboard/stitching-maggam" highlight />
+              )}
+              {stats.fabricCutting > 0 && (
+                <StatCard title="Fabric Cutting" value={stats.fabricCutting} icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+              )}
+              {stats.stitching > 0 && (
+                <StatCard title="Stitching" value={stats.stitching} icon={<Shirt className="h-4 w-4" />} href="/dashboard/stitching-maggam" />
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Completed outfits — full history for this master */}
+        {stats.delivered > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">History</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatCard
+                title="Delivered"
+                value={stats.delivered}
+                icon={<CheckCircle className="h-4 w-4" />}
+                href="/dashboard/outfits?status=DELIVERED"
+              />
+            </div>
+          </div>
+        )}
 
         <DeadlineAlerts />
       </div>
