@@ -56,12 +56,14 @@ import {
   X,
   Layers,
   Camera,
+  ZoomIn,
 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 import { VoiceNoteRecorder } from "@/components/voice-note-recorder";
 import { VoiceToTextButton } from "@/components/voice-to-text-button";
+import { MeasurementZoomModal } from "@/components/measurement-zoom-modal";
 
 const DEPENDENCY_TYPES = [
   "FABRIC",
@@ -176,6 +178,7 @@ export default function OutfitDetailPage() {
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
 
   // Garment-specific measurements (editable inline)
   const [garmentMeasurements, setGarmentMeasurements] = useState<
@@ -1103,6 +1106,17 @@ export default function OutfitDetailPage() {
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
               <Ruler className="h-4 w-4" /> Measurements
+              {outfit.customerMeasurements && role === "MASTER" && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 ml-auto"
+                  onClick={() => setShowMeasurementZoom(true)}
+                  title="View with calculator"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              )}
             </h2>
 
             {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
@@ -1503,6 +1517,18 @@ export default function OutfitDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Measurement Zoom Modal with Calculator */}
+      {outfit.customerMeasurements && (
+        <MeasurementZoomModal
+          open={showMeasurementZoom}
+          onClose={() => setShowMeasurementZoom(false)}
+          customer={{
+            name: outfit.customer?.name || "Customer",
+            measurement: outfit.customerMeasurements,
+          }}
+        />
+      )}
     </div>
   );
 }

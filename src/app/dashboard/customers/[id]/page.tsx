@@ -47,6 +47,7 @@ import {
   X,
   Camera,
   Upload,
+  ZoomIn,
 } from "lucide-react";
 import { ImageViewer } from "@/components/image-viewer";
 import Link from "next/link";
@@ -56,6 +57,7 @@ import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
 import { CameraCaptureModal } from "@/components/camera-capture-modal";
 import { parseVoiceTranscript } from "@/hooks/use-measurement-voice";
 import { createWorker } from "tesseract.js";
+import { MeasurementZoomModal } from "@/components/measurement-zoom-modal";
 // Body measurements grouped into sections.
 // Each section has a number, title, and ordered fields.
 const BODY_MEASUREMENT_SECTIONS = [
@@ -132,6 +134,7 @@ export default function CustomerDetailPage({
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [measurementFileReading, setMeasurementFileReading] = useState(false);
   const [measurementCameraOpen, setMeasurementCameraOpen] = useState(false);
+  const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
 
   // Image viewer state (for fabric reference thumbnails on outfit rows)
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -722,6 +725,17 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Ruler className="h-4 w-4" /> Body Measurements
+                {customer.measurements?.length > 0 && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 ml-1"
+                    onClick={() => setShowMeasurementZoom(true)}
+                    title="View with calculator"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                )}
               </CardTitle>
               {can("create", "measurement") && (
                 <Button
@@ -1066,6 +1080,18 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
       />
+
+      {/* Measurement Zoom Modal with Calculator */}
+      {customer.measurements?.length > 0 && (
+        <MeasurementZoomModal
+          open={showMeasurementZoom}
+          onClose={() => setShowMeasurementZoom(false)}
+          customer={{
+            name: customer.name,
+            measurements: customer.measurements,
+          }}
+        />
+      )}
     </div>
   );
 }
