@@ -32,6 +32,7 @@ import {
   Clock,
   Sparkles,
   Camera,
+  ChevronDown,
 } from "lucide-react";
 
 const STATUS_ORDER = [
@@ -81,20 +82,28 @@ const APPROVAL_ALLOWED_STATUSES = [
 
 export default function CustomerPortalPage() {
   const params = useParams();
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Profile Measurements accordion
+  // Closed by default on mobile.
+  // Desktop always shows the measurements.
+  const [profileMeasurementsOpen, setProfileMeasurementsOpen] = useState(false);
+
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch(`/api/portal/${params.token}`);
+
         if (!res.ok) {
           setError("Invalid or expired portal link");
           return;
         }
+
         setData(await res.json());
       } catch {
         setError("Failed to load your outfit records");
@@ -102,11 +111,13 @@ export default function CustomerPortalPage() {
         setLoading(false);
       }
     }
+
     fetchData();
   }, [params.token]);
 
   useEffect(() => {
     if (!data) return;
+
     let eventSource: EventSource | null = null;
 
     function refetchData() {
@@ -119,10 +130,14 @@ export default function CustomerPortalPage() {
 
     try {
       eventSource = new EventSource(`/api/portal/${params.token}/events`);
+
       eventSource.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data);
-          if (parsed.type === "update") refetchData();
+
+          if (parsed.type === "update") {
+            refetchData();
+          }
         } catch {}
       };
     } catch {}
@@ -145,6 +160,7 @@ export default function CustomerPortalPage() {
 
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
+
           outfits = outfits.filter(
             (o: any) =>
               o.name?.toLowerCase().includes(q) ||
@@ -152,17 +168,23 @@ export default function CustomerPortalPage() {
           );
         }
 
-        return { ...order, outfits };
+        return {
+          ...order,
+          outfits,
+        };
       })
       .filter((order: any) => order.outfits.length > 0);
   }, [data, searchQuery, statusFilter]);
 
   const allOutfitStatuses = useMemo(() => {
     if (!data?.orders) return [];
+
     const statuses = new Set<string>();
+
     data.orders.forEach((order: any) =>
       (order.outfits || []).forEach((o: any) => statuses.add(o.status)),
     );
+
     return STATUS_ORDER.filter((s) => statuses.has(s));
   }, [data]);
 
@@ -173,6 +195,7 @@ export default function CustomerPortalPage() {
           <div className="relative flex justify-center">
             <Scissors className="h-10 w-10 text-primary animate-bounce" />
           </div>
+
           <p className="text-sm font-medium text-muted-foreground">
             Fetching your custom order details...
           </p>
@@ -187,8 +210,11 @@ export default function CustomerPortalPage() {
         <Card className="w-full max-w-md text-center border-destructive/20 shadow-lg">
           <CardContent className="pt-8 pb-8 space-y-3">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+
             <h3 className="text-lg font-semibold">Access Error</h3>
+
             <p className="text-sm text-muted-foreground">{error}</p>
+
             <p className="text-xs text-muted-foreground">
               Please contact the urumi by mounika team to request a fresh portal
               link.
@@ -213,10 +239,12 @@ export default function CustomerPortalPage() {
             <div className="bg-primary/10 p-1.5 rounded-md shrink-0">
               <Scissors className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
+
             <span className="font-semibold text-sm sm:text-base tracking-tight truncate">
               urumi by mounika
             </span>
           </div>
+
           <Badge variant="outline" className="text-xs font-normal shrink-0">
             Customer Dashboard
           </Badge>
@@ -231,18 +259,31 @@ export default function CustomerPortalPage() {
               <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
                 Welcome back, {data.customer.name}
               </h1>
+
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
-                Real-time status of your tailored outfits and reference approvals.
+                Real-time status of your tailored outfits and reference
+                approvals.
               </p>
             </div>
+
             <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-3 py-2 rounded-lg border text-xs self-start">
               <div>
-                <span className="text-muted-foreground block">Active Orders</span>
-                <span className="font-semibold text-sm">{data.orders.length}</span>
+                <span className="text-muted-foreground block">
+                  Active Orders
+                </span>
+
+                <span className="font-semibold text-sm">
+                  {data.orders.length}
+                </span>
               </div>
+
               <div className="h-8 w-px bg-border" />
+
               <div>
-                <span className="text-muted-foreground block">Total Outfits</span>
+                <span className="text-muted-foreground block">
+                  Total Outfits
+                </span>
+
                 <span className="font-semibold text-sm">{totalOutfits}</span>
               </div>
             </div>
@@ -253,16 +294,47 @@ export default function CustomerPortalPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
           {/* Left Sidebar */}
           <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-            {/* Measurements */}
+            {/* =====================================================
+                PROFILE MEASUREMENTS
+                Mobile = Accordion / Closed by default
+                Desktop = Always visible
+            ====================================================== */}
             {data.measurements && (
               <Card className="shadow-sm">
-                <CardHeader className="pb-3 border-b">
+                {/* Mobile Header */}
+                <button
+                  type="button"
+                  onClick={() => setProfileMeasurementsOpen((value) => !value)}
+                  className="md:hidden w-full flex items-center justify-between p-4 text-left"
+                >
+                  <span className="text-sm font-semibold flex items-center gap-2">
+                    <Ruler className="h-4 w-4 text-primary" />
+                    Profile Measurements
+                  </span>
+
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                      profileMeasurementsOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Desktop Header */}
+                <CardHeader className="hidden md:block pb-3 border-b">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Ruler className="h-4 w-4 text-primary" /> Profile
-                    Measurements
+                    <Ruler className="h-4 w-4 text-primary" />
+                    Profile Measurements
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-4">
+
+                {/* Mobile + Desktop Content */}
+                <CardContent
+                  className={`
+                    pt-4
+                    ${profileMeasurementsOpen ? "block" : "hidden"}
+                    md:block
+                  `}
+                >
                   <div className="space-y-2">
                     {Object.entries(
                       data.measurements as Record<string, string>,
@@ -274,6 +346,7 @@ export default function CustomerPortalPage() {
                         <span className="text-muted-foreground capitalize">
                           {key.replace(/([A-Z])/g, " $1").trim()}
                         </span>
+
                         <span className="font-medium font-mono text-foreground">
                           {value || "—"}
                         </span>
@@ -292,6 +365,7 @@ export default function CustomerPortalPage() {
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
                   <Input
                     placeholder="Search by outfit name or type..."
                     value={searchQuery}
@@ -299,21 +373,21 @@ export default function CustomerPortalPage() {
                     className="pl-9 bg-card h-9 text-xs"
                   />
                 </div>
+
                 {allOutfitStatuses.length > 1 && (
-                  <Select
-                    value={statusFilter}
-                    onValueChange={setStatusFilter}
-                  >
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
                       <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
+
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
-                    {allOutfitStatuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {formatStatus(status)}
-                      </SelectItem>
-                    ))}
+
+                      {allOutfitStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {formatStatus(status)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -325,7 +399,9 @@ export default function CustomerPortalPage() {
               <Card className="shadow-sm">
                 <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
                   <Shirt className="h-8 w-8 mx-auto text-muted-foreground/40" />
+
                   <p className="font-medium">No matching outfits found</p>
+
                   <p className="text-xs text-muted-foreground">
                     Try clearing search terms or selecting a different status
                     filter.
@@ -348,20 +424,22 @@ export default function CustomerPortalPage() {
                         <CardTitle className="text-base font-bold">
                           Order #{order.orderNumber}
                         </CardTitle>
+
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {order.trialDate && (
                             <span className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-primary" />{" "}
-                              Trial:{" "}
+                              <Calendar className="h-3.5 w-3.5 text-primary" />
+                              Trial:
                               <strong className="text-foreground">
                                 {formatDate(order.trialDate)}
                               </strong>
                             </span>
                           )}
+
                           {order.deliveryDate && (
                             <span className="flex items-center gap-1">
-                              <Package className="h-3.5 w-3.5 text-primary" />{" "}
-                              Delivery:{" "}
+                              <Package className="h-3.5 w-3.5 text-primary" />
+                              Delivery:
                               <strong className="text-foreground">
                                 {formatDate(order.deliveryDate)}
                               </strong>
@@ -369,6 +447,7 @@ export default function CustomerPortalPage() {
                           )}
                         </div>
                       </div>
+
                       <Badge
                         className={getStatusColor(order.status)}
                         variant="outline"
@@ -385,10 +464,13 @@ export default function CustomerPortalPage() {
                         const canApprove = APPROVAL_ALLOWED_STATUSES.includes(
                           outfit.status,
                         );
+
                         const progress = STATUS_PROGRESS[outfit.status] || 0;
+
                         const designRefs = (outfit.references || []).filter(
                           (ref: any) => ref.type !== "FABRIC",
                         );
+
                         const fabricRefs = (outfit.references || []).filter(
                           (ref: any) => ref.type === "FABRIC",
                         );
@@ -398,17 +480,21 @@ export default function CustomerPortalPage() {
                             key={outfit.id}
                             className="rounded-lg border bg-card p-4 space-y-4 shadow-2xs"
                           >
+                            {/* Outfit Header */}
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-start gap-3">
                                 <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
                                   <Shirt className="h-4 w-4" />
                                 </div>
+
                                 <div>
                                   <h4 className="font-semibold text-sm">
                                     {outfit.name}
                                   </h4>
+
                                   <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                                     <span>{outfit.type}</span>
+
                                     {outfit.maggamRequired && (
                                       <Badge
                                         variant="secondary"
@@ -418,14 +504,21 @@ export default function CustomerPortalPage() {
                                       </Badge>
                                     )}
                                   </div>
+
                                   <div className="mt-1 text-xs">
-                                    {outfit.price
-                                      ? <span className="font-semibold text-foreground">₹{Number(outfit.price).toLocaleString()}</span>
-                                      : <span className="italic text-amber-600">⏳ Price to be confirmed</span>
-                                    }
+                                    {outfit.price ? (
+                                      <span className="font-semibold text-foreground">
+                                        ₹{Number(outfit.price).toLocaleString()}
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-amber-600">
+                                        ⏳ Price to be confirmed
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
+
                               <Badge className={getStatusColor(outfit.status)}>
                                 {formatStatus(outfit.status)}
                               </Badge>
@@ -435,25 +528,36 @@ export default function CustomerPortalPage() {
                             <div className="space-y-1.5">
                               <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> Status:{" "}
+                                  <Clock className="h-3 w-3" />
+                                  Status:
                                   <strong className="text-foreground">
                                     {formatStatus(outfit.status)}
                                   </strong>
                                 </span>
+
                                 <span className="font-semibold font-mono">
                                   {progress}%
                                 </span>
                               </div>
+
                               <Progress value={progress} className="h-2" />
                             </div>
 
-                            {/* Garment Measurements — read-only, only shown when filled */}
+                            {/* Garment Measurements */}
                             {outfit.garmentMeasurements &&
-                              Object.values(outfit.garmentMeasurements as Record<string, string>).some(Boolean) && (
-                              <GarmentMeasurementsPanel measurements={outfit.garmentMeasurements} type={outfit.type} />
-                            )}
+                              Object.values(
+                                outfit.garmentMeasurements as Record<
+                                  string,
+                                  string
+                                >,
+                              ).some(Boolean) && (
+                                <GarmentMeasurementsPanel
+                                  measurements={outfit.garmentMeasurements}
+                                  type={outfit.type}
+                                />
+                              )}
 
-                            {/* Design Reference Images Section */}
+                            {/* Design Reference Images */}
                             {designRefs.length > 0 && (
                               <div className="space-y-2 pt-2 border-t">
                                 <div className="flex items-center justify-between">
@@ -462,12 +566,14 @@ export default function CustomerPortalPage() {
                                       ? "Design References (Requires Approval)"
                                       : "Confirmed References"}
                                   </span>
+
                                   {!canApprove && (
                                     <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
                                       Locked for production
                                     </span>
                                   )}
                                 </div>
+
                                 <PortalReferences
                                   references={designRefs}
                                   token={params.token as string}
@@ -477,7 +583,7 @@ export default function CustomerPortalPage() {
                               </div>
                             )}
 
-                            {/* Customer Material Section */}
+                            {/* Customer Material */}
                             {fabricRefs.length > 0 && (
                               <div className="space-y-2 pt-2 border-t">
                                 <div className="flex items-center justify-between">
@@ -485,6 +591,7 @@ export default function CustomerPortalPage() {
                                     Customer Material
                                   </span>
                                 </div>
+
                                 <PortalReferences
                                   references={fabricRefs}
                                   token={params.token as string}
@@ -494,12 +601,13 @@ export default function CustomerPortalPage() {
                               </div>
                             )}
 
-                            {/* Upload Components for Early Stages */}
+                            {/* Upload Components */}
                             {canApprove && (
                               <div className="pt-2 border-t space-y-3">
                                 <PortalUpload
                                   outfitId={outfit.id}
                                   token={params.token as string}
+                                  maggamRequired={outfit.maggamRequired}
                                 />
                               </div>
                             )}
@@ -513,26 +621,49 @@ export default function CustomerPortalPage() {
                       <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-muted-foreground">Payment Summary</span>
+
+                          <span className="font-medium text-muted-foreground">
+                            Payment Summary
+                          </span>
                         </div>
+
                         <div className="grid grid-cols-3 gap-2 text-center">
                           {order.estimatedAmount && (
                             <div>
-                              <p className="text-muted-foreground text-[10px]">Total</p>
-                              <p className="font-medium font-mono text-xs">₹{Number(order.estimatedAmount).toLocaleString()}</p>
+                              <p className="text-muted-foreground text-[10px]">
+                                Total
+                              </p>
+
+                              <p className="font-medium font-mono text-xs">
+                                ₹
+                                {Number(order.estimatedAmount).toLocaleString()}
+                              </p>
                             </div>
                           )}
+
                           <div>
-                            <p className="text-muted-foreground text-[10px]">Paid</p>
-                            <p className="font-semibold text-green-600 font-mono text-xs">₹{order.totalPaid.toLocaleString()}</p>
+                            <p className="text-muted-foreground text-[10px]">
+                              Paid
+                            </p>
+
+                            <p className="font-semibold text-green-600 font-mono text-xs">
+                              ₹{order.totalPaid.toLocaleString()}
+                            </p>
                           </div>
+
                           {orderBalance > 0 && (
                             <div>
-                              <p className="text-muted-foreground text-[10px]">Balance</p>
-                              <p className="font-semibold text-destructive font-mono text-xs">₹{orderBalance.toLocaleString()}</p>
+                              <p className="text-muted-foreground text-[10px]">
+                                Balance
+                              </p>
+
+                              <p className="font-semibold text-destructive font-mono text-xs">
+                                ₹{orderBalance.toLocaleString()}
+                              </p>
                             </div>
                           )}
                         </div>
+
                         {/* Individual payment records */}
                         {order.payments && order.payments.length > 0 && (
                           <div className="border-t pt-2 space-y-1.5">
@@ -544,6 +675,7 @@ export default function CustomerPortalPage() {
                                 <span className="text-muted-foreground">
                                   {p.method} · {formatDate(p.createdAt)}
                                 </span>
+
                                 <span className="font-medium font-mono">
                                   ₹{Number(p.amount).toLocaleString()}
                                 </span>
@@ -564,7 +696,9 @@ export default function CustomerPortalPage() {
   );
 }
 
-// ─── PORTAL REFERENCES ──────────────────────────────────────────────────
+/* ============================================================
+   PORTAL REFERENCES
+============================================================ */
 
 function PortalReferences({
   references,
@@ -612,7 +746,9 @@ function PortalReferences({
   );
 }
 
-// ─── PORTAL REFERENCE CARD ─────────────────────────────────────────────
+/* ============================================================
+   PORTAL REFERENCE CARD
+============================================================ */
 
 function PortalReferenceCard({
   reference,
@@ -630,21 +766,28 @@ function PortalReferenceCard({
   const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
     reference.customerFeedback || null,
   );
+
   const [loading, setLoading] = useState(false);
 
   async function handleFeedback(action: "approved" | "rejected") {
     setLoading(true);
+
     try {
       const res = await fetch(`/api/portal/${token}/feedback`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           referenceId: reference.id,
           outfitId,
           feedback: action,
         }),
       });
-      if (res.ok) setFeedback(action);
+
+      if (res.ok) {
+        setFeedback(action);
+      }
     } catch {
       // ignore
     } finally {
@@ -663,6 +806,7 @@ function PortalReferenceCard({
           alt="Outfit Reference"
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
         />
+
         {/* Reference type label */}
         <span
           className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
@@ -679,6 +823,7 @@ function PortalReferenceCard({
               ? "Maggam"
               : "Pattern"}
         </span>
+
         {feedback && (
           <div
             className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${
@@ -701,14 +846,17 @@ function PortalReferenceCard({
             onClick={() => handleFeedback("approved")}
             disabled={loading}
           >
-            <ThumbsUp className="h-3 w-3" /> Approve
+            <ThumbsUp className="h-3 w-3" />
+            Approve
           </button>
+
           <button
             className="bg-card hover:bg-red-50 text-destructive py-1.5 font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
             onClick={() => handleFeedback("rejected")}
             disabled={loading}
           >
-            <ThumbsDown className="h-3 w-3" /> Reject
+            <ThumbsDown className="h-3 w-3" />
+            Reject
           </button>
         </div>
       )}
@@ -732,6 +880,10 @@ function PortalReferenceCard({
   );
 }
 
+/* ============================================================
+   CAMERA CAPTURE MODAL
+============================================================ */
+
 function CameraCaptureModal({
   open,
   onClose,
@@ -750,6 +902,7 @@ function CameraCaptureModal({
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
+
       setStream(null);
       setError(null);
       return;
@@ -763,10 +916,14 @@ function CameraCaptureModal({
 
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: {
+            facingMode: "environment",
+          },
           audio: false,
         });
+
         setStream(mediaStream);
+
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
@@ -789,24 +946,31 @@ function CameraCaptureModal({
 
   function handleCapture() {
     const video = videoRef.current;
+
     if (!video) return;
 
     const canvas = document.createElement("canvas");
+
     const width = video.videoWidth || 1280;
     const height = video.videoHeight || 720;
+
     canvas.width = width;
     canvas.height = height;
 
     const ctx = canvas.getContext("2d");
+
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, width, height);
+
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
+
         const file = new File([blob], `camera-${Date.now()}.jpg`, {
           type: "image/jpeg",
         });
+
         onCapture(file);
         onClose();
       },
@@ -822,6 +986,7 @@ function CameraCaptureModal({
       <div className="w-full max-w-md rounded-xl bg-white p-3 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-slate-900">Take Photo</h4>
+
           <button
             type="button"
             onClick={onClose}
@@ -849,6 +1014,7 @@ function CameraCaptureModal({
           <Button className="flex-1" onClick={handleCapture} disabled={!!error}>
             Capture
           </Button>
+
           <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
@@ -858,28 +1024,55 @@ function CameraCaptureModal({
   );
 }
 
-// ─── PORTAL UPLOAD ──────────────────────────────────────────────────────
-
-const UPLOAD_TYPES = [
-  { value: "PATTERN", label: "Inspiration / Pattern", icon: "✨" },
-  { value: "MAGGAM",  label: "Maggam Reference",      icon: "🪡" },
-  { value: "FABRIC",  label: "My Fabric / Material",  icon: "🧵" },
-] as const;
+/* ============================================================
+   PORTAL UPLOAD
+============================================================ */
 
 function PortalUpload({
   outfitId,
   token,
+  maggamRequired,
 }: {
   outfitId: string;
   token: string;
+  maggamRequired: boolean;
 }) {
+  const UPLOAD_TYPES = [
+    {
+      value: "PATTERN" as const,
+      label: "Pattern",
+      icon: "✨",
+    },
+
+    ...(maggamRequired
+      ? [
+          {
+            value: "MAGGAM" as const,
+            label: "Maggam",
+            icon: "🪡",
+          },
+        ]
+      : []),
+
+    {
+      value: "FABRIC" as const,
+      label: "My Fabric",
+      icon: "🧵",
+    },
+  ];
   const [uploading, setUploading] = useState(false);
+
   const [uploaded, setUploaded] = useState<{ url: string; type: string }[]>([]);
+
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<"PATTERN" | "MAGGAM" | "FABRIC">("PATTERN");
+
+  const [selectedType, setSelectedType] = useState<
+    "PATTERN" | "MAGGAM" | "FABRIC"
+  >("PATTERN");
 
   async function handleUpload(files: FileList | File | null) {
     if (!files) return;
+
     setUploading(true);
 
     const imageFiles = files instanceof File ? [files] : Array.from(files);
@@ -887,6 +1080,7 @@ function PortalUpload({
     for (const file of imageFiles) {
       try {
         const formData = new FormData();
+
         formData.append("file", file);
         formData.append("outfitId", outfitId);
         formData.append("type", selectedType);
@@ -898,7 +1092,14 @@ function PortalUpload({
 
         if (res.ok) {
           const data = await res.json();
-          setUploaded((prev) => [...prev, { url: data.url, type: selectedType }]);
+
+          setUploaded((prev) => [
+            ...prev,
+            {
+              url: data.url,
+              type: selectedType,
+            },
+          ]);
         }
       } catch {
         // Handle upload errors per file
@@ -908,12 +1109,11 @@ function PortalUpload({
     setUploading(false);
   }
 
-  const currentType = UPLOAD_TYPES.find((t) => t.value === selectedType)!;
-
   return (
     <div className="space-y-3">
       <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-        <Sparkles className="h-3.5 w-3.5 text-primary" /> Share Your References
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        Share Your References
       </p>
 
       {/* Type selector pills */}
@@ -923,7 +1123,7 @@ function PortalUpload({
             key={t.value}
             type="button"
             onClick={() => setSelectedType(t.value)}
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
               selectedType === t.value
                 ? "bg-primary text-primary-foreground border-primary"
                 : "border-border text-muted-foreground hover:bg-muted"
@@ -939,8 +1139,16 @@ function PortalUpload({
       {uploaded.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {uploaded.map((item, i) => (
-            <div key={i} className="relative h-12 w-12 rounded border overflow-hidden shrink-0">
-              <img src={item.url} alt="Uploaded reference" className="object-cover w-full h-full" />
+            <div
+              key={i}
+              className="relative h-12 w-12 rounded border overflow-hidden shrink-0"
+            >
+              <img
+                src={item.url}
+                alt="Uploaded reference"
+                className="object-cover w-full h-full"
+              />
+
               <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
                 <Check className="h-2 w-2 text-white" />
               </div>
@@ -960,9 +1168,11 @@ function PortalUpload({
           >
             <span>
               <Upload className="h-3.5 w-3.5 mr-1.5" />
+
               {uploading ? "Uploading..." : "Upload Photos"}
             </span>
           </Button>
+
           <input
             type="file"
             className="hidden"
@@ -985,6 +1195,7 @@ function PortalUpload({
             Take Photo
           </span>
         </Button>
+
         <CameraCaptureModal
           open={cameraOpen}
           onClose={() => setCameraOpen(false)}
@@ -995,7 +1206,9 @@ function PortalUpload({
   );
 }
 
-// ─── GARMENT MEASUREMENTS PANEL ────────────────────────────────────────────
+/* ============================================================
+   GARMENT MEASUREMENTS PANEL
+============================================================ */
 
 function GarmentMeasurementsPanel({
   measurements,
@@ -1007,6 +1220,7 @@ function GarmentMeasurementsPanel({
   const [open, setOpen] = useState(false);
 
   const filled = Object.entries(measurements).filter(([, v]) => v);
+
   if (!filled.length) return null;
 
   return (
@@ -1020,8 +1234,11 @@ function GarmentMeasurementsPanel({
           <Ruler className="h-3.5 w-3.5 text-primary" />
           Garment Measurements · {type}
         </span>
+
         <span className="text-[10px] font-normal">
-          {open ? "Hide" : `Show ${filled.length} field${filled.length !== 1 ? "s" : ""}`}
+          {open
+            ? "Hide"
+            : `Show ${filled.length} field${filled.length !== 1 ? "s" : ""}`}
         </span>
       </button>
 
@@ -1033,6 +1250,7 @@ function GarmentMeasurementsPanel({
               className="flex items-center justify-between text-xs border-b border-dashed border-border/60 py-1"
             >
               <span className="text-muted-foreground">{field}</span>
+
               <span className="font-semibold font-mono">{value}"</span>
             </div>
           ))}
