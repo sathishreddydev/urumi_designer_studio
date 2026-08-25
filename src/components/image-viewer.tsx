@@ -36,128 +36,147 @@ export function ImageViewer({
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
-  // Touch gesture tracking refs (no re-render needed)
+  // Container ref for non-passive touch listeners
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Touch gesture tracking refs — avoid re-renders during gesture
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const touchStartZoom = useRef(1);
   const touchStartPanX = useRef(0);
   const touchStartPanY = useRef(0);
-  const lastPinchDist = useRef(0);
+  const pinchStartDist = useRef(0);
+  const pinchStartZoom = useRef(1);
   const isPinching = useRef(false);
 
-  useEffect(() => {
-    setCurrentIndex(initialIndex);
+  // Keep latest state in refs so touch handlers (registered once) always see fresh values
+  const zoomRef = useRef(zoom);
+  const panXRef = useRef(panX);
+  const panYRef = useRef(panY);
+  zoomRef.current = zoom;
+  panXRef.current = panX;
+  panYRef.current = panY;
+
+  // Navigation callbacks — stable, use functional state updaters
+  const resetView = useCallback(() => {
     setZoom(1);
     setRotation(0);
     setPanX(0);
     setPanY(0);
-  }, [initialIndex, open]);
+  }, []);
 
-  // Reset pan when zoom goes back to 1
+  const goBack = useCallback(() => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+    resetView();
+  }, [images.length, resetView]);
+
+  const goForward = useCallback(() => {
+    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    resetView();
+  }, [images.length, resetView]);
+
+  const zoomIn  = useCallback(() => setZoom((prev) => Math.min(prev + 0.5, 5)), []);
+  const zoomOut = useCallback(() => setZoom((prev) => Math.max(prev - 0.5, 0.5)), []);
+  const rotate  = useCallback(() => setRotation((prev) => (prev + 90) % 360), []);
+
+  // ── Reset on open / index change ─────────────────────────────────────────
   useEffect(() => {
-    if (zoom <= 1) {
-      setPanX(0);
-      setPanY(0);
-    }
-  }, [zoom]);
+    setCurrentIndex(initialIndex);
+    resetView();
+  }, [initialIndex, open]);
 
   // ── Keyboard navigation ───────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     function handleKey(e: KeyboardEvent) {
       switch (e.key) {
-        case "ArrowLeft":  goBack();    break;
-        case "ArrowRight": goForward(); break;
-        case "Escape":     onClose();   break;
-        case "+": case "=": zoomIn();  break;
-        case "-":           zoomOut(); break;
+        case "ArrowLeft":       goBack();    break;
+        case "ArrowRight":      goForward(); break;
+        case "Escape":          onClose();   break;
+        case "+": case "=":     zoomIn();    break;
+        case "-":               zoomOut();   break;
       }
     }
-
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, currentIndex, images.length]);
+  }, [open, goBack, goForward, onClose, zoomIn, zoomOut]);
 
-  // ── Navigation ────────────────────────────────────────────────────────────
-  const goBack = useCallback(() => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-    setZoom(1); setRotation(0); setPanX(0); setPanY(0);
-  }, [images.length]);
+  // ── Non-passive touch listeners on the container ──────────────────────────
+  // React synthetic events can't call preventDefault() for passive listeners.
+  // We register native listeners with { passive: false } to block browser zoom/scroll.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !open) return;
 
-  const goForward = useCallback(() => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-    setZoom(1); setRotation(0); setPanX(0); setPanY(0);
-  }, [images.length]);
-
-  // ── Zoom ──────────────────────────────────────────────────────────────────
-  const zoomIn  = () => setZoom((prev) => Math.min(prev + 0.5, 5));
-  const zoomOut = () => setZoom((prev) => Math.max(prev - 0.5, 0.5));
-  const rotate  = () => setRotation((prev) => (prev + 90) % 360);
-
-  // ── Touch helpers ─────────────────────────────────────────────────────────
-  function pinchDistance(touches: React.TouchList): number {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.hypot(dx, dy);
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    if (e.touches.length === 2) {
-      // Pinch start
-      isPinching.current = true;
-      lastPinchDist.current = pinchDistance(e.touches);
-      touchStartZoom.current = zoom;
-    } else if (e.touches.length === 1) {
-      isPinching.current = false;
-      touchStartX.current = e.touches[0].clientX;
-      touchStartY.current = e.touches[0].clientY;
-      touchStartPanX.current = panX;
-      touchStartPanY.current = panY;
-    }
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    if (e.touches.length === 2) {
-      // Pinch-to-zoom
-      e.preventDefault();
-      const dist = pinchDistance(e.touches);
-      const scale = dist / lastPinchDist.current;
-      const next = Math.min(Math.max(touchStartZoom.current * scale, 0.5), 5);
-      setZoom(next);
-    } else if (e.touches.length === 1 && zoom > 1) {
-      // Pan while zoomed
-      e.preventDefault();
-      const dx = e.touches[0].clientX - touchStartX.current;
-      const dy = e.touches[0].clientY - touchStartY.current;
-      setPanX(touchStartPanX.current + dx);
-      setPanY(touchStartPanY.current + dy);
-    }
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (isPinching.current) {
-      isPinching.current = false;
-      // Update start zoom for incremental pinch
-      touchStartZoom.current = zoom;
-      lastPinchDist.current = 0;
-      return;
+    function pinchDist(touches: TouchList): number {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
     }
 
-    // Only treat as swipe if single finger and not zoomed
-    if (e.changedTouches.length === 1 && zoom <= 1) {
-      const dx = e.changedTouches[0].clientX - touchStartX.current;
-      const dy = e.changedTouches[0].clientY - touchStartY.current;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      // Require horizontal-dominant swipe of at least 50px
-      if (absDx > 50 && absDx > absDy * 1.5) {
-        if (dx < 0) goForward();
-        else goBack();
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        isPinching.current = true;
+        pinchStartDist.current = pinchDist(e.touches);
+        pinchStartZoom.current = zoomRef.current;
+      } else if (e.touches.length === 1) {
+        isPinching.current = false;
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        touchStartPanX.current = panXRef.current;
+        touchStartPanY.current = panYRef.current;
       }
     }
-  }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2 && isPinching.current) {
+        e.preventDefault(); // block native pinch-zoom
+        const dist = pinchDist(e.touches);
+        if (pinchStartDist.current === 0) return;
+        const scale = dist / pinchStartDist.current;
+        const next = Math.min(Math.max(pinchStartZoom.current * scale, 0.5), 5);
+        setZoom(next);
+      } else if (e.touches.length === 1 && zoomRef.current > 1) {
+        e.preventDefault(); // block page scroll while panning
+        const dx = e.touches[0].clientX - touchStartX.current;
+        const dy = e.touches[0].clientY - touchStartY.current;
+        setPanX(touchStartPanX.current + dx);
+        setPanY(touchStartPanY.current + dy);
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (isPinching.current) {
+        // After releasing pinch, reset start values for a fresh pinch gesture
+        isPinching.current = false;
+        pinchStartDist.current = 0;
+        pinchStartZoom.current = zoomRef.current;
+        return;
+      }
+
+      // Swipe to navigate — only when not zoomed, single touch
+      if (e.changedTouches.length === 1 && zoomRef.current <= 1) {
+        const dx = e.changedTouches[0].clientX - touchStartX.current;
+        const dy = e.changedTouches[0].clientY - touchStartY.current;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        // Require ≥50px horizontal swipe that's more horizontal than vertical
+        if (absDx > 50 && absDx > absDy * 1.5) {
+          if (dx < 0) goForward();
+          else goBack();
+        }
+      }
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    el.addEventListener("touchend",   onTouchEnd,   { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove",  onTouchMove);
+      el.removeEventListener("touchend",   onTouchEnd);
+    };
+  }, [open, goBack, goForward]);
 
   // ── Download helpers ──────────────────────────────────────────────────────
   async function downloadImage(url: string, filename?: string) {
@@ -234,15 +253,13 @@ export function ImageViewer({
         </div>
       </div>
 
-      {/* Main image area */}
+      {/* Main image area — native touch listeners attached via ref */}
       <div
+        ref={containerRef}
         className="flex-1 relative overflow-hidden flex items-center justify-center"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ touchAction: zoom > 1 ? "none" : "pan-y" }}
+        style={{ touchAction: "none" }}
       >
-        {/* Navigation arrows (hidden on touch devices when single image) */}
+        {/* Navigation arrows — desktop only */}
         {images.length > 1 && (
           <>
             <button
@@ -263,10 +280,7 @@ export function ImageViewer({
         {/* Image */}
         <div
           className="w-full h-full flex items-center justify-center"
-          style={{
-            overflow: zoom > 1 ? "hidden" : "auto",
-            cursor: zoom > 1 ? "grab" : "zoom-in",
-          }}
+          style={{ overflow: "hidden", cursor: zoom > 1 ? "grab" : "zoom-in" }}
           onDoubleClick={() => {
             if (zoom === 1) { setZoom(2.5); }
             else { setZoom(1); setPanX(0); setPanY(0); }
@@ -275,19 +289,20 @@ export function ImageViewer({
           <img
             src={current.url}
             alt={current.filename || "Reference image"}
-            className="object-contain select-none transition-transform duration-150"
+            className="object-contain select-none"
             style={{
               maxHeight: zoom === 1 ? "calc(100vh - 10rem)" : "none",
               maxWidth:  zoom === 1 ? "calc(100vw - 4rem)"  : "none",
               width:  zoom > 1 ? `${zoom * 100}%` : "auto",
-              height: zoom > 1 ? "auto" : "auto",
+              height: "auto",
               transform: `rotate(${rotation}deg) translate(${panX / zoom}px, ${panY / zoom}px)`,
+              transition: isPinching.current ? "none" : "transform 0.1s ease",
             }}
             draggable={false}
           />
         </div>
 
-        {/* Swipe / zoom hint */}
+        {/* Hint */}
         {zoom === 1 && (
           <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs pointer-events-none select-none text-center">
             Swipe to navigate · Pinch to zoom · Double-tap to zoom
@@ -309,7 +324,10 @@ export function ImageViewer({
                       ? "border-white"
                       : "border-transparent opacity-60 hover:opacity-100"
                   }`}
-                  onClick={() => { setCurrentIndex(i); setZoom(1); setRotation(0); setPanX(0); setPanY(0); }}
+                  onClick={() => {
+                    setCurrentIndex(i);
+                    resetView();
+                  }}
                 />
                 <input
                   type="checkbox"
