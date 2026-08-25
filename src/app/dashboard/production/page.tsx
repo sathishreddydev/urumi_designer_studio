@@ -25,6 +25,7 @@ const PRODUCTION_STATUSES = [
   "PATTERN_DRAFTING",
   "MAGGAM_WORK",
   "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
   "FABRIC_CUTTING",
   "STITCHING",
   "PRODUCTION_COMPLETED",
@@ -234,7 +235,7 @@ export default function ProductionPage() {
                               size="sm"
                               loading={pendingId === outfit.id + "_approve"}
                               disabled={transitionMutation.isPending}
-                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "FABRIC_CUTTING", _key: outfit.id + "_approve" })}
+                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_REVIEWED", _key: outfit.id + "_approve" })}
                               className="whitespace-nowrap text-xs"
                             >
                               Approve <ArrowRight className="h-3 w-3 ml-1" />
@@ -260,8 +261,7 @@ export default function ProductionPage() {
                           <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Not assigned</Badge>
                         ) : outfit.status === "MAGGAM_REVIEW" && role === "MASTER" ? (
                           <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Awaiting designer review</Badge>
-                        ) : null}
-                      </td>
+                        ) : null}                      </td>
                     </tr>
                   );
                 })}
@@ -274,7 +274,7 @@ export default function ProductionPage() {
             {outfits.map((outfit: any) => {
               const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
               const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-              const isAssigned = role !== "MASTER" || outfit.masterId === undefined || outfit.masterName;
+              const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
               return (
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 space-y-3">
@@ -354,7 +354,7 @@ export default function ProductionPage() {
                         className="flex-1 text-xs"
                         loading={pendingId === outfit.id + "_approve"}
                         disabled={transitionMutation.isPending}
-                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "FABRIC_CUTTING", _key: outfit.id + "_approve" })}
+                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_REVIEWED", _key: outfit.id + "_approve" })}
                       >
                         Approve <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
                       </LoadingButton>
@@ -404,13 +404,14 @@ function getNextStatus(current: string, maggamRequired: boolean, role: string): 
       PRODUCTION_READY: "PATTERN_DRAFTING",
       PATTERN_DRAFTING: maggamRequired ? "MAGGAM_WORK" : "FABRIC_CUTTING",
       MAGGAM_WORK: "MAGGAM_REVIEW",
+      MAGGAM_REVIEWED: "FABRIC_CUTTING",
       FABRIC_CUTTING: "STITCHING",
       STITCHING: "PRODUCTION_COMPLETED",
     };
     if (masterTransitions[current]) return masterTransitions[current];
   }
   if (role === "DESIGNER" || role === "ADMIN") {
-    if (current === "MAGGAM_REVIEW") return "FABRIC_CUTTING";
+    if (current === "MAGGAM_REVIEW") return "MAGGAM_REVIEWED"; // approve — handled separately with two buttons
   }
   return null;
 }

@@ -454,6 +454,7 @@ export default function OutfitDetailPage() {
     "PATTERN_DRAFTING",
     "MAGGAM_WORK",
     "MAGGAM_REVIEW",
+    "MAGGAM_REVIEWED",
     "FABRIC_CUTTING",
     "STITCHING",
     "PRODUCTION_COMPLETED",

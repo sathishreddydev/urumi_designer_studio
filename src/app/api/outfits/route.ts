@@ -44,6 +44,7 @@ export const GET = withPermission(
         "PATTERN_DRAFTING",
         "MAGGAM_WORK",
         "MAGGAM_REVIEW",
+        "MAGGAM_REVIEWED",
         "FABRIC_CUTTING",
         "STITCHING",
         "PRODUCTION_COMPLETED",
@@ -64,7 +65,7 @@ export const GET = withPermission(
       conditions.push(
         inArray(outfits.status, [
           "DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES",
-          "PRODUCTION_READY", "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW",
+          "PRODUCTION_READY", "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "MAGGAM_REVIEWED",
           "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC",
         ] as any)
       );

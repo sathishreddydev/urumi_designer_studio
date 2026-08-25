@@ -25,6 +25,7 @@ export const outfitStatusEnum = pgEnum("outfit_status", [
   "PATTERN_DRAFTING",
   "MAGGAM_WORK",
   "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
   "FABRIC_CUTTING",
   "STITCHING",
   "PRODUCTION_COMPLETED",

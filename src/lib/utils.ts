@@ -42,6 +42,7 @@ export function getStatusColor(status: string): string {
     PATTERN_DRAFTING: "bg-purple-100 text-purple-700",
     MAGGAM_WORK: "bg-pink-100 text-pink-700",
     MAGGAM_REVIEW: "bg-fuchsia-100 text-fuchsia-700",
+    MAGGAM_REVIEWED: "bg-violet-100 text-violet-700",
     FABRIC_CUTTING: "bg-cyan-100 text-cyan-700",
     STITCHING: "bg-teal-100 text-teal-700",
     PRODUCTION_COMPLETED: "bg-emerald-100 text-emerald-700",

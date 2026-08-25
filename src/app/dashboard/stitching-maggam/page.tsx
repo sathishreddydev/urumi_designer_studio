@@ -36,12 +36,13 @@ import { ImageViewer } from "@/components/image-viewer";
 
 // Tabs shown to all roles
 const ALL_TABS = [
-  { key: "PRODUCTION_READY", label: "Ready to Start", short: "Ready",   icon: PackageCheck },
-  { key: "PATTERN_DRAFTING", label: "Pattern Drafting", short: "Pattern", icon: PenTool },
-  { key: "MAGGAM_WORK",      label: "Maggam Work",     short: "Maggam",  icon: Sparkles },
-  { key: "MAGGAM_REVIEW",    label: "Maggam Review",   short: "Review",  icon: CheckCircle },
-  { key: "FABRIC_CUTTING",   label: "Fabric Cutting",  short: "Cutting", icon: Scissors },
-  { key: "STITCHING",        label: "Stitching",       short: "Stitch",  icon: Shirt },
+  { key: "PRODUCTION_READY",  label: "Ready to Start",    short: "Ready",    icon: PackageCheck },
+  { key: "PATTERN_DRAFTING",  label: "Pattern Drafting",  short: "Pattern",  icon: PenTool },
+  { key: "MAGGAM_WORK",       label: "Maggam Work",       short: "Maggam",   icon: Sparkles },
+  { key: "MAGGAM_REVIEW",     label: "Maggam Review",     short: "Review",   icon: CheckCircle },
+  { key: "MAGGAM_REVIEWED",   label: "Maggam Reviewed",   short: "Reviewed", icon: CheckCircle },
+  { key: "FABRIC_CUTTING",    label: "Fabric Cutting",    short: "Cutting",  icon: Scissors },
+  { key: "STITCHING",         label: "Stitching",         short: "Stitch",   icon: Shirt },
 ] as const;
 
 type TabKey = (typeof ALL_TABS)[number]["key"];
@@ -59,14 +60,15 @@ function getNextStatuses(
         ? [{ status: "MAGGAM_WORK", label: "Maggam Work" }]
         : [{ status: "FABRIC_CUTTING", label: "Fabric Cutting" }];
     if (current === "MAGGAM_WORK") return [{ status: "MAGGAM_REVIEW", label: "Send for Review" }];
+    if (current === "MAGGAM_REVIEWED") return [{ status: "FABRIC_CUTTING", label: "Fabric Cutting" }];
     if (current === "FABRIC_CUTTING") return [{ status: "STITCHING", label: "Stitching" }];
     if (current === "STITCHING") return [{ status: "PRODUCTION_COMPLETED", label: "Mark Complete" }];
   }
   if (role === "DESIGNER" || role === "ADMIN") {
     if (current === "MAGGAM_REVIEW")
       return [
-        { status: "FABRIC_CUTTING", label: "Approve → Cutting" },
-        { status: "MAGGAM_WORK",    label: "Rework",           variant: "outline" },
+        { status: "MAGGAM_REVIEWED", label: "Approve",  },
+        { status: "MAGGAM_WORK",     label: "Rework",   variant: "outline" },
       ];
   }
   return [];
@@ -94,7 +96,7 @@ export default function StitchingMaggamPage() {
       const d = await res.json();
       const VISIBLE_STATUSES = new Set([
         "PRODUCTION_READY",
-        "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING",
+        "PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "MAGGAM_REVIEWED", "FABRIC_CUTTING", "STITCHING",
       ]);
       return (d.outfits || []).filter((o: any) => VISIBLE_STATUSES.has(o.status));
     },
@@ -135,9 +137,12 @@ export default function StitchingMaggamPage() {
     return list;
   }, [data, role, session?.id]);
 
-  // Tabs visible to this role — MASTER doesn't act on MAGGAM_REVIEW
+  // Tabs visible to this role
+  // MASTER: doesn't act on MAGGAM_REVIEW (designer's job), but needs MAGGAM_REVIEWED (their cue)
+  // DESIGNER: doesn't need MAGGAM_REVIEWED tab (they only act on MAGGAM_REVIEW)
   const visibleTabs = useMemo(() => {
     if (role === "MASTER") return ALL_TABS.filter((t) => t.key !== "MAGGAM_REVIEW");
+    if (role === "DESIGNER") return ALL_TABS.filter((t) => t.key !== "MAGGAM_REVIEWED");
     return ALL_TABS;
   }, [role]);
 

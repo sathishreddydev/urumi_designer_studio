@@ -14,6 +14,7 @@ export type OutfitStatus =
   | "PATTERN_DRAFTING"
   | "MAGGAM_WORK"
   | "MAGGAM_REVIEW"
+  | "MAGGAM_REVIEWED"
   | "FABRIC_CUTTING"
   | "STITCHING"
   | "PRODUCTION_COMPLETED"
@@ -81,8 +82,9 @@ const TRANSITION_RULES: TransitionRule[] = [
     preconditions: [{ type: "maggam_not_required" }],
   },
   { from: "MAGGAM_WORK", to: "MAGGAM_REVIEW", allowedRoles: ["ADMIN", "MASTER"] },
-  { from: "MAGGAM_REVIEW", to: "FABRIC_CUTTING", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "MAGGAM_REVIEW", to: "MAGGAM_WORK", allowedRoles: ["ADMIN", "DESIGNER"] }, // rework
+  { from: "MAGGAM_REVIEW", to: "MAGGAM_REVIEWED", allowedRoles: ["ADMIN", "DESIGNER"] }, // approve
+  { from: "MAGGAM_REVIEW", to: "MAGGAM_WORK", allowedRoles: ["ADMIN", "DESIGNER"] },     // rework
+  { from: "MAGGAM_REVIEWED", to: "FABRIC_CUTTING", allowedRoles: ["ADMIN", "MASTER"] },
   { from: "FABRIC_CUTTING", to: "STITCHING", allowedRoles: ["ADMIN", "MASTER"] },
   { from: "STITCHING", to: "PRODUCTION_COMPLETED", allowedRoles: ["ADMIN", "MASTER"] },
 
@@ -305,7 +307,7 @@ async function updateOrderStatus(outfitId: string) {
   } else if (statuses.every((s) => s === "READY_FOR_DELIVERY" || s === "DELIVERED")) {
     orderStatus = "Ready For Delivery";
   } else if (statuses.some((s) =>
-    ["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED"].includes(s)
+    ["PATTERN_DRAFTING", "MAGGAM_WORK", "MAGGAM_REVIEW", "MAGGAM_REVIEWED", "FABRIC_CUTTING", "STITCHING", "PRODUCTION_COMPLETED"].includes(s)
   )) {
     orderStatus = "In Production";
   } else if (statuses.some((s) => s === "TRIAL" || s === "ALTERATION" || s === "QC")) {

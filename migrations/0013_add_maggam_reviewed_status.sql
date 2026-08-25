@@ -1,0 +1,2 @@
+-- Add MAGGAM_REVIEWED to the outfit_status enum
+ALTER TYPE outfit_status ADD VALUE IF NOT EXISTS 'MAGGAM_REVIEWED' AFTER 'MAGGAM_REVIEW';
