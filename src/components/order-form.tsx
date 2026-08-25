@@ -803,7 +803,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                             updateOutfit(index, "name", e.target.value)
                           }
                           placeholder="e.g., Heavy Silk Blouse"
-                          disabled={isEditMode && !outfit.isNew}
+                          disabled={!isEditable}
                         />
                       </div>
 
@@ -817,7 +817,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           onValueChange={(val) =>
                             updateOutfit(index, "type", val)
                           }
-                          disabled={isEditMode && !outfit.isNew}
+                          disabled={!isEditable}
                         />
                       </div>
 

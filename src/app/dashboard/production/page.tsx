@@ -53,8 +53,8 @@ export default function ProductionPage() {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: async ({ id, newStatus }: { id: string; newStatus: string }) => {
-      setPendingId(id);
+    mutationFn: async ({ id, newStatus, _key }: { id: string; newStatus: string; _key?: string }) => {
+      setPendingId(_key ?? id);
       const res = await fetch(`/api/outfits/${id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,6 +149,7 @@ export default function ProductionPage() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
+                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Customer</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Type</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Material</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
@@ -168,6 +169,9 @@ export default function ProductionPage() {
                         <Link href={`/dashboard/outfits/${outfit.id}`} className="font-medium hover:underline truncate block">
                           {outfit.name}
                         </Link>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        {outfit.customerName || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {outfit.type}
@@ -214,7 +218,29 @@ export default function ProductionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {next && isAssigned ? (
+                        {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "DESIGNER") ? (
+                          <div className="flex gap-1.5 justify-end">
+                            <LoadingButton
+                              size="sm"
+                              loading={pendingId === outfit.id + "_rework"}
+                              disabled={transitionMutation.isPending}
+                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_WORK", _key: outfit.id + "_rework" })}
+                              variant="outline"
+                              className="whitespace-nowrap text-xs text-amber-600 border-amber-400 hover:bg-amber-50"
+                            >
+                              Rework
+                            </LoadingButton>
+                            <LoadingButton
+                              size="sm"
+                              loading={pendingId === outfit.id + "_approve"}
+                              disabled={transitionMutation.isPending}
+                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "FABRIC_CUTTING", _key: outfit.id + "_approve" })}
+                              className="whitespace-nowrap text-xs"
+                            >
+                              Approve <ArrowRight className="h-3 w-3 ml-1" />
+                            </LoadingButton>
+                          </div>
+                        ) : next && isAssigned ? (
                           <LoadingButton
                             size="sm"
                             loading={pendingId === outfit.id}
@@ -232,6 +258,8 @@ export default function ProductionPage() {
                           </Link>
                         ) : next && !isAssigned ? (
                           <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Not assigned</Badge>
+                        ) : outfit.status === "MAGGAM_REVIEW" && role === "MASTER" ? (
+                          <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Awaiting designer review</Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -260,6 +288,11 @@ export default function ProductionPage() {
                       <p className="text-xs text-muted-foreground ml-5">
                         {outfit.type}{outfit.maggamRequired && " · Maggam"}
                       </p>
+                      {outfit.customerName && (
+                        <p className="text-xs text-muted-foreground ml-5 font-medium">
+                          {outfit.customerName}
+                        </p>
+                      )}
                     </Link>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap max-w-[120px] truncate`}>
@@ -304,7 +337,29 @@ export default function ProductionPage() {
                   )}
 
                   {/* Action */}
-                  {next && isAssigned ? (
+                  {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "DESIGNER") ? (
+                    <div className="flex gap-2">
+                      <LoadingButton
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs text-amber-600 border-amber-400 hover:bg-amber-50"
+                        loading={pendingId === outfit.id + "_rework"}
+                        disabled={transitionMutation.isPending}
+                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_WORK", _key: outfit.id + "_rework" })}
+                      >
+                        Rework
+                      </LoadingButton>
+                      <LoadingButton
+                        size="sm"
+                        className="flex-1 text-xs"
+                        loading={pendingId === outfit.id + "_approve"}
+                        disabled={transitionMutation.isPending}
+                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "FABRIC_CUTTING", _key: outfit.id + "_approve" })}
+                      >
+                        Approve <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
+                      </LoadingButton>
+                    </div>
+                  ) : next && isAssigned ? (
                     <LoadingButton
                       size="sm"
                       className="w-full text-xs"
@@ -323,6 +378,8 @@ export default function ProductionPage() {
                     </Link>
                   ) : next && !isAssigned ? (
                     <p className="text-xs text-muted-foreground ml-5">Not assigned to you</p>
+                  ) : outfit.status === "MAGGAM_REVIEW" && role === "MASTER" ? (
+                    <p className="text-xs text-muted-foreground ml-5 italic">Awaiting designer review</p>
                   ) : null}
                 </div>
               );
