@@ -53,7 +53,6 @@ import {
   Scissors,
   FileText,
   History,
-  X,
   Layers,
   Camera,
   ZoomIn,
@@ -64,6 +63,10 @@ import { toast } from "@/hooks/use-toast";
 import { VoiceNoteRecorder } from "@/components/voice-note-recorder";
 import { VoiceToTextButton } from "@/components/voice-to-text-button";
 import { MeasurementZoomModal } from "@/components/measurement-zoom-modal";
+import {
+  OutfitMeasurements,
+  GARMENT_FIELDS,
+} from "@/components/outfit-measurements";
 
 const DEPENDENCY_TYPES = [
   "FABRIC",
@@ -75,96 +78,7 @@ const DEPENDENCY_TYPES = [
   "CUPS",
 ];
 
-// Garment-specific measurement fields per outfit type.
-// These are the stitching-specific dimensions that vary per garment,
-// separate from the customer's body measurements.
-const GARMENT_FIELDS: Record<string, string[]> = {
-  "Bridal Blouse": [
-    "Front Length",
-    "Back Length",
-    "Neck Front",
-    "Neck Back",
-    "Sleeve Round",
-    "Armhole",
-  ],
-  "Reception Blouse": [
-    "Front Length",
-    "Back Length",
-    "Neck Front",
-    "Neck Back",
-    "Sleeve Round",
-    "Armhole",
-  ],
-  "Saree Blouse": [
-    "Front Length",
-    "Back Length",
-    "Neck Front",
-    "Neck Back",
-    "Sleeve Round",
-    "Armhole",
-  ],
-  Lehenga: ["Lehenga Length", "Flare / Gher", "Waist Band"],
-  Gown: ["Full Length", "Yoke Length", "Neck Front", "Neck Back", "Slit Start"],
-  Kurta: ["Kurti Length", "Neck Front", "Neck Back", "Side Slit Start"],
-  Anarkali: [
-    "Anarkali Length",
-    "Yoke Length",
-    "Neck Front",
-    "Neck Back",
-    "Flare / Gher",
-  ],
-  Sharara: ["Top Length", "Sharara Length", "Neck Front"],
-  Other: ["Length", "Neck Front", "Neck Back"],
-};
 
-// Mirrored body section definitions — used for grouped display on outfit detail page
-const BODY_SECTIONS = [
-  {
-    num: "01",
-    title: "UPPER BODY",
-    fields: [
-      "Shoulder Length",
-      "Upper Bust",
-      "Bust",
-      "Lower Bust",
-      "Waist",
-      "Lower Waist",
-      "Hip",
-    ],
-  },
-  {
-    num: "02",
-    title: "APEX & SLEEVES",
-    fields: [
-      "Apex Point",
-      "Apex Down",
-      "Apex Gap",
-      "Sleeve Length",
-      "Sleeve Loose",
-      "Armhole",
-      "Neck Front",
-      "Neck Back",
-    ],
-  },
-  {
-    num: "03",
-    title: "BOTTOM (PANT)",
-    fields: [
-      "Pant Length",
-      "Pant Waist",
-      "Hip / Seat",
-      "Crotch (Rise)",
-      "Thigh",
-      "Knee",
-      "Ankle",
-      "Bottom Loose",
-    ],
-  },
-] as const;
-
-const ALL_BODY_FIELD_NAMES: string[] = BODY_SECTIONS.flatMap(
-  (s) => s.fields as unknown as string[],
-);
 
 export default function OutfitDetailPage() {
   const params = useParams();
@@ -186,7 +100,6 @@ export default function OutfitDetailPage() {
   >({});
   const [garmentMeasurementsDirty, setGarmentMeasurementsDirty] =
     useState(false);
-  const [newGarmentField, setNewGarmentField] = useState("");
 
   // Voice notes
   const [voiceNotes, setVoiceNotes] = useState<
@@ -1106,7 +1019,7 @@ export default function OutfitDetailPage() {
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
               <Ruler className="h-4 w-4" /> Measurements
-              {outfit.customerMeasurements && role === "MASTER" && (
+              {outfit.customerMeasurements && (
                 <Button
                   size="icon"
                   variant="ghost"
@@ -1119,313 +1032,33 @@ export default function OutfitDetailPage() {
               )}
             </h2>
 
-            {/* ── BODY MEASUREMENTS (snapshot, read-only) ── */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Body ·{" "}
-                  <span className="normal-case font-normal text-muted-foreground">
-                    inches
-                  </span>
-                </p>
-                {outfit.customerMeasurements && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">
-                      v{outfit.customerMeasurements.version}
-                    </span>
-                    {outfit.measurementIsSnapshot ? (
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] px-1.5 py-0"
-                      >
-                        at order time
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50"
-                      >
-                        latest
-                      </Badge>
-                    )}
-                  </div>
-                )}
+            {/* Save garment measurements button — shown when dirty */}
+            {garmentMeasurementsDirty && role !== "RECEPTION" && (
+              <div className="flex justify-end -mt-2">
+                <Button
+                  size="sm"
+                  className="h-6 text-[11px] px-2"
+                  onClick={() => {
+                    updateMutation.mutate({ garmentMeasurements });
+                    setGarmentMeasurementsDirty(false);
+                  }}
+                >
+                  Save
+                </Button>
               </div>
+            )}
 
-              {outfit.customerMeasurements ? (
-                <div className="space-y-1.5">
-                  {!outfit.measurementIsSnapshot &&
-                    outfit.measurementSnapshotId === null &&
-                    outfit.customer?.id &&
-                    role !== "MASTER" && (
-                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
-                        <AlertTriangle className="h-3 w-3 shrink-0" />
-                        Showing latest — created before snapshots were tracked.
-                      </p>
-                    )}
-
-                  {/* Sectioned body measurements */}
-                  {BODY_SECTIONS.map((section) => {
-                    const vals = outfit.customerMeasurements.values as Record<
-                      string,
-                      string
-                    >;
-                    const entries = (section.fields as unknown as string[])
-                      .map((f) => [f, vals[f]] as [string, string])
-                      .filter(([, v]) => v);
-                    if (!entries.length) return null;
-                    return (
-                      <div key={section.num} className="space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold text-primary/60 tabular-nums">
-                            {section.num}
-                          </span>
-                          <span className="text-[9px] font-bold text-muted-foreground">
-                            {section.title}
-                          </span>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5">
-                          {entries.map(([field, value]) => (
-                            <div
-                              key={field}
-                              className="flex justify-between items-center border-b border-muted/40 py-0.5"
-                            >
-                              <span className="text-[11px] text-muted-foreground truncate mr-1">
-                                {field}
-                              </span>
-                              <span className="text-[11px] font-semibold shrink-0">
-                                {value}"
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Custom fields not in standard sections */}
-                  {(() => {
-                    const vals = outfit.customerMeasurements.values as Record<
-                      string,
-                      string
-                    >;
-                    const extras = Object.entries(vals).filter(
-                      ([k, v]) => !ALL_BODY_FIELD_NAMES.includes(k) && v,
-                    );
-                    if (!extras.length) return null;
-                    return (
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 pt-1">
-                        {extras.map(([field, value]) => (
-                          <div
-                            key={field}
-                            className="flex justify-between items-center border-b border-muted/40 py-0.5"
-                          >
-                            <span className="text-[11px] text-muted-foreground">
-                              {field}
-                            </span>
-                            <span className="text-[11px] font-semibold">
-                              {value}"
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-
-                  {outfit.customer?.id && role !== "MASTER" && (
-                    <Link
-                      href={`/dashboard/customers/${outfit.customer.id}`}
-                      className="text-[11px] text-primary hover:underline mt-1 inline-block"
-                    >
-                      Edit body measurements →
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic py-1">
-                  No body measurements.{" "}
-                  {outfit.customer?.id && role !== "MASTER" && (
-                    <Link
-                      href={`/dashboard/customers/${outfit.customer.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      Add →
-                    </Link>
-                  )}
-                </p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* ── GARMENT MEASUREMENTS (outfit-specific, editable) ── */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Garment ·{" "}
-                  <span className="normal-case font-normal">{outfit.type}</span>
-                </p>
-                {garmentMeasurementsDirty && role !== "RECEPTION" && (
-                  <Button
-                    size="xs"
-                    className="h-6 text-[11px] px-2"
-                    onClick={() => {
-                      updateMutation.mutate({ garmentMeasurements });
-                      setGarmentMeasurementsDirty(false);
-                    }}
-                  >
-                    Save
-                  </Button>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                All values in inches.
-              </p>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
-                {Object.entries(garmentMeasurements).map(([field, value]) => {
-                  // Check if body measurements have a value for the same field name
-                  const bodyValue =
-                    outfit.customerMeasurements?.values?.[field];
-                  const isDuplicate =
-                    bodyValue &&
-                    bodyValue !== "" &&
-                    bodyValue !== value &&
-                    value !== "";
-
-                  // Determine if this is a template field or a custom-added field
-                  const typeKey =
-                    Object.keys(GARMENT_FIELDS).find(
-                      (k) =>
-                        k.toLowerCase() === (outfit.type || "").toLowerCase(),
-                    ) || outfit.type;
-                  const templateFields = GARMENT_FIELDS[typeKey] || [];
-                  const isCustomField = !templateFields.includes(field);
-
-                  return (
-                    <div key={field} className="space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <label className="text-[11px] text-muted-foreground truncate">
-                          {field}
-                        </label>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {/* Body reference hint */}
-                          {bodyValue && bodyValue !== "" && (
-                            <span
-                              className={`text-[9px] px-1 rounded font-medium ${
-                                isDuplicate
-                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                              title={`Body measurement: ${bodyValue}"`}
-                            >
-                              B:{bodyValue}"
-                            </span>
-                          )}
-                          {/* Remove button for custom fields */}
-                          {isCustomField && role !== "RECEPTION" && (
-                            <button
-                              type="button"
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                              onClick={() => {
-                                setGarmentMeasurements((prev) => {
-                                  const copy = { ...prev };
-                                  delete copy[field];
-                                  return copy;
-                                });
-                                setGarmentMeasurementsDirty(true);
-                              }}
-                              title="Remove field"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {role === "RECEPTION" ? (
-                        <p className="h-7 text-xs px-2 flex items-center font-semibold">
-                          {value || "—"}
-                        </p>
-                      ) : (
-                        <Input
-                          value={value}
-                          onChange={(e) => {
-                            setGarmentMeasurements((prev) => ({
-                              ...prev,
-                              [field]: e.target.value,
-                            }));
-                            setGarmentMeasurementsDirty(true);
-                          }}
-                          placeholder="in inches"
-                          inputMode="decimal"
-                          className={`h-7 text-xs px-2 ${
-                            isDuplicate
-                              ? "border-amber-400 focus-visible:ring-amber-400"
-                              : ""
-                          }`}
-                        />
-                      )}
-                      {/* Conflict warning */}
-                      {isDuplicate && (
-                        <p className="text-[9px] text-amber-600 flex items-center gap-0.5">
-                          <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
-                          Differs from body ({bodyValue}")
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {Object.keys(garmentMeasurements).length === 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  No fields for this garment type.
-                </p>
-              )}
-
-              {/* Add custom garment field — not available to RECEPTION */}
-              {role !== "RECEPTION" && (
-                <div className="flex gap-2 pt-1">
-                  <Input
-                    value={newGarmentField}
-                    onChange={(e) => setNewGarmentField(e.target.value)}
-                    placeholder="Custom field (e.g. Sleeve Round)"
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const key = newGarmentField.trim();
-                        if (!key || key in garmentMeasurements) return;
-                        setGarmentMeasurements((prev) => ({
-                          ...prev,
-                          [key]: "",
-                        }));
-                        setGarmentMeasurementsDirty(true);
-                        setNewGarmentField("");
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-2 shrink-0"
-                    onClick={() => {
-                      const key = newGarmentField.trim();
-                      if (!key || key in garmentMeasurements) return;
-                      setGarmentMeasurements((prev) => ({
-                        ...prev,
-                        [key]: "",
-                      }));
-                      setGarmentMeasurementsDirty(true);
-                      setNewGarmentField("");
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-            </div>
+            <OutfitMeasurements
+              customerMeasurements={outfit.customerMeasurements}
+              measurementIsSnapshot={outfit.measurementIsSnapshot}
+              measurementSnapshotId={outfit.measurementSnapshotId}
+              customer={outfit.customer}
+              outfitType={outfit.type}
+              garmentMeasurements={garmentMeasurements}
+              onGarmentMeasurementsChange={setGarmentMeasurements}
+              onGarmentMeasurementsDirty={() => setGarmentMeasurementsDirty(true)}
+              role={role}
+            />
           </div>
 
           {/* Customer Material — accordion */}
@@ -1519,16 +1152,22 @@ export default function OutfitDetailPage() {
       </AlertDialog>
 
       {/* Measurement Zoom Modal with Calculator */}
-      {outfit.customerMeasurements && (
-        <MeasurementZoomModal
-          open={showMeasurementZoom}
-          onClose={() => setShowMeasurementZoom(false)}
-          customer={{
-            name: outfit.customer?.name || "Customer",
-            measurement: outfit.customerMeasurements,
-          }}
-        />
-      )}
+      <MeasurementZoomModal
+        open={showMeasurementZoom}
+        onClose={() => setShowMeasurementZoom(false)}
+        customer={{
+          id: outfit.customer?.id,
+          name: outfit.customer?.name || "Customer",
+        }}
+        customerMeasurements={outfit.customerMeasurements}
+        measurementIsSnapshot={outfit.measurementIsSnapshot}
+        measurementSnapshotId={outfit.measurementSnapshotId}
+        garmentMeasurements={garmentMeasurements}
+        onGarmentMeasurementsChange={setGarmentMeasurements}
+        onGarmentMeasurementsDirty={() => setGarmentMeasurementsDirty(true)}
+        outfitType={outfit.type}
+        role={role}
+      />
     </div>
   );
 }

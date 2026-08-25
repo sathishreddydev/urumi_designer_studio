@@ -1086,10 +1086,10 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
         <MeasurementZoomModal
           open={showMeasurementZoom}
           onClose={() => setShowMeasurementZoom(false)}
-          customer={{
-            name: customer.name,
-            measurements: customer.measurements,
-          }}
+          customer={{ name: customer.name, id: customer.id }}
+          customerMeasurements={customer.measurements[0]}
+          garmentMeasurements={{}}
+          onGarmentMeasurementsChange={() => {}}
         />
       )}
     </div>
