@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -83,8 +83,37 @@ const DEPENDENCY_TYPES = [
 export default function OutfitDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { can, role } = usePermissions();
+
+  // Resolve back destination from ?from= param
+  const from = searchParams.get("from");
+  const orderId = searchParams.get("orderId");
+  const backHref =
+    from === "production"
+      ? "/dashboard/production"
+      : from === "stitching-maggam"
+        ? "/dashboard/stitching-maggam"
+        : from === "order" && orderId
+          ? `/dashboard/orders/${orderId}`
+          : from === "blockers"
+            ? "/dashboard/blockers"
+            : from === "appointments"
+              ? "/dashboard/appointments"
+              : "/dashboard/outfits";
+  const backLabel =
+    from === "production"
+      ? "Production"
+      : from === "stitching-maggam"
+        ? "Stitching & Maggam"
+        : from === "order" && orderId
+          ? "Order"
+          : from === "blockers"
+            ? "Blockers"
+            : from === "appointments"
+              ? "Appointments"
+              : "Outfits";
 
   const [whatsappPrompt, setWhatsappPrompt] = useState<{
     customerName: string;
@@ -396,7 +425,7 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       toast({ title: "Deleted", description: "Outfit deleted successfully." });
-      router.push("/dashboard/outfits");
+      router.push(backHref);
     },
     onError: (error: Error) => {
       toast({
@@ -483,8 +512,8 @@ export default function OutfitDetailPage() {
       {/* Header — single row: back | title+badge | actions+delete */}
       <div className="flex items-center gap-2 border-b pb-4">
         {/* Back button */}
-        <Link href="/dashboard/outfits" className="shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Link href={backHref} className="shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={`Back to ${backLabel}`}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>

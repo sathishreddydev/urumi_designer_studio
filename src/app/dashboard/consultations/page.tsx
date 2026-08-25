@@ -461,7 +461,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
             )}
 
             {consultation.status === "converted" && consultation.convertedOrderId && (
-              <Link href={`/dashboard/orders/${consultation.convertedOrderId}`}>
+              <Link href={`/dashboard/orders/${consultation.convertedOrderId}?from=consultations`}>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                   <ChevronRight className="h-3 w-3" /> View Order
                 </Button>

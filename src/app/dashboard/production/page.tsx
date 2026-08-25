@@ -167,7 +167,7 @@ export default function ProductionPage() {
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 max-w-[180px]">
-                        <Link href={`/dashboard/outfits/${outfit.id}`} className="font-medium hover:underline truncate block">
+                        <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="font-medium hover:underline truncate block">
                           {outfit.name}
                         </Link>
                       </td>
@@ -252,7 +252,7 @@ export default function ProductionPage() {
                             {formatStatus(next)} <ArrowRight className="h-3 w-3 ml-1" />
                           </LoadingButton>
                         ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
-                          <Link href={`/dashboard/outfits/${outfit.id}`}>
+                          <Link href={`/dashboard/outfits/${outfit.id}?from=production`}>
                             <LoadingButton size="sm" variant="destructive" className="text-xs whitespace-nowrap">
                               <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                             </LoadingButton>
@@ -280,7 +280,7 @@ export default function ProductionPage() {
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 space-y-3">
                   {/* Top: name + badges */}
                   <div className="flex items-start justify-between gap-2">
-                    <Link href={`/dashboard/outfits/${outfit.id}`} className="min-w-0 flex-1">
+                    <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
                         <p className="font-medium text-sm truncate">{outfit.name}</p>
@@ -371,7 +371,7 @@ export default function ProductionPage() {
                       <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
                     </LoadingButton>
                   ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
-                    <Link href={`/dashboard/outfits/${outfit.id}`} className="block">
+                    <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="block">
                       <LoadingButton size="sm" variant="destructive" className="w-full text-xs">
                         <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                       </LoadingButton>

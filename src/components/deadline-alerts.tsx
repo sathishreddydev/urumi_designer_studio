@@ -95,7 +95,7 @@ export function DeadlineAlerts() {
           </div>
           <div className="divide-y">
             {rows.map((row) => (
-              <Link key={row.id} href={`/dashboard/outfits/${row.id}`}>
+              <Link key={row.id} href={`/dashboard/outfits/${row.id}?from=outfits`}>
                 <div className="grid grid-cols-[1rem_1fr_auto_auto_auto] gap-x-3 items-center px-4 py-2 hover:bg-muted/40 transition-colors">
                   <span className="flex justify-center">{severityIcon(row.severity)}</span>
                   <div className="min-w-0">
@@ -122,7 +122,7 @@ export function DeadlineAlerts() {
         {/* Mobile: Card layout */}
         <div className="sm:hidden divide-y">
           {rows.map((row) => (
-            <Link key={row.id} href={`/dashboard/outfits/${row.id}`}>
+            <Link key={row.id} href={`/dashboard/outfits/${row.id}?from=outfits`}>
               <div className="flex items-start gap-2 px-4 py-2.5 hover:bg-muted/40 transition-colors">
                 <span className="mt-0.5 shrink-0">{severityIcon(row.severity)}</span>
                 <div className="min-w-0 flex-1">

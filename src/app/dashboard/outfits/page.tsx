@@ -406,7 +406,7 @@ export default function OutfitsPage() {
                     <tr
                       key={outfit.id}
                       className="hover:bg-muted/30 cursor-pointer"
-                      onClick={() => router.push(`/dashboard/outfits/${outfit.id}`)}
+                      onClick={() => router.push(`/dashboard/outfits/${outfit.id}?from=outfits`)}
                     >
                       <td className="px-4 py-3 max-w-[180px]">
                         <p className="font-medium truncate">{outfit.name}</p>
@@ -496,7 +496,7 @@ export default function OutfitsPage() {
               return (
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md">
                   {/* Top row: name + status badge */}
-                  <Link href={`/dashboard/outfits/${outfit.id}`} className="block">
+                  <Link href={`/dashboard/outfits/${outfit.id}?from=outfits`} className="block">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">

@@ -95,7 +95,7 @@ export default function BlockersPage() {
                     </div>
 
                     <Link
-                      href={`/dashboard/outfits/${blocker.outfit?.id}`}
+                      href={`/dashboard/outfits/${blocker.outfit?.id}?from=blockers`}
                       className="flex items-center gap-1.5 hover:underline"
                     >
                       <Shirt className="h-3.5 w-3.5 text-muted-foreground" />

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -132,9 +132,18 @@ function OutfitStatusUpdater({
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { can, isAdmin } = usePermissions();
 
+  // Resolve back destination from ?from= param
+  const from = searchParams.get("from");
+  const customerIdParam = searchParams.get("customerId");
+  // backHref is computed after order loads (we may fall back to customer from order data)
+  // from=orders → /dashboard/orders
+  // from=customer → /dashboard/customers/[id]
+  // from=consultations → /dashboard/consultations
+  // default → customer detail if available, else /dashboard/orders
   // Inline Section Expansion States (No Modals)
   const [showAddOutfit, setShowAddOutfit] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -345,7 +354,15 @@ export default function OrderDetailPage() {
         title: "Order Deleted",
         description: "Order and related records removed.",
       });
-      router.push("/dashboard/orders");
+      const deleteBackHref =
+        from === "orders"
+          ? "/dashboard/orders"
+          : from === "consultations"
+            ? "/dashboard/consultations"
+            : from === "customer" && (customerIdParam || order?.customer?.id)
+              ? `/dashboard/customers/${customerIdParam || order?.customer?.id}`
+              : "/dashboard/orders";
+      router.push(deleteBackHref);
     },
     onError: (error: Error) => {
       toast({
@@ -372,7 +389,7 @@ export default function OrderDetailPage() {
     return (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Order not found.</p>
-        <Button variant="link" onClick={() => router.push("/dashboard/orders")}>
+        <Button variant="link" onClick={() => router.push(from === "customer" && customerIdParam ? `/dashboard/customers/${customerIdParam}` : "/dashboard/orders")}>
           Back to Orders
         </Button>
       </div>
@@ -391,9 +408,15 @@ export default function OrderDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href={
-              order.customer?.id
-                ? `/dashboard/customers/${order.customer.id}`
-                : "/dashboard/orders"
+              from === "orders"
+                ? "/dashboard/orders"
+                : from === "consultations"
+                  ? "/dashboard/consultations"
+                  : from === "customer" && (customerIdParam || order.customer?.id)
+                    ? `/dashboard/customers/${customerIdParam || order.customer?.id}`
+                    : order.customer?.id
+                      ? `/dashboard/customers/${order.customer.id}`
+                      : "/dashboard/orders"
             }
           >
             <Button variant="outline" size="icon" className="h-9 w-9">
@@ -746,7 +769,7 @@ export default function OrderDetailPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link
-                          href={`/dashboard/outfits/${outfit.id}`}
+                          href={`/dashboard/outfits/${outfit.id}?from=order&orderId=${params.id}`}
                           className="text-sm font-semibold leading-5 hover:underline flex items-center gap-1.5"
                         >
                           {outfit.name}

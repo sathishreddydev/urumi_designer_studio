@@ -52,6 +52,7 @@ import {
 import { ImageViewer } from "@/components/image-viewer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
 import { CameraCaptureModal } from "@/components/camera-capture-modal";
@@ -500,7 +501,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                 return (
                   <Link
                     key={order.id}
-                    href={`/dashboard/orders/${order.id}`}
+                    href={`/dashboard/orders/${order.id}?from=customer&customerId=${customerId}`}
                     className="block focus:outline-none"
                   >
                     <Card className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-sm">

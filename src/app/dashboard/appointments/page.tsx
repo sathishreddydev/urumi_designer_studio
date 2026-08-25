@@ -161,7 +161,7 @@ function AppointmentCard({
               field={dateField}
               label={dateLabelText}
             />
-            <Link href={`/dashboard/outfits/${outfit.id}`}>
+            <Link href={`/dashboard/outfits/${outfit.id}?from=appointments`}>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                 <ExternalLink className="h-3 w-3" />
               </Button>
