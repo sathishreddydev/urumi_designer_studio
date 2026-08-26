@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -139,11 +139,11 @@ export default function OrderDetailPage() {
   // Resolve back destination from ?from= param
   const from = searchParams.get("from");
   const customerIdParam = searchParams.get("customerId");
-  // backHref is computed after order loads (we may fall back to customer from order data)
-  // from=orders → /dashboard/orders
-  // from=customer → /dashboard/customers/[id]
+  // from=orders        → /dashboard/orders
+  // from=customer      → /dashboard/customers/[id]
   // from=consultations → /dashboard/consultations
-  // default → customer detail if available, else /dashboard/orders
+  // default            → customer detail if available, else /dashboard/orders
+
   // Inline Section Expansion States (No Modals)
   const [showAddOutfit, setShowAddOutfit] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -162,6 +162,16 @@ export default function OrderDetailPage() {
     [],
   );
   const [cameraOpen, setCameraOpen] = useState(false);
+
+  // Stable blob URLs for fabric image previews — revoked when images change or component unmounts
+  const blobUrlsRef = useRef<string[]>([]);
+  const fabricPreviewUrls = useMemo(() => {
+    blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    const urls = newOutfitFabricImages.map((f) => URL.createObjectURL(f));
+    blobUrlsRef.current = urls;
+    return urls;
+  }, [newOutfitFabricImages]);
+  useEffect(() => () => blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
@@ -671,7 +681,7 @@ export default function OrderDetailPage() {
                             className="relative group h-16 w-16 overflow-hidden rounded-md border"
                           >
                             <img
-                              src={URL.createObjectURL(file)}
+                              src={fabricPreviewUrls[index]}
                               alt={`Fabric ${index + 1}`}
                               className="h-full w-full object-cover"
                             />

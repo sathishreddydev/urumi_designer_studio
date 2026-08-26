@@ -44,9 +44,13 @@ export default function ProductionPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["production-outfits"],
+    queryKey: ["production-outfits", search, statusFilter],
     queryFn: async () => {
-      const res = await fetch("/api/outfits?status=production&limit=100");
+      const params = new URLSearchParams();
+      params.set("status", "production");
+      params.set("limit", "200");
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/outfits?${params}`);
       if (!res.ok) return [];
       const d = await res.json();
       return d.outfits || [];
@@ -90,14 +94,6 @@ export default function ProductionPage() {
   const outfits = (data || []).filter((outfit: any) => {
     if (role === "MASTER" && outfit.masterId && outfit.masterId !== session?.id) return false;
     if (statusFilter && outfit.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (
-        !outfit.name?.toLowerCase().includes(q) &&
-        !outfit.customerName?.toLowerCase().includes(q) &&
-        !outfit.orderNumber?.toLowerCase().includes(q)
-      ) return false;
-    }
     return true;
   });
 

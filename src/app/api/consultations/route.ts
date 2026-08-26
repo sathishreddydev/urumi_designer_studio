@@ -13,43 +13,40 @@ export const GET = withPermission(
 
     const conditions: any[] = [];
     if (status && status !== "all") conditions.push(eq(consultations.status, status));
+    if (search) {
+      conditions.push(
+        or(
+          ilike(customers.name, `%${search}%`),
+          ilike(customers.mobile, `%${search}%`),
+          ilike(consultations.notes, `%${search}%`)
+        )
+      );
+    }
 
     const list = await db
-      .select()
+      .select({ consultation: consultations, customerName: customers.name, customerMobile: customers.mobile })
       .from(consultations)
+      .innerJoin(customers, eq(consultations.customerId, customers.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(consultations.createdAt))
       .limit(100);
 
-    // Enrich with customer names
+    // Enrich with creator name
     const enriched = await Promise.all(
-      list.map(async (c) => {
-        const [cust] = await db
-          .select({ name: customers.name, mobile: customers.mobile })
-          .from(customers)
-          .where(eq(customers.id, c.customerId))
-          .limit(1);
+      list.map(async ({ consultation: c, customerName, customerMobile }) => {
         const [creator] = c.createdBy
           ? await db.select({ name: users.name }).from(users).where(eq(users.id, c.createdBy)).limit(1)
           : [null];
         return {
           ...c,
-          customerName: cust?.name || "",
-          customerMobile: cust?.mobile || "",
+          customerName: customerName || "",
+          customerMobile: customerMobile || "",
           createdByName: creator?.name || "",
         };
       })
     );
 
-    // Client-side search filter on customer name
-    const filtered = search
-      ? enriched.filter((c) =>
-          c.customerName.toLowerCase().includes(search.toLowerCase()) ||
-          (c.notes || "").toLowerCase().includes(search.toLowerCase())
-        )
-      : enriched;
-
-    return NextResponse.json(filtered);
+    return NextResponse.json(enriched);
   }
 );
 

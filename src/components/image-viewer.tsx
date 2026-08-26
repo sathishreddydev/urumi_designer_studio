@@ -47,6 +47,7 @@ export function ImageViewer({
   const pinchStartDist = useRef(0);
   const pinchStartZoom = useRef(1);
   const isPinching = useRef(false);
+  const [activePinch, setActivePinch] = useState(false);
 
   // Keep latest state in refs so touch handlers (registered once) always see fresh values
   const zoomRef = useRef(zoom);
@@ -116,6 +117,7 @@ export function ImageViewer({
     function onTouchStart(e: TouchEvent) {
       if (e.touches.length === 2) {
         isPinching.current = true;
+        setActivePinch(true);
         pinchStartDist.current = pinchDist(e.touches);
         pinchStartZoom.current = zoomRef.current;
       } else if (e.touches.length === 1) {
@@ -148,6 +150,7 @@ export function ImageViewer({
       if (isPinching.current) {
         // After releasing pinch, reset start values for a fresh pinch gesture
         isPinching.current = false;
+        setActivePinch(false);
         pinchStartDist.current = 0;
         pinchStartZoom.current = zoomRef.current;
         return;
@@ -296,7 +299,7 @@ export function ImageViewer({
               width:  zoom > 1 ? `${zoom * 100}%` : "auto",
               height: "auto",
               transform: `rotate(${rotation}deg) translate(${panX / zoom}px, ${panY / zoom}px)`,
-              transition: isPinching.current ? "none" : "transform 0.1s ease",
+              transition: activePinch ? "none" : "transform 0.1s ease",
             }}
             draggable={false}
           />

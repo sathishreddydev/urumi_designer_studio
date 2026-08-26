@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { outfits, orders, customers, users, customerMeasurements, referenceImages } from "@/lib/db/schema";
-import { eq, count, desc, asc, inArray, ilike, and as drizzleAnd, gte, lt, isNotNull } from "drizzle-orm";
+import { eq, count, desc, asc, inArray, ilike, or, and as drizzleAnd, gte, lt, isNotNull } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { outfitSchema } from "@/lib/validations";
 import { eventBus } from "@/lib/events";
@@ -54,7 +54,13 @@ export const GET = withPermission(
     }
 
     if (search) {
-      conditions.push(ilike(outfits.name, `%${search}%`));
+      conditions.push(
+        or(
+          ilike(outfits.name, `%${search}%`),
+          // Search by customer name — requires the join added below
+          ilike(customers.name, `%${search}%`)
+        )
+      );
     }
 
     // Deadline filter — applied on deliveryDate
@@ -101,12 +107,15 @@ export const GET = withPermission(
       : [desc(outfits.priority), desc(outfits.createdAt)];
 
     const outfitsList = await db
-      .select()
+      .select({ outfit: outfits })
       .from(outfits)
+      .innerJoin(orders, eq(outfits.orderId, orders.id))
+      .innerJoin(customers, eq(orders.customerId, customers.id))
       .where(condition)
       .orderBy(...ordering)
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .then((rows) => rows.map((r) => r.outfit));
 
     // Enrich with customer name, order number, designer/master names
     const enriched = await Promise.all(
@@ -166,7 +175,12 @@ export const GET = withPermission(
       })
     );
 
-    const [totalResult] = await db.select({ count: count() }).from(outfits).where(condition);
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(outfits)
+      .innerJoin(orders, eq(outfits.orderId, orders.id))
+      .innerJoin(customers, eq(orders.customerId, customers.id))
+      .where(condition);
 
     return NextResponse.json({ outfits: enriched, total: totalResult.count, page, limit });
   }

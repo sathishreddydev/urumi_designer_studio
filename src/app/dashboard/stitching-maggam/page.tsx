@@ -89,9 +89,13 @@ export default function StitchingMaggamPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["stitching-maggam-outfits"],
+    queryKey: ["stitching-maggam-outfits", searchQuery],
     queryFn: async () => {
-      const res = await fetch("/api/outfits?status=production&limit=200");
+      const params = new URLSearchParams();
+      params.set("status", "production");
+      params.set("limit", "200");
+      if (searchQuery) params.set("search", searchQuery);
+      const res = await fetch(`/api/outfits?${params}`);
       if (!res.ok) return [];
       const d = await res.json();
       const VISIBLE_STATUSES = new Set([
@@ -174,20 +178,12 @@ export default function StitchingMaggamPage() {
 
   const filteredOutfits = useMemo(() => {
     let items = allOutfits.filter((o: any) => o.status === resolvedTab);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(
-        (o: any) =>
-          o.name?.toLowerCase().includes(q) ||
-          o.customerName?.toLowerCase().includes(q) ||
-          o.orderNumber?.toLowerCase().includes(q)
-      );
-    }
+    // typeFilter is local-only (not an API param), so still filter client-side
     if (typeFilter !== "all") {
       items = items.filter((o: any) => o.type === typeFilter);
     }
     return items;
-  }, [allOutfits, resolvedTab, searchQuery, typeFilter]);
+  }, [allOutfits, resolvedTab, typeFilter]);
 
   if (isLoading) {
     return (

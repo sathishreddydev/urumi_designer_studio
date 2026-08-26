@@ -170,7 +170,8 @@ export default function OutfitDetailPage() {
       // Seed voice notes — re-seed whenever server data changes
       setVoiceNotes(outfit.voiceNotes || []);
     }
-  }, [outfit?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outfit?.id, outfit?.garmentMeasurements]);
 
   // Fetch available transitions
   const { data: transitions } = useQuery({

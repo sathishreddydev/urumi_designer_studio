@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, customers, payments } from "@/lib/db/schema";
-import { eq, ilike, count, desc, and, sum } from "drizzle-orm";
+import { eq, ilike, or, count, desc, and, sum } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { eventBus } from "@/lib/events";
 import { orderSchema } from "@/lib/validations";
@@ -18,17 +18,27 @@ export const GET = withPermission(
     const offset = (page - 1) * limit;
 
     const conditions: any[] = [];
-    if (search) conditions.push(ilike(orders.orderNumber, `%${search}%`));
+    if (search) {
+      conditions.push(
+        or(
+          ilike(orders.orderNumber, `%${search}%`),
+          ilike(customers.name, `%${search}%`),
+          ilike(customers.mobile, `%${search}%`)
+        )
+      );
+    }
     if (status && status !== "all") conditions.push(eq(orders.status, status));
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
 
     const ordersList = await db
-      .select()
+      .select({ order: orders })
       .from(orders)
+      .innerJoin(customers, eq(orders.customerId, customers.id))
       .where(condition)
       .orderBy(desc(orders.createdAt))
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .then((rows) => rows.map((r) => r.order));
 
     // Enrich with customer names and payment totals
     const enriched = await Promise.all(
@@ -51,7 +61,11 @@ export const GET = withPermission(
       })
     );
 
-    const [totalResult] = await db.select({ count: count() }).from(orders).where(condition);
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(orders)
+      .innerJoin(customers, eq(orders.customerId, customers.id))
+      .where(condition);
 
     return NextResponse.json({ orders: enriched, total: totalResult.count, page, limit });
   }
