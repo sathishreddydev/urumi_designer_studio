@@ -60,6 +60,17 @@ const EDITABLE_STATUSES = [
   "WAITING_FOR_REFERENCES",
   "WAITING_FOR_DEPENDENCIES",
   "PRODUCTION_READY",
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY"
 ];
 
 // ─── Camera Modal ────────────────────────────────────────────────────────────
@@ -330,8 +341,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const advance = Number(advanceAmount) || 0;
   const totalPaid = isEditMode
     ? (order?.payments || [])
-        .filter((p: any) => p.status === "SETTLED" || !p.status)
-        .reduce((s: number, p: any) => s + Number(p.amount), 0) + advance
+      .filter((p: any) => p.status === "SETTLED" || !p.status)
+      .reduce((s: number, p: any) => s + Number(p.amount), 0) + advance
     : advance;
   const balanceDue = estimatedTotal - totalPaid;
 
@@ -412,7 +423,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           const err = await paymentRes.json().catch(() => ({}));
           throw new Error(
             err.error ||
-              "Order created but advance payment failed — please add it manually from the order page.",
+            "Order created but advance payment failed — please add it manually from the order page.",
           );
         }
       }
@@ -467,7 +478,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           const err = await paymentRes.json().catch(() => ({}));
           throw new Error(
             err.error ||
-              "Order saved but payment failed — please add it manually from the order page.",
+            "Order saved but payment failed — please add it manually from the order page.",
           );
         }
       }
@@ -620,9 +631,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       prev.map((o, i) =>
         i === outfitIndex
           ? {
-              ...o,
-              fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex),
-            }
+            ...o,
+            fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex),
+          }
           : o,
       ),
     );
@@ -745,9 +756,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               return (
                 <Card
                   key={outfit.id || `new-${index}`}
-                  className={`relative overflow-hidden border ${
-                    !isEditable ? "opacity-80" : ""
-                  }`}
+                  className={`relative overflow-hidden border ${!isEditable ? "opacity-80" : ""
+                    }`}
                 >
                   <CardHeader className="bg-muted/30 pb-3 pt-3 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-2">
@@ -964,7 +974,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         >
                           <ImagePlus className="h-3.5 w-3.5" />
                           {outfit.fabricImages.length > 0 ||
-                          (outfit.existingFabricRefs || []).length > 0
+                            (outfit.existingFabricRefs || []).length > 0
                             ? "Add More"
                             : "Upload Material Photos"}
                         </label>
@@ -1203,9 +1213,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     Balance Due
                   </span>
                   <span
-                    className={`font-bold text-sm ${
-                      balanceDue > 0 ? "text-red-600" : "text-emerald-600"
-                    }`}
+                    className={`font-bold text-sm ${balanceDue > 0 ? "text-red-600" : "text-emerald-600"
+                      }`}
                   >
                     ₹{Math.max(0, balanceDue).toLocaleString()}
                   </span>
@@ -1245,8 +1254,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     {validOutfitCount !== 1 ? "s" : ""})
                   </>
                 ) : (
-                  `Create Order (${validOutfitCount} Item${
-                    validOutfitCount !== 1 ? "s" : ""
+                  `Create Order (${validOutfitCount} Item${validOutfitCount !== 1 ? "s" : ""
                   })`
                 )}
               </Button>

@@ -36,6 +36,7 @@ export async function GET() {
         (counts["PATTERN_DRAFTING"] || 0) +
         (counts["MAGGAM_WORK"] || 0) +
         (counts["MAGGAM_REVIEW"] || 0) +
+        (counts["MAGGAM_REVIEWED"] || 0) +
         (counts["FABRIC_CUTTING"] || 0) +
         (counts["STITCHING"] || 0),
       productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
@@ -69,6 +70,7 @@ export async function GET() {
       productionReleased:  counts["PRODUCTION_READY"] || 0,
       // Post-production (designer handles these)
       maggamReview:        counts["MAGGAM_REVIEW"] || 0,
+      maggamReviewed:      counts["MAGGAM_REVIEWED"] || 0,
       productionCompleted: counts["PRODUCTION_COMPLETED"] || 0,
       trials:              counts["TRIAL"] || 0,
       alterations:         counts["ALTERATION"] || 0,
@@ -97,6 +99,7 @@ export async function GET() {
       patternDrafting: counts["PATTERN_DRAFTING"] || 0,
       maggamWork: counts["MAGGAM_WORK"] || 0,
       maggamReview: counts["MAGGAM_REVIEW"] || 0,
+      maggamReviewed: counts["MAGGAM_REVIEWED"] || 0,
       fabricCutting: counts["FABRIC_CUTTING"] || 0,
       stitching: counts["STITCHING"] || 0,
       // Done — waiting for designer QC
@@ -108,6 +111,7 @@ export async function GET() {
         (counts["PATTERN_DRAFTING"] || 0) +
         (counts["MAGGAM_WORK"] || 0) +
         (counts["MAGGAM_REVIEW"] || 0) +
+        (counts["MAGGAM_REVIEWED"] || 0) +
         (counts["FABRIC_CUTTING"] || 0) +
         (counts["STITCHING"] || 0),
     });
