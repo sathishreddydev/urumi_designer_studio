@@ -324,11 +324,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     0,
   );
   const advance = Number(advanceAmount) || 0;
-  const totalPaid = isEditMode
+  const alreadyPaid = isEditMode
     ? (order?.payments || [])
       .filter((p: any) => p.status === "SETTLED" || !p.status)
-      .reduce((s: number, p: any) => s + Number(p.amount), 0) + advance
-    : advance;
+      .reduce((s: number, p: any) => s + Number(p.amount), 0)
+    : 0;
+  const totalPaid = alreadyPaid + advance;
+  const remainingBalance = estimatedTotal - alreadyPaid;
+  const isFullyPaid = isEditMode && remainingBalance <= 0;
   const balanceDue = estimatedTotal - totalPaid;
 
   // ── Create mutation ─────────────────────────────────────────────────────────
@@ -1166,47 +1169,56 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-muted-foreground">Already Paid</span>
                     <span className="font-semibold text-sm text-green-600">
-                      ₹{(totalPaid - advance).toLocaleString()}
+                      ₹{alreadyPaid.toLocaleString()}
                     </span>
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold flex items-center justify-between">
-                    <span>{isEditMode ? "Add Payment (₹)" : "Advance Payment (₹)"}</span>
-                    <CreditCard className="h-3 w-3 text-muted-foreground" />
-                  </Label>
-                  {isEditMode && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Enter an amount to record a new payment. Leave blank to keep the balance unchanged.
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={advanceAmount}
-                      onChange={(e) => setAdvanceAmount(e.target.value)}
-                      placeholder="0.00"
-                      className="bg-background flex-1"
-                    />
-                    <Select
-                      value={advanceMethod}
-                      onValueChange={setAdvanceMethod}
-                    >
-                      <SelectTrigger className="h-9 w-28 px-2 text-xs">
-                        <SelectValue placeholder="Method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CASH">Cash</SelectItem>
-                        <SelectItem value="UPI">UPI</SelectItem>
-                        <SelectItem value="CARD">Card</SelectItem>
-                        <SelectItem value="BANK_TRANSFER">
-                          Bank Transfer
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                {isFullyPaid ? (
+                  <div className="flex items-center justify-between rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700 font-medium">
+                    <span>Payment complete</span>
+                    <span className="font-bold">Fully Paid ✓</span>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold flex items-center justify-between">
+                      <span>{isEditMode ? "Add Payment (₹)" : "Advance Payment (₹)"}</span>
+                      <CreditCard className="h-3 w-3 text-muted-foreground" />
+                    </Label>
+                    {isEditMode && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Enter an amount to record a new payment. Leave blank to keep the balance unchanged.
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={advanceAmount}
+                        onChange={(e) => setAdvanceAmount(e.target.value)}
+                        placeholder="0.00"
+                        min="0"
+                        max={isEditMode ? remainingBalance : undefined}
+                        className="bg-background flex-1"
+                      />
+                      <Select
+                        value={advanceMethod}
+                        onValueChange={setAdvanceMethod}
+                      >
+                        <SelectTrigger className="h-9 w-28 px-2 text-xs">
+                          <SelectValue placeholder="Method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="CARD">Card</SelectItem>
+                          <SelectItem value="BANK_TRANSFER">
+                            Bank Transfer
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
 
                 <Separator />
 
