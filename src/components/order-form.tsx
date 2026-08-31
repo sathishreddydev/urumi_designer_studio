@@ -1177,11 +1177,25 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   </span>
                 </div>
 
+                {isEditMode && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Already Paid</span>
+                    <span className="font-semibold text-sm text-green-600">
+                      ₹{(totalPaid - advance).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold flex items-center justify-between">
-                    <span>Advance Payment (₹)</span>
+                    <span>{isEditMode ? "Add Payment (₹)" : "Advance Payment (₹)"}</span>
                     <CreditCard className="h-3 w-3 text-muted-foreground" />
                   </Label>
+                  {isEditMode && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Enter an amount to record a new payment. Leave blank to keep the balance unchanged.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <Input
                       type="number"
