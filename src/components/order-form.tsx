@@ -5,22 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Shirt,
-  Calendar,
-  UserCheck,
-  Loader2,
-  Sparkles,
-  CreditCard,
-  ImagePlus,
-  X,
-  Camera,
-  Save,
-  CalendarIcon,
-} from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Shirt, Calendar, UserCheck, Loader as Loader2, Sparkles, CreditCard, ImagePlus, X, Camera, Save, Calendar as CalendarIcon } from "lucide-react";
 import { OutfitTypeSelect } from "@/components/outfit-type-select";
 
 import { Button } from "@/components/ui/button";
