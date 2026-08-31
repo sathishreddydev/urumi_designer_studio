@@ -536,6 +536,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              name: outfit.name,
+              type: outfit.type,
+              occasion: outfit.occasion || undefined,
               price: outfit.price ? Number(outfit.price) : undefined,
               maggamRequired: outfit.maggamRequired,
               designerId: outfit.designerId || undefined,

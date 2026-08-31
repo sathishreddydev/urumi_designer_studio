@@ -126,6 +126,9 @@ export const PATCH = withPermission(
 
     // Fields Designer/Admin can update (not MASTER)
     if (session.role !== "MASTER") {
+      if (body.name !== undefined) updateData.name = body.name;
+      if (body.type !== undefined) updateData.type = body.type;
+      if (body.occasion !== undefined) updateData.occasion = body.occasion || null;
       if (body.designerNotes !== undefined) updateData.designerNotes = body.designerNotes;
       if (body.specialInstructions !== undefined) updateData.specialInstructions = body.specialInstructions;
       if (body.trialNotes !== undefined) updateData.trialNotes = body.trialNotes;
