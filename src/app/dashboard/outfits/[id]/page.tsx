@@ -1073,15 +1073,29 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
-          {/* Add-ons — inline edit for admin/reception, display for others */}
-          {/* {(can("update", "outfit") || (outfit.addOns && outfit.addOns.length > 0)) && (
-            <AddOnsEditor
-              addOns={outfit.addOns || []}
-              canEdit={can("update", "outfit") && role !== "MASTER"}
-              onSave={(addOns) => updateMutation.mutate({ addOns })}
-              isSaving={updateMutation.isPending}
-            />
-          )} */}
+          {/* Add-ons — read-only display */}
+          {outfit.addOns && outfit.addOns.length > 0 && (
+            <div className="space-y-2 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 shadow-sm">
+              <h2 className="text-sm font-semibold flex items-center gap-1.5 border-b border-blue-200 dark:border-blue-800 pb-2 text-blue-700 dark:text-blue-300">
+                <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
+              </h2>
+              <ul className="space-y-1.5 text-xs">
+                {(outfit.addOns as any[]).map((a: any) => (
+                  <li key={a.id} className="flex justify-between items-start gap-2">
+                    <div>
+                      <span className="font-medium">{a.name}</span>
+                      {a.notes && <span className="text-muted-foreground"> — {a.notes}</span>}
+                    </div>
+                    <span className="font-semibold whitespace-nowrap">₹{Number(a.price).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between text-xs font-semibold text-blue-700 dark:text-blue-300">
+                <span>Total Add-ons</span>
+                <span>₹{(outfit.addOns as any[]).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
 
           {/* Measurements */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
