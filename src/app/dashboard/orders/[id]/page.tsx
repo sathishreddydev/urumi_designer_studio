@@ -838,6 +838,26 @@ export default function OrderDetailPage() {
                             </li>
                           ))}
                         </ul>
+                        {/* Add-ons subtotal */}
+                        {(() => {
+                          const addOnsTotal = outfit.addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                          const outfitPrice = Number(outfit.price) || 0;
+                          return (
+                            <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 mt-1 flex justify-between font-semibold">
+                              <span className="text-blue-700 dark:text-blue-300">
+                                Outfit Total
+                                {outfitPrice > 0 && (
+                                  <span className="font-normal text-muted-foreground ml-1">
+                                    (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-blue-700 dark:text-blue-300 text-nowrap">
+                                ₹{(outfitPrice + addOnsTotal).toLocaleString()}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 

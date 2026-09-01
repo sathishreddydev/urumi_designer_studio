@@ -236,8 +236,8 @@ export default function InvoicePage() {
                 </thead>
                 <tbody>
                   {outfits.map((outfit: any, i: number) => (
-                    <>
-                      <tr key={outfit.id} className="border-b border-border/50">
+                    <React.Fragment key={outfit.id}>
+                      <tr className="border-b border-border/50">
                         <td className="py-3 text-muted-foreground">{i + 1}</td>
                         <td className="py-3 font-medium">
                           <p className="truncate max-w-[140px] sm:max-w-none">{outfit.name}</p>
@@ -266,7 +266,7 @@ export default function InvoicePage() {
                           </td>
                         </tr>
                       ))}
-                    </>
+                    </React.Fragment>
                   ))}
                   {/* Subtotal row */}
                   {outfitTotal > 0 && (

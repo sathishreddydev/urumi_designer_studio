@@ -508,10 +508,22 @@ export default function CustomerPortalPage() {
                                   </div>
 
                                   <div className="mt-1 text-xs">
-                                    {outfit.price ? (
-                                      <span className="font-semibold text-foreground">
-                                        ₹{Number(outfit.price).toLocaleString()}
-                                      </span>
+                                    {outfit.price || (outfit.addOns && outfit.addOns.length > 0) ? (
+                                      (() => {
+                                        const outfitPrice = Number(outfit.price) || 0;
+                                        const addOnsTotal = (outfit.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                                        const total = outfitPrice + addOnsTotal;
+                                        return (
+                                          <span className="font-semibold text-foreground">
+                                            ₹{total.toLocaleString()}
+                                            {addOnsTotal > 0 && outfitPrice > 0 && (
+                                              <span className="font-normal text-muted-foreground ml-1 text-[10px]">
+                                                (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
+                                              </span>
+                                            )}
+                                          </span>
+                                        );
+                                      })()
                                     ) : (
                                       <span className="italic text-amber-600">
                                         ⏳ Price to be confirmed
@@ -576,6 +588,15 @@ export default function CustomerPortalPage() {
                                     </li>
                                   ))}
                                 </ul>
+                                {(() => {
+                                  const addOnsTotal = outfit.addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                                  return addOnsTotal > 0 ? (
+                                    <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between font-semibold text-blue-700 dark:text-blue-300">
+                                      <span>Add-ons Total</span>
+                                      <span>₹{addOnsTotal.toLocaleString()}</span>
+                                    </div>
+                                  ) : null;
+                                })()}
                               </div>
                             )}
 
@@ -638,7 +659,7 @@ export default function CustomerPortalPage() {
                       })}
                     </div>
 
-                    {/* Financial Summary Footer */}
+            {/* Financial Summary Footer */}
                     {(order.totalPaid > 0 || order.estimatedAmount) && (
                       <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
                         <div className="flex items-center gap-2">
@@ -649,42 +670,36 @@ export default function CustomerPortalPage() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          {order.estimatedAmount && (
-                            <div>
-                              <p className="text-muted-foreground text-[10px]">
-                                Total
-                              </p>
-
-                              <p className="font-medium font-mono text-xs">
-                                ₹
-                                {Number(order.estimatedAmount).toLocaleString()}
-                              </p>
+                        {(() => {
+                          // Compute live total from outfits (price + addOns) — more accurate than estimatedAmount
+                          const liveTotal = (order.outfits || []).reduce((s: number, o: any) => {
+                            const outfitPrice = Number(o.price) || 0;
+                            const addOnsTotal = (o.addOns || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+                            return s + outfitPrice + addOnsTotal;
+                          }, 0);
+                          const displayTotal = liveTotal > 0 ? liveTotal : Number(order.estimatedAmount) || 0;
+                          const displayBalance = displayTotal > 0 ? Math.max(0, displayTotal - order.totalPaid) : 0;
+                          return (
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              {displayTotal > 0 && (
+                                <div>
+                                  <p className="text-muted-foreground text-[10px]">Total</p>
+                                  <p className="font-medium font-mono text-xs">₹{displayTotal.toLocaleString()}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-muted-foreground text-[10px]">Paid</p>
+                                <p className="font-semibold text-green-600 font-mono text-xs">₹{order.totalPaid.toLocaleString()}</p>
+                              </div>
+                              {displayBalance > 0 && (
+                                <div>
+                                  <p className="text-muted-foreground text-[10px]">Balance</p>
+                                  <p className="font-semibold text-destructive font-mono text-xs">₹{displayBalance.toLocaleString()}</p>
+                                </div>
+                              )}
                             </div>
-                          )}
-
-                          <div>
-                            <p className="text-muted-foreground text-[10px]">
-                              Paid
-                            </p>
-
-                            <p className="font-semibold text-green-600 font-mono text-xs">
-                              ₹{order.totalPaid.toLocaleString()}
-                            </p>
-                          </div>
-
-                          {orderBalance > 0 && (
-                            <div>
-                              <p className="text-muted-foreground text-[10px]">
-                                Balance
-                              </p>
-
-                              <p className="font-semibold text-destructive font-mono text-xs">
-                                ₹{orderBalance.toLocaleString()}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                          );
+                        })()}
 
                         {/* Individual payment records */}
                         {order.payments && order.payments.length > 0 && (

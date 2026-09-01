@@ -1046,24 +1046,14 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
-          {/* Add-ons — only show if present */}
-          {outfit.addOns && outfit.addOns.length > 0 && (
-            <div className="space-y-2 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 text-card-foreground shadow-sm">
-              <h2 className="text-sm font-semibold flex items-center gap-1.5 border-b pb-2 text-blue-700 dark:text-blue-300">
-                <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
-              </h2>
-              <ul className="space-y-1.5 text-xs">
-                {outfit.addOns.map((addOn: any) => (
-                  <li key={addOn.id} className="flex justify-between items-start gap-2">
-                    <div>
-                      <span className="font-medium">{addOn.name}</span>
-                      {addOn.notes && <span className="text-muted-foreground"> — {addOn.notes}</span>}
-                    </div>
-                    <span className="font-semibold whitespace-nowrap">₹{Number(addOn.price).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* Add-ons — inline edit for admin/reception, display for others */}
+          {(can("update", "outfit") || (outfit.addOns && outfit.addOns.length > 0)) && (
+            <AddOnsEditor
+              addOns={outfit.addOns || []}
+              canEdit={can("update", "outfit") && role !== "MASTER"}
+              onSave={(addOns) => updateMutation.mutate({ addOns })}
+              isSaving={updateMutation.isPending}
+            />
           )}
 
           {/* Measurements */}
@@ -2312,6 +2302,196 @@ function DesignNotesSection({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── ADD-ONS EDITOR ───────────────────────────────────────────────────────────
+
+interface AddOnRow {
+  id: string;
+  name: string;
+  price: string;
+  notes: string;
+}
+
+function AddOnsEditor({
+  addOns,
+  canEdit,
+  onSave,
+  isSaving,
+}: {
+  addOns: any[];
+  canEdit: boolean;
+  onSave: (addOns: { id: string; name: string; price: number; notes?: string }[]) => void;
+  isSaving: boolean;
+}) {
+  const [rows, setRows] = useState<AddOnRow[]>(
+    addOns.map((a) => ({
+      id: a.id || crypto.randomUUID(),
+      name: a.name || "",
+      price: String(a.price ?? ""),
+      notes: a.notes || "",
+    })),
+  );
+  const [dirty, setDirty] = useState(false);
+
+  // Re-sync when server data changes (e.g. after save)
+  useEffect(() => {
+    setRows(
+      addOns.map((a) => ({
+        id: a.id || crypto.randomUUID(),
+        name: a.name || "",
+        price: String(a.price ?? ""),
+        notes: a.notes || "",
+      })),
+    );
+    setDirty(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(addOns)]);
+
+  function update(idx: number, field: keyof AddOnRow, value: string) {
+    setRows((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+    setDirty(true);
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, { id: crypto.randomUUID(), name: "", price: "", notes: "" }]);
+    setDirty(true);
+  }
+
+  function removeRow(idx: number) {
+    setRows((prev) => prev.filter((_, i) => i !== idx));
+    setDirty(true);
+  }
+
+  function handleSave() {
+    onSave(
+      rows
+        .filter((r) => r.name.trim() && r.price)
+        .map((r) => ({ id: r.id, name: r.name.trim(), price: Number(r.price), notes: r.notes.trim() || undefined })),
+    );
+    setDirty(false);
+  }
+
+  const total = rows.reduce((s, r) => s + (Number(r.price) || 0), 0);
+
+  // Read-only view when no edit permission
+  if (!canEdit) {
+    if (rows.length === 0) return null;
+    return (
+      <div className="space-y-2 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 shadow-sm">
+        <h2 className="text-sm font-semibold flex items-center gap-1.5 border-b border-blue-200 dark:border-blue-800 pb-2 text-blue-700 dark:text-blue-300">
+          <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
+        </h2>
+        <ul className="space-y-1.5 text-xs">
+          {rows.map((r) => (
+            <li key={r.id} className="flex justify-between items-start gap-2">
+              <div>
+                <span className="font-medium">{r.name}</span>
+                {r.notes && <span className="text-muted-foreground"> — {r.notes}</span>}
+              </div>
+              <span className="font-semibold whitespace-nowrap">₹{Number(r.price).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+        {rows.length > 0 && (
+          <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between text-xs font-semibold text-blue-700 dark:text-blue-300">
+            <span>Total Add-ons</span>
+            <span>₹{total.toLocaleString()}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Editable view
+  return (
+    <div className="space-y-3 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 shadow-sm">
+      <div className="flex items-center justify-between border-b border-blue-200 dark:border-blue-800 pb-2">
+        <h2 className="text-sm font-semibold flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
+          <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
+        </h2>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={addRow}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Add Item
+        </Button>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-2">
+          No add-ons yet. Click <strong>Add Item</strong> to add sourced items like dupattas.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row, idx) => (
+            <div key={row.id} className="flex gap-2 items-start p-2 bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Item name (e.g. Dupatta)"
+                  value={row.name}
+                  onChange={(e) => update(idx, "name", e.target.value)}
+                  className="h-8 text-xs"
+                />
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                  <Input
+                    placeholder="Price"
+                    type="number"
+                    min="0"
+                    value={row.price}
+                    onChange={(e) => update(idx, "price", e.target.value)}
+                    className="h-8 text-xs pl-6"
+                  />
+                </div>
+                <Input
+                  placeholder="Notes (optional)"
+                  value={row.notes}
+                  onChange={(e) => update(idx, "notes", e.target.value)}
+                  className="h-8 text-xs col-span-2"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => removeRow(idx)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Totals + Save */}
+      <div className="flex items-center justify-between gap-3 pt-1 border-t border-blue-200 dark:border-blue-800">
+        {total > 0 ? (
+          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+            Total: ₹{total.toLocaleString()}
+          </span>
+        ) : (
+          <span />
+        )}
+        <Button
+          size="sm"
+          className="h-7 text-xs"
+          disabled={!dirty || isSaving}
+          onClick={handleSave}
+        >
+          {isSaving ? "Saving…" : "Save Add-ons"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -584,6 +584,22 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               }
             }
           }
+        } else if (
+          !outfit.isNew &&
+          !outfit.isDeleted &&
+          outfit.id &&
+          !isEditable
+        ) {
+          // Outfit is in production — only update add-ons (always allowed by API)
+          await fetch(`/api/outfits/${outfit.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              addOns: (outfit.addOns || [])
+                .filter((a) => a.name && a.price)
+                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
+            }),
+          });
         }
       }
     },
@@ -817,8 +833,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <CardContent className="pt-4 space-y-4">
                     {isEditMode && !isEditable && (
                       <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1.5">
-                        This outfit is in production and cannot be edited or
-                        removed.
+                        This outfit is in production — name, type, price and other fields are locked. You can still edit add-ons below.
                       </p>
                     )}
 

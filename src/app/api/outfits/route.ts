@@ -261,6 +261,7 @@ export const POST = withPermission(
         designerId: parsed.data.designerId || null,
         measurementSnapshotId,
         garmentMeasurements: Object.keys(garmentMeasurements).length > 0 ? garmentMeasurements : null,
+        addOns: parsed.data.addOns && parsed.data.addOns.length > 0 ? parsed.data.addOns : null,
       })
       .returning();
 
