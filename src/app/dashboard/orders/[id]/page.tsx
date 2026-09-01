@@ -225,12 +225,16 @@ export default function OrderDetailPage() {
         0,
       );
 
-      const estimated = Number(order.estimatedAmount) || calculatedTotal;
+      // Use live outfit+addOns sum as source of truth.
+      // Fall back to order.estimatedAmount only when no outfit prices are set yet.
+      const estimated = calculatedTotal > 0 ? calculatedTotal : (Number(order.estimatedAmount) || 0);
+      // Outfits with no price AND no addOns = truly unpriced
       const unpriced = (order.outfits || []).filter(
-        (o: any) =>
-          o.price === null ||
-          o.price === undefined ||
-          String(o.price).trim() === "",
+        (o: any) => {
+          const hasOutfitPrice = o.price !== null && o.price !== undefined && String(o.price).trim() !== "";
+          const hasAddOns = (o.addOns || []).length > 0;
+          return !hasOutfitPrice && !hasAddOns;
+        }
       );
 
       return {
@@ -540,7 +544,7 @@ export default function OrderDetailPage() {
                 <Shirt className="h-4 w-4 text-primary" />
                 Outfits ({order.outfits?.length || 0})
               </CardTitle>
-              {/* {!isCompleted && can("create", "outfit") && (
+              {!isCompleted && can("create", "outfit") && (
                 <Button
                   size="sm"
                   variant={showAddOutfit ? "secondary" : "default"}
@@ -554,7 +558,7 @@ export default function OrderDetailPage() {
                   )}
                   {showAddOutfit ? "Close Form" : "Add Outfit"}
                 </Button>
-              )} */}
+              )}
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
               {/* Inline Add Outfit Form Panel */}
@@ -803,13 +807,13 @@ export default function OrderDetailPage() {
                           {formatStatus(outfit.status)}
                         </Badge>
                         <p className="text-sm font-bold leading-5">
-                          {outfit.price ? (
-                            `₹${Number(outfit.price).toLocaleString()}`
-                          ) : (
-                            <span className="text-amber-600 text-xs font-normal">
-                              Price Pending
-                            </span>
-                          )}
+                          {(() => {
+                            const outfitPrice = Number(outfit.price) || 0;
+                            const addOnsTotal = (outfit.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                            const total = outfitPrice + addOnsTotal;
+                            if (total > 0) return `₹${total.toLocaleString()}`;
+                            return <span className="text-amber-600 text-xs font-normal">Price Pending</span>;
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -1058,10 +1062,7 @@ export default function OrderDetailPage() {
                       Total
                     </span>
                     <p className="font-bold text-sm">
-                      ₹
-                      {(
-                        Number(order.estimatedAmount) || orderTotal
-                      ).toLocaleString()}
+                      ₹{(orderTotal > 0 ? orderTotal : (Number(order.estimatedAmount) || 0)).toLocaleString()}
                     </p>
                   </div>
                   <div>
@@ -1131,14 +1132,16 @@ export default function OrderDetailPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Whole Order</SelectItem>
-                          {(order.outfits || []).map((o: any) => (
-                            <SelectItem key={o.id} value={o.id}>
-                              {o.name}{" "}
-                              {o.price
-                                ? `(₹${Number(o.price).toLocaleString()})`
-                                : ""}
-                            </SelectItem>
-                          ))}
+                          {(order.outfits || []).map((o: any) => {
+                              const outfitPrice = Number(o.price) || 0;
+                              const addOnsTotal = (o.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                              const total = outfitPrice + addOnsTotal;
+                              return (
+                                <SelectItem key={o.id} value={o.id}>
+                                  {o.name}{total > 0 ? ` (₹${total.toLocaleString()})` : ""}
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                     </div>
