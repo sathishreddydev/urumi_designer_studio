@@ -984,32 +984,6 @@ export default function OutfitDetailPage() {
             </h2>
 
             <div className="space-y-3 text-xs">
-              {/* Price — always show, hidden from MASTER if not set */}
-              {(outfit.price || (outfit.addOns && outfit.addOns.length > 0)) && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <IndianRupee className="h-3.5 w-3.5" /> Price
-                    </span>
-                    <div className="text-right">
-                      {outfit.price ? (
-                        <span className="font-semibold">
-                          ₹{Number(outfit.price).toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-amber-600 font-normal">Pending</span>
-                      )}
-                      {outfit.addOns && outfit.addOns.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          + ₹{(outfit.addOns as any[]).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0).toLocaleString()} add-ons
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Separator />
-                </>
-              )}
-
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Trial Date
@@ -1073,27 +1047,50 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
-          {/* Add-ons — read-only display */}
-          {outfit.addOns && outfit.addOns.length > 0 && (
-            <div className="space-y-2 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 shadow-sm">
-              <h2 className="text-sm font-semibold flex items-center gap-1.5 border-b border-blue-200 dark:border-blue-800 pb-2 text-blue-700 dark:text-blue-300">
-                <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
+          {/* Price Summary — item price + add-ons */}
+          {(outfit.price || (outfit.addOns && outfit.addOns.length > 0)) && (
+            <div className="rounded-lg border bg-card p-4 shadow-sm space-y-2 text-xs">
+              <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+                <IndianRupee className="h-4 w-4" /> Price Summary
               </h2>
-              <ul className="space-y-1.5 text-xs">
-                {(outfit.addOns as any[]).map((a: any) => (
-                  <li key={a.id} className="flex justify-between items-start gap-2">
-                    <div>
-                      <span className="font-medium">{a.name}</span>
-                      {a.notes && <span className="text-muted-foreground"> — {a.notes}</span>}
-                    </div>
-                    <span className="font-semibold whitespace-nowrap">₹{Number(a.price).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between text-xs font-semibold text-blue-700 dark:text-blue-300">
-                <span>Total Add-ons</span>
-                <span>₹{(outfit.addOns as any[]).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0).toLocaleString()}</span>
+
+              {/* Item price row */}
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-muted-foreground">{outfit.name}</span>
+                <span className="font-medium">
+                  {outfit.price
+                    ? `₹${Number(outfit.price).toLocaleString()}`
+                    : <span className="text-amber-600">Price Pending</span>}
+                </span>
               </div>
+
+              {/* Add-on rows */}
+              {(outfit.addOns as any[] || []).map((a: any) => (
+                <div key={a.id} className="flex justify-between items-start py-0.5 pl-3 border-l-2 border-blue-200 dark:border-blue-800">
+                  <div className="text-muted-foreground">
+                    <span className="font-medium text-foreground">{a.name}</span>
+                    {a.notes && <span className="ml-1 text-muted-foreground">— {a.notes}</span>}
+                    <span className="ml-1 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1 rounded">add-on</span>
+                  </div>
+                  <span className="font-medium whitespace-nowrap ml-2">₹{Number(a.price).toLocaleString()}</span>
+                </div>
+              ))}
+
+              {/* Total — only show when both price and add-ons exist */}
+              {outfit.price && outfit.addOns && outfit.addOns.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between items-center font-semibold pt-0.5">
+                    <span>Total</span>
+                    <span>
+                      ₹{(
+                        Number(outfit.price) +
+                        (outfit.addOns as any[]).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0)
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
