@@ -23,7 +23,8 @@ export const GET = withPermission(
     const customerOrders = await db
       .select()
       .from(orders)
-      .where(eq(orders.customerId, id));
+      .where(eq(orders.customerId, id))
+      .orderBy(desc(orders.createdAt));
 
     let allMeasurements: any[] = [];
     allMeasurements = await db
