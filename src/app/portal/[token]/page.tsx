@@ -559,6 +559,26 @@ export default function CustomerPortalPage() {
                                 />
                               )}
 
+                            {/* Add-ons Display */}
+                            {outfit.addOns && outfit.addOns.length > 0 && (
+                              <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
+                                <p className="font-medium text-blue-700 dark:text-blue-300">
+                                  Add-ons (Sourced Items)
+                                </p>
+                                <ul className="space-y-1">
+                                  {outfit.addOns.map((addOn: any) => (
+                                    <li key={addOn.id} className="flex justify-between items-start gap-2">
+                                      <div>
+                                        <span className="font-medium">{addOn.name}</span>
+                                        {addOn.notes && <span className="text-muted-foreground"> — {addOn.notes}</span>}
+                                      </div>
+                                      <span className="font-semibold text-nowrap">₹{Number(addOn.price).toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
                             {/* Design Reference Images */}
                             {designRefs.length > 0 && (
                               <div className="space-y-2 pt-2 border-t">

@@ -1046,6 +1046,26 @@ export default function OutfitDetailPage() {
             </div>
           </div>
 
+          {/* Add-ons — only show if present */}
+          {outfit.addOns && outfit.addOns.length > 0 && (
+            <div className="space-y-2 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4 text-card-foreground shadow-sm">
+              <h2 className="text-sm font-semibold flex items-center gap-1.5 border-b pb-2 text-blue-700 dark:text-blue-300">
+                <Plus className="h-4 w-4" /> Add-ons (Sourced Items)
+              </h2>
+              <ul className="space-y-1.5 text-xs">
+                {outfit.addOns.map((addOn: any) => (
+                  <li key={addOn.id} className="flex justify-between items-start gap-2">
+                    <div>
+                      <span className="font-medium">{addOn.name}</span>
+                      {addOn.notes && <span className="text-muted-foreground"> — {addOn.notes}</span>}
+                    </div>
+                    <span className="font-semibold whitespace-nowrap">₹{Number(addOn.price).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Measurements */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
             <h2 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">

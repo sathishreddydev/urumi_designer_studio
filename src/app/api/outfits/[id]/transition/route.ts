@@ -61,12 +61,16 @@ export const POST = withAuth(async (request, { params, session }) => {
       .where(eq(outfits.id, id));
 
     if (outfitData) {
-      // Use live outfit price sum; fall back to order.estimatedAmount if prices not set
+      // Use live outfit price sum (incl. addOns); fall back to order.estimatedAmount if prices not set
       const orderOutfits = await db
-        .select({ price: outfits.price })
+        .select({ price: outfits.price, addOns: outfits.addOns })
         .from(outfits)
         .where(eq(outfits.orderId, outfitData.orderId));
-      const outfitTotal = orderOutfits.reduce((s, o) => s + (Number(o.price) || 0), 0);
+      const outfitTotal = orderOutfits.reduce((s, o) => {
+        const outfitPrice = Number(o.price) || 0;
+        const addOnsTotal = ((o.addOns as any[]) || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+        return s + outfitPrice + addOnsTotal;
+      }, 0);
 
       let orderTotal = outfitTotal;
       if (orderTotal === 0) {

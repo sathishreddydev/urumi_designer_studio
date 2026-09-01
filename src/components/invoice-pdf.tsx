@@ -5,6 +5,7 @@
  * Uses @react-pdf/renderer which renders entirely in the browser (no server needed).
  */
 
+import React from "react";
 import {
   Document,
   Page,
@@ -35,6 +36,7 @@ export interface InvoicePDFData {
     name: string;
     type: string;
     price?: string | number | null;
+    addOns?: Array<{ id: string; name: string; price: number; notes?: string }>;
   }>;
   payments: Array<{
     id: string;
@@ -359,15 +361,29 @@ export function InvoicePDFDocument({ data }: { data: InvoicePDFData }) {
           <Text style={S.colHeaderPrice}>Price</Text>
         </View>
         {outfits.map((outfit, i) => (
-          <View
-            key={outfit.id}
-            style={i === outfits.length - 1 ? S.tableRowLast : S.tableRow}
-          >
-            <Text style={S.colNo}>{i + 1}</Text>
-            <Text style={S.colName}>{outfit.name}</Text>
-            <Text style={S.colType}>{outfit.type}</Text>
-            <Text style={S.colPrice}>{fmtCurrency(outfit.price)}</Text>
-          </View>
+          <React.Fragment key={outfit.id}>
+            <View
+              style={i === outfits.length - 1 && !(outfit.addOns?.length) ? S.tableRowLast : S.tableRow}
+            >
+              <Text style={S.colNo}>{i + 1}</Text>
+              <Text style={S.colName}>{outfit.name}</Text>
+              <Text style={S.colType}>{outfit.type}</Text>
+              <Text style={S.colPrice}>{fmtCurrency(outfit.price)}</Text>
+            </View>
+            {(outfit.addOns || []).map((addOn, ai) => (
+              <View
+                key={addOn.id}
+                style={i === outfits.length - 1 && ai === (outfit.addOns!.length - 1) ? S.tableRowLast : S.tableRow}
+              >
+                <Text style={S.colNo} />
+                <Text style={{ ...S.colName, color: "#666666", fontSize: 9 }}>
+                  ↳ {addOn.name}{addOn.notes ? ` — ${addOn.notes}` : ""}
+                </Text>
+                <Text style={{ ...S.colType, color: "#666666", fontSize: 9 }}>Add-on</Text>
+                <Text style={{ ...S.colPrice, color: "#666666", fontSize: 9 }}>{fmtCurrency(addOn.price)}</Text>
+              </View>
+            ))}
+          </React.Fragment>
         ))}
 
         {/* ── Payments ── */}

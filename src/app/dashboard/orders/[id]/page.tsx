@@ -217,7 +217,11 @@ export default function OrderDetailPage() {
         .reduce((s: number, p: any) => s + Number(p.amount), 0);
 
       const calculatedTotal = (order.outfits || []).reduce(
-        (s: number, o: any) => s + (Number(o.price) || 0),
+        (s: number, o: any) => {
+          const outfitPrice = Number(o.price) || 0;
+          const addOnsTotal = (o.addOns || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+          return s + outfitPrice + addOnsTotal;
+        },
         0,
       );
 
@@ -816,6 +820,26 @@ export default function OrderDetailPage() {
                       orderId={params.id as string}
                       disabled={isCompleted || !can("update", "outfit")}
                     />
+
+                    {/* Add-ons Display */}
+                    {outfit.addOns && outfit.addOns.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
+                        <p className="font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                          <Plus className="h-3.5 w-3.5" /> Add-ons (Sourced Items)
+                        </p>
+                        <ul className="space-y-1">
+                          {outfit.addOns.map((addOn: any) => (
+                            <li key={addOn.id} className="flex justify-between items-start gap-2">
+                              <div>
+                                <span className="font-medium">{addOn.name}</span>
+                                {addOn.notes && <span className="text-muted-foreground"> — {addOn.notes}</span>}
+                              </div>
+                              <span className="font-semibold text-nowrap">₹{Number(addOn.price).toLocaleString()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Customer Fabric References */}
                     {(() => {

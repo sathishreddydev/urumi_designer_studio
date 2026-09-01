@@ -189,6 +189,13 @@ function CameraCaptureModal({
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface OutfitAddOn {
+  id: string;
+  name: string;
+  price: string; // string in form state, converted to number on save
+  notes: string;
+}
+
 interface OutfitEntry {
   id?: string;
   name: string;
@@ -199,9 +206,14 @@ interface OutfitEntry {
   designerId: string;
   fabricImages: File[]; // new images to upload
   existingFabricRefs?: any[]; // already-saved refs (edit mode)
+  addOns: OutfitAddOn[];
   status?: string;
   isNew?: boolean;
   isDeleted?: boolean;
+}
+
+function emptyAddOn(): OutfitAddOn {
+  return { id: crypto.randomUUID(), name: "", price: "", notes: "" };
 }
 
 function emptyOutfit(isNew = true): OutfitEntry {
@@ -214,6 +226,7 @@ function emptyOutfit(isNew = true): OutfitEntry {
     designerId: "",
     fabricImages: [],
     existingFabricRefs: [],
+    addOns: [],
     isNew,
   };
 }
@@ -308,6 +321,12 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         existingFabricRefs: (o.references || []).filter(
           (r: any) => r.type === "FABRIC",
         ),
+        addOns: (o.addOns || []).map((a: any) => ({
+          id: a.id || crypto.randomUUID(),
+          name: a.name || "",
+          price: String(a.price ?? ""),
+          notes: a.notes || "",
+        })),
         status: o.status || "DRAFT",
         isNew: false,
         isDeleted: false,
@@ -319,10 +338,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const activeOutfits = outfits.filter((o) => !o.isDeleted);
-  const estimatedTotal = activeOutfits.reduce(
-    (s, o) => s + (Number(o.price) || 0),
-    0,
-  );
+  const estimatedTotal = activeOutfits.reduce((s, o) => {
+    const outfitPrice = Number(o.price) || 0;
+    const addOnsTotal = (o.addOns || []).reduce((as, a) => as + (Number(a.price) || 0), 0);
+    return s + outfitPrice + addOnsTotal;
+  }, 0);
   const advance = Number(advanceAmount) || 0;
   const alreadyPaid = isEditMode
     ? (order?.payments || [])
@@ -338,10 +358,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const createMutation = useMutation({
     mutationFn: async () => {
       const validOutfits = outfits.filter((o) => o.name && o.type);
-      const calculatedTotal = validOutfits.reduce(
-        (s, o) => s + (Number(o.price) || 0),
-        0,
-      );
+      const calculatedTotal = validOutfits.reduce((s, o) => {
+        const outfitPrice = Number(o.price) || 0;
+        const addOnsTotal = (o.addOns || []).reduce((as, a) => as + (Number(a.price) || 0), 0);
+        return s + outfitPrice + addOnsTotal;
+      }, 0);
 
       const orderRes = await fetch("/api/orders", {
         method: "POST",
@@ -372,6 +393,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             deliveryDate: deliveryDate?.toISOString() || undefined,
             trialDate: trialDate?.toISOString() || undefined,
             designerId: outfit.designerId || undefined,
+            addOns: (outfit.addOns || [])
+              .filter((a) => a.name && a.price)
+              .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
           }),
         });
 
@@ -491,6 +515,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               deliveryDate: deliveryDate?.toISOString() || undefined,
               trialDate: trialDate?.toISOString() || undefined,
               designerId: outfit.designerId || undefined,
+              addOns: (outfit.addOns || [])
+                .filter((a) => a.name && a.price)
+                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
             }),
           });
 
@@ -532,6 +559,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               designerId: outfit.designerId || undefined,
               deliveryDate: deliveryDate?.toISOString() || undefined,
               trialDate: trialDate?.toISOString() || undefined,
+              addOns: (outfit.addOns || [])
+                .filter((a) => a.name && a.price)
+                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
             }),
           });
 
@@ -895,6 +925,88 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                         Maggam / Hand Embroidery Work Required
                       </label>
+                    </div>
+
+                    <Separator />
+
+                    {/* Add-ons Section */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold flex items-center gap-1.5">
+                          <Plus className="h-3.5 w-3.5 text-primary" />
+                          Add-ons (Sourced Items)
+                        </Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const updated = [...outfits];
+                            updated[index].addOns = [...updated[index].addOns, emptyAddOn()];
+                            setOutfits(updated);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Add Item
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Items sourced externally (e.g., dupatta) with separate pricing
+                      </p>
+
+                      {outfit.addOns.length > 0 && (
+                        <div className="space-y-2">
+                          {outfit.addOns.map((addOn, addOnIdx) => (
+                            <div key={addOn.id} className="flex gap-2 items-start p-2 border rounded-md">
+                              <div className="flex-1 grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="Item name"
+                                  value={addOn.name}
+                                  onChange={(e) => {
+                                    const updated = [...outfits];
+                                    updated[index].addOns[addOnIdx].name = e.target.value;
+                                    setOutfits(updated);
+                                  }}
+                                  className="h-8 text-xs"
+                                />
+                                <Input
+                                  placeholder="Price"
+                                  type="number"
+                                  value={addOn.price}
+                                  onChange={(e) => {
+                                    const updated = [...outfits];
+                                    updated[index].addOns[addOnIdx].price = e.target.value;
+                                    setOutfits(updated);
+                                  }}
+                                  className="h-8 text-xs"
+                                />
+                                <Input
+                                  placeholder="Notes (optional)"
+                                  value={addOn.notes}
+                                  onChange={(e) => {
+                                    const updated = [...outfits];
+                                    updated[index].addOns[addOnIdx].notes = e.target.value;
+                                    setOutfits(updated);
+                                  }}
+                                  className="h-8 text-xs col-span-2"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const updated = [...outfits];
+                                  updated[index].addOns = updated[index].addOns.filter((_, i) => i !== addOnIdx);
+                                  setOutfits(updated);
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <Separator />

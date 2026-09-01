@@ -140,6 +140,9 @@ export const outfits = pgTable("outfits", {
   garmentMeasurements: jsonb("garment_measurements").$type<Record<string, string>>(),
   // Voice notes — array of { id, url, label, createdAt } recorded on the outfit
   voiceNotes: jsonb("voice_notes").$type<{ id: string; url: string; label: string; createdAt: string }[]>(),
+  // Add-ons — sourced/external items attached to this outfit (e.g. dupatta, lining)
+  // Each item has its own price and does NOT go through the production workflow.
+  addOns: jsonb("add_ons").$type<{ id: string; name: string; price: number; notes?: string }[]>(),
   // Actual timestamps stamped automatically on status transition.
   // *Date fields = planned dates set by staff; *At fields = actual event timestamps.
   trialedAt: timestamp("trialed_at"),

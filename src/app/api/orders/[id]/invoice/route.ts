@@ -35,7 +35,7 @@ export const GET = withAuth(async (_request, { params }) => {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Get outfits — include price for line items
+  // Get outfits — include price + addOns for line items
   const orderOutfits = await db
     .select({
       id: outfits.id,
@@ -43,6 +43,7 @@ export const GET = withAuth(async (_request, { params }) => {
       type: outfits.type,
       status: outfits.status,
       price: outfits.price,
+      addOns: outfits.addOns,
     })
     .from(outfits)
     .where(eq(outfits.orderId, id));
@@ -82,8 +83,12 @@ export const GET = withAuth(async (_request, { params }) => {
     .filter((p) => p.status === "SETTLED")
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
-  // Use live outfit sum as the source of truth for the invoice total
-  const outfitTotal = orderOutfits.reduce((s, o) => s + Number(o.price || 0), 0);
+  // Use live outfit sum (price + addOns) as the source of truth for the invoice total
+  const outfitTotal = orderOutfits.reduce((s, o) => {
+    const outfitPrice = Number(o.price || 0);
+    const addOnsTotal = ((o.addOns as any[]) || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+    return s + outfitPrice + addOnsTotal;
+  }, 0);
   const invoiceTotal = outfitTotal > 0 ? outfitTotal : (order.estimatedAmount ? Number(order.estimatedAmount) : 0);
   // Show real balance — negative means overpaid (credit due)
   const balance = invoiceTotal > 0 ? invoiceTotal - totalPaid : 0;
@@ -121,9 +126,13 @@ export const POST = withPermission(
       );
     }
 
-    // compute total — always use live outfit price sum (source of truth)
-    const orderOutfits = await db.select({ price: outfits.price }).from(outfits).where(eq(outfits.orderId, id));
-    const outfitTotal = orderOutfits.reduce((s, o) => s + Number(o.price || 0), 0);
+    // compute total — always use live outfit price sum + addOns (source of truth)
+    const orderOutfits = await db.select({ price: outfits.price, addOns: outfits.addOns }).from(outfits).where(eq(outfits.orderId, id));
+    const outfitTotal = orderOutfits.reduce((s, o) => {
+      const outfitPrice = Number(o.price || 0);
+      const addOnsTotal = ((o.addOns as any[]) || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+      return s + outfitPrice + addOnsTotal;
+    }, 0);
     // fall back to estimatedAmount snapshot only if no outfit prices set
     const total = outfitTotal > 0 ? outfitTotal : (order.estimatedAmount ? Number(order.estimatedAmount) : 0);
 

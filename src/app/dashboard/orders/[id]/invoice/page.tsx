@@ -236,22 +236,37 @@ export default function InvoicePage() {
                 </thead>
                 <tbody>
                   {outfits.map((outfit: any, i: number) => (
-                    <tr key={outfit.id} className="border-b border-border/50">
-                      <td className="py-3 text-muted-foreground">{i + 1}</td>
-                      <td className="py-3 font-medium">
-                        <p className="truncate max-w-[140px] sm:max-w-none">{outfit.name}</p>
-                        <p className="text-xs text-muted-foreground sm:hidden">{outfit.type}</p>
-                      </td>
-                      <td className="py-3 text-muted-foreground hidden sm:table-cell">{outfit.type}</td>
-                      <td className="py-3 hidden sm:table-cell">
-                        <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
-                          {formatStatus(outfit.status)}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-right font-medium whitespace-nowrap">
-                        {outfit.price ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={outfit.id} className="border-b border-border/50">
+                        <td className="py-3 text-muted-foreground">{i + 1}</td>
+                        <td className="py-3 font-medium">
+                          <p className="truncate max-w-[140px] sm:max-w-none">{outfit.name}</p>
+                          <p className="text-xs text-muted-foreground sm:hidden">{outfit.type}</p>
+                        </td>
+                        <td className="py-3 text-muted-foreground hidden sm:table-cell">{outfit.type}</td>
+                        <td className="py-3 hidden sm:table-cell">
+                          <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
+                            {formatStatus(outfit.status)}
+                          </Badge>
+                        </td>
+                        <td className="py-3 text-right font-medium whitespace-nowrap">
+                          {outfit.price ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
+                        </td>
+                      </tr>
+                      {/* Add-on sub-rows */}
+                      {(outfit.addOns || []).map((addOn: any) => (
+                        <tr key={addOn.id} className="border-b border-border/30 bg-muted/20">
+                          <td className="py-1.5" />
+                          <td className="py-1.5 pl-4 text-xs text-muted-foreground" colSpan={2}>
+                            ↳ {addOn.name}{addOn.notes ? ` — ${addOn.notes}` : ""}
+                          </td>
+                          <td className="py-1.5 hidden sm:table-cell" />
+                          <td className="py-1.5 text-right text-xs font-medium whitespace-nowrap">
+                            ₹{Number(addOn.price).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </>
                   ))}
                   {/* Subtotal row */}
                   {outfitTotal > 0 && (

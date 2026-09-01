@@ -149,6 +149,11 @@ export const PATCH = withPermission(
       if (body.garmentMeasurements !== undefined) updateData.garmentMeasurements = body.garmentMeasurements;
     }
 
+    // Add-ons can be updated by admins/reception
+    if (body.addOns !== undefined) {
+      updateData.addOns = body.addOns;
+    }
+
     // Status changes go through the transition endpoint
     // But allow basic field updates here
 
@@ -171,12 +176,16 @@ export const PATCH = withPermission(
       await onTrialDateSet(id, session.id);
     }
 
-    // If price changed, recalculate order's estimatedAmount
-    if (body.price !== undefined) {
+    // If price or addOns changed, recalculate order's estimatedAmount
+    if (body.price !== undefined || body.addOns !== undefined) {
       const [outfitData] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
       if (outfitData) {
-        const orderOutfits = await db.select({ price: outfits.price }).from(outfits).where(eq(outfits.orderId, outfitData.orderId));
-        const newTotal = orderOutfits.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+        const orderOutfits = await db.select({ price: outfits.price, addOns: outfits.addOns }).from(outfits).where(eq(outfits.orderId, outfitData.orderId));
+        const newTotal = orderOutfits.reduce((sum, o) => {
+          const outfitPrice = Number(o.price) || 0;
+          const addOnsTotal = (o.addOns as any[] || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+          return sum + outfitPrice + addOnsTotal;
+        }, 0);
         await db.update(orders).set({ estimatedAmount: String(newTotal), updatedAt: new Date() }).where(eq(orders.id, outfitData.orderId));
       }
     }

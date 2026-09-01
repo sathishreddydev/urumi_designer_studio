@@ -27,10 +27,14 @@ export const POST = withPermission(
     }
 
     const orderOutfits = await db
-      .select({ price: outfits.price })
+      .select({ price: outfits.price, addOns: outfits.addOns })
       .from(outfits)
       .where(eq(outfits.orderId, order.id));
-    const outfitTotal = orderOutfits.reduce((sum, outfit) => sum + (Number(outfit.price) || 0), 0);
+    const outfitTotal = orderOutfits.reduce((sum, outfit) => {
+      const outfitPrice = Number(outfit.price) || 0;
+      const addOnsTotal = ((outfit.addOns as any[]) || []).reduce((as: number, a: any) => as + (Number(a.price) || 0), 0);
+      return sum + outfitPrice + addOnsTotal;
+    }, 0);
     const orderTotal = outfitTotal > 0 ? outfitTotal : Number(order.estimatedAmount) || 0;
 
     if (orderTotal > 0) {
