@@ -540,7 +540,7 @@ export default function OrderDetailPage() {
                 <Shirt className="h-4 w-4 text-primary" />
                 Outfits ({order.outfits?.length || 0})
               </CardTitle>
-              {!isCompleted && can("create", "outfit") && (
+              {/* {!isCompleted && can("create", "outfit") && (
                 <Button
                   size="sm"
                   variant={showAddOutfit ? "secondary" : "default"}
@@ -554,7 +554,7 @@ export default function OrderDetailPage() {
                   )}
                   {showAddOutfit ? "Close Form" : "Add Outfit"}
                 </Button>
-              )}
+              )} */}
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
               {/* Inline Add Outfit Form Panel */}
@@ -1031,7 +1031,7 @@ export default function OrderDetailPage() {
                   <CreditCard className="h-4 w-4 text-primary" /> Payment
                   Summary
                 </CardTitle>
-                {!isCompleted && can("create", "payment") && (
+                {!isCompleted && can("create", "payment") && balance > 0 && (
                   <Button
                     size="sm"
                     variant={showAddPayment ? "secondary" : "outline"}
