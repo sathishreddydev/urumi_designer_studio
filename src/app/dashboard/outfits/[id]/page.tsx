@@ -56,6 +56,7 @@ import {
   Layers,
   Camera,
   ZoomIn,
+  IndianRupee,
 } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -983,6 +984,32 @@ export default function OutfitDetailPage() {
             </h2>
 
             <div className="space-y-3 text-xs">
+              {/* Price — always show, hidden from MASTER if not set */}
+              {(outfit.price || (outfit.addOns && outfit.addOns.length > 0)) && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <IndianRupee className="h-3.5 w-3.5" /> Price
+                    </span>
+                    <div className="text-right">
+                      {outfit.price ? (
+                        <span className="font-semibold">
+                          ₹{Number(outfit.price).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 font-normal">Pending</span>
+                      )}
+                      {outfit.addOns && outfit.addOns.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          + ₹{(outfit.addOns as any[]).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0).toLocaleString()} add-ons
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
+
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Trial Date
@@ -1047,14 +1074,14 @@ export default function OutfitDetailPage() {
           </div>
 
           {/* Add-ons — inline edit for admin/reception, display for others */}
-          {(can("update", "outfit") || (outfit.addOns && outfit.addOns.length > 0)) && (
+          {/* {(can("update", "outfit") || (outfit.addOns && outfit.addOns.length > 0)) && (
             <AddOnsEditor
               addOns={outfit.addOns || []}
               canEdit={can("update", "outfit") && role !== "MASTER"}
               onSave={(addOns) => updateMutation.mutate({ addOns })}
               isSaving={updateMutation.isPending}
             />
-          )}
+          )} */}
 
           {/* Measurements */}
           <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
