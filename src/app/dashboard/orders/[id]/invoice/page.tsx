@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Download, Printer, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, Loader2, Share2 } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -63,26 +63,88 @@ export default function InvoicePage() {
   });
 
   const [isDownloading, setIsDownloading] = React.useState(false);
+  const [isSharing, setIsSharing] = React.useState(false);
+
+  function buildPdfData(): InvoicePDFData {
+    return {
+      invoiceNumber: data.invoice?.invoiceNumber ?? `INV-${data.order.orderNumber}`,
+      issuedAt: data.invoice?.issuedAt ?? new Date().toISOString(),
+      order: data.order,
+      outfits: data.outfits,
+      payments: data.payments,
+      totalPaid: data.totalPaid,
+      outfitTotal: data.outfitTotal,
+      balance: data.balance,
+    };
+  }
 
   async function handleDownload() {
     if (!data) return;
     setIsDownloading(true);
     try {
-      const pdfData: InvoicePDFData = {
-        invoiceNumber: data.invoice?.invoiceNumber ?? `INV-${data.order.orderNumber}`,
-        issuedAt: data.invoice?.issuedAt ?? new Date().toISOString(),
-        order: data.order,
-        outfits: data.outfits,
-        payments: data.payments,
-        totalPaid: data.totalPaid,
-        outfitTotal: data.outfitTotal,
-        balance: data.balance,
-      };
-      await downloadInvoicePDF(pdfData);
+      await downloadInvoicePDF(buildPdfData());
     } catch (e) {
       toast({ variant: "destructive", title: "Download failed", description: (e as Error).message });
     } finally {
       setIsDownloading(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!data) return;
+    setIsSharing(true);
+    try {
+      // Capture the visible invoice card as a PNG
+      const node = document.getElementById("invoice-content");
+      if (!node) throw new Error("Invoice content not found");
+
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(node, {
+        scale: 2,           // 2× for crisp text on high-DPI screens
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      const pngBlob: Blob = await new Promise((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))), "image/png")
+      );
+
+      const invoiceNumber = data.invoice?.invoiceNumber ?? `INV-${data.order.orderNumber}`;
+      const fileName = `${invoiceNumber}.png`;
+      const file = new File([pngBlob], fileName, { type: "image/png" });
+
+      // ── Mobile: native share sheet (WhatsApp will show image inline) ──
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Invoice ${invoiceNumber}`,
+          text: `Invoice for ${data.order.customerName}`,
+          files: [file],
+        });
+        return;
+      }
+
+      // ── Desktop fallback: download the image + open WhatsApp chat ──
+      const url = URL.createObjectURL(pngBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const rawPhone = (data.order.customerMobile ?? "").replace(/\D/g, "");
+      if (rawPhone) {
+        const msg = `Hi ${data.order.customerName}! Please find your invoice ${invoiceNumber} in the downloaded image. Total: ₹${Number(data.outfitTotal).toLocaleString()}, Balance due: ₹${Number(data.balance).toLocaleString()}.`;
+        window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+      } else {
+        toast({ title: "Image downloaded", description: "No mobile number on file — share manually." });
+      }
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        toast({ variant: "destructive", title: "Share failed", description: (e as Error).message });
+      }
+    } finally {
+      setIsSharing(false);
     }
   }
 
@@ -151,6 +213,19 @@ export default function InvoicePage() {
               ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
               : <Download className="h-3.5 w-3.5 mr-1" />}
             {isDownloading ? "Generating…" : "PDF"}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={isSharing}
+            className="text-xs text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-950/30"
+          >
+            {isSharing
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              : <Share2 className="h-3.5 w-3.5 mr-1" />}
+            {isSharing ? "Sharing…" : "Share"}
           </Button>
 
           <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs">
