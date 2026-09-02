@@ -293,7 +293,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   });
 
   const customers = customersData?.customers || [];
-  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER");
+  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER" && u.active);
   const selectedCustomer = customers.find((c: any) => c.id === customerId);
 
   // ── Populate form in edit mode ──────────────────────────────────────────────

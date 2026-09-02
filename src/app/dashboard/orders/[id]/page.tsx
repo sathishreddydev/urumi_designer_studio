@@ -193,11 +193,11 @@ export default function OrderDetailPage() {
   });
 
   const designers = useMemo(
-    () => staff.filter((u: any) => u.role === "DESIGNER"),
+    () => staff.filter((u: any) => u.role === "DESIGNER" && u.active),
     [staff],
   );
   const masters = useMemo(
-    () => staff.filter((u: any) => u.role === "MASTER"),
+    () => staff.filter((u: any) => u.role === "MASTER" && u.active),
     [staff],
   );
 
