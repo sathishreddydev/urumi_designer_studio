@@ -293,7 +293,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   });
 
   const customers = customersData?.customers || [];
-  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER" && u.active);
+  const assignedDesignerIds = new Set(outfits.map((o) => o.designerId).filter(Boolean));
+  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER" && (u.active || assignedDesignerIds.has(u.id)));
   const selectedCustomer = customers.find((c: any) => c.id === customerId);
 
   // ── Populate form in edit mode ──────────────────────────────────────────────
@@ -908,7 +909,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                             <SelectContent>
                               {designers.map((d: any) => (
                                 <SelectItem key={d.id} value={d.id}>
-                                  {d.name}
+                                  {d.name}{!d.active && " (Inactive)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>

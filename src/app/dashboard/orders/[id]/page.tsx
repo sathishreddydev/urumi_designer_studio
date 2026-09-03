@@ -192,13 +192,21 @@ export default function OrderDetailPage() {
     enabled: isAdmin,
   });
 
+  const assignedDesignerIds = useMemo(
+    () => new Set((order?.outfits || []).map((o: any) => o.designerId).filter(Boolean)),
+    [order],
+  );
+  const assignedMasterIds = useMemo(
+    () => new Set((order?.outfits || []).map((o: any) => o.masterId).filter(Boolean)),
+    [order],
+  );
   const designers = useMemo(
-    () => staff.filter((u: any) => u.role === "DESIGNER" && u.active),
-    [staff],
+    () => staff.filter((u: any) => u.role === "DESIGNER" && (u.active || assignedDesignerIds.has(u.id))),
+    [staff, assignedDesignerIds],
   );
   const masters = useMemo(
-    () => staff.filter((u: any) => u.role === "MASTER" && u.active),
-    [staff],
+    () => staff.filter((u: any) => u.role === "MASTER" && (u.active || assignedMasterIds.has(u.id))),
+    [staff, assignedMasterIds],
   );
 
   // Derived Calculations
@@ -936,7 +944,7 @@ export default function OrderDetailPage() {
                               <SelectItem value="none">Unassigned</SelectItem>
                               {designers.map((d: any) => (
                                 <SelectItem key={d.id} value={d.id}>
-                                  {d.name}
+                                  {d.name}{!d.active && " (Inactive)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -962,7 +970,9 @@ export default function OrderDetailPage() {
                               <SelectItem value="none">Unassigned</SelectItem>
                               {masters.map((m: any) => (
                                 <SelectItem key={m.id} value={m.id}>
-                                  {m.name}
+                                  {m.name}{!m.active && " (Inactive)"}
+                                </SelectItem>
+                              ))}
                                 </SelectItem>
                               ))}
                             </SelectContent>

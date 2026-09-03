@@ -1648,12 +1648,12 @@ function AssignMasterSelect({
   const canFetch = isAdmin || role === "DESIGNER";
 
   const { data: staff } = useQuery({
-    queryKey: ["staff-masters"],
+    queryKey: ["staff-masters", currentMasterId],
     queryFn: async () => {
       const res = await fetch("/api/users");
       if (!res.ok) return [];
       const users = await res.json();
-      return users.filter((u: any) => u.role === "MASTER" && u.active);
+      return users.filter((u: any) => u.role === "MASTER" && (u.active || u.id === currentMasterId));
     },
     enabled: canFetch,
   });
@@ -1674,7 +1674,7 @@ function AssignMasterSelect({
         </SelectItem>
         {(staff || []).map((m: any) => (
           <SelectItem key={m.id} value={m.id} className="text-xs">
-            {m.name}
+            {m.name}{!m.active && " (Inactive)"}
           </SelectItem>
         ))}
       </SelectContent>
