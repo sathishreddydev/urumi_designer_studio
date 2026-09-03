@@ -973,8 +973,6 @@ export default function OrderDetailPage() {
                                   {m.name}{!m.active && " (Inactive)"}
                                 </SelectItem>
                               ))}
-                                </SelectItem>
-                              ))}
                             </SelectContent>
                           </Select>
                         </div>
