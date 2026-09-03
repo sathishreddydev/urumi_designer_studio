@@ -13,9 +13,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -48,6 +56,7 @@ import {
   Camera,
   Upload,
   ZoomIn,
+  ClipboardPaste,
 } from "lucide-react";
 import { ImageViewer } from "@/components/image-viewer";
 import Link from "next/link";
@@ -136,6 +145,8 @@ export default function CustomerDetailPage({
   const [measurementFileReading, setMeasurementFileReading] = useState(false);
   const [measurementCameraOpen, setMeasurementCameraOpen] = useState(false);
   const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [pasteText, setPasteText] = useState("");
 
   // Image viewer state (for fabric reference thumbnails on outfit rows)
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -803,6 +814,9 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                         <Button type="button" size="sm" variant="outline" onClick={() => setMeasurementCameraOpen(true)} disabled={measurementFileReading} className="shrink-0">
                           <Camera className="mr-1 h-3.5 w-3.5" /> Read Photo
                         </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => { setPasteText(""); setShowPasteDialog(true); }} disabled={measurementFileReading} className="shrink-0">
+                          <ClipboardPaste className="mr-1 h-3.5 w-3.5" /> Paste Text
+                        </Button>
                       </div>
                     </div>
                     {measurementFileReading && <p className="text-xs text-muted-foreground">Reading measurements...</p>}
@@ -811,6 +825,65 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                       onClose={() => setMeasurementCameraOpen(false)}
                       onCapture={readMeasurementFile}
                     />
+
+                    {/* ── Paste Text Dialog ── */}
+                    <Dialog open={showPasteDialog} onOpenChange={setShowPasteDialog}>
+                      <DialogContent className="sm:max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2 text-base">
+                            <ClipboardPaste className="h-4 w-4 text-primary" />
+                            Paste Measurements
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-muted-foreground">
+                            Paste a table, CSV, or plain text. Each row should be{" "}
+                            <span className="font-medium text-foreground">Field, Value</span> — or paste
+                            multiple columns with headers. Unknown field names become custom fields.
+                          </p>
+                          <Textarea
+                            autoFocus
+                            rows={10}
+                            placeholder={`Bust, 36\nWaist, 28\nHip, 40\n\nor multi-column:\nBust, Waist, Hip\n36, 28, 40`}
+                            value={pasteText}
+                            onChange={(e) => setPasteText(e.target.value)}
+                            className="font-mono text-xs resize-none"
+                          />
+                        </div>
+                        <DialogFooter className="gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setShowPasteDialog(false)}>
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={!pasteText.trim()}
+                            onClick={() => {
+                              const { matched, custom } = parseVoiceTranscript(pasteText);
+                              const values = { ...matched, ...custom };
+                              const count = Object.keys(values).length;
+                              if (count === 0) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "No measurements found",
+                                  description: 'Use labels like "Bust 36" or "Bust, 36".',
+                                });
+                                return;
+                              }
+                              setMeasurementValues((prev) => ({ ...prev, ...values }));
+                              setShowPasteDialog(false);
+                              setPasteText("");
+                              toast({
+                                title: "Measurements applied",
+                                description: `${count} field${count === 1 ? "" : "s"} filled from pasted text.`,
+                              });
+                            }}
+                          >
+                            <ClipboardPaste className="mr-1.5 h-3.5 w-3.5" />
+                            Parse & Fill
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
 
                   {BODY_MEASUREMENT_SECTIONS.map((section) => (

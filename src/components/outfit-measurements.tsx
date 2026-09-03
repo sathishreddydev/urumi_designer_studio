@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -151,6 +151,9 @@ export function OutfitMeasurements({
   readOnly = false,
 }: OutfitMeasurementsProps) {
   const [newGarmentField, setNewGarmentField] = useState("");
+  // field name editing: key = current field name, value = draft name being edited
+  const [editingFieldName, setEditingFieldName] = useState<string | null>(null);
+  const [draftFieldName, setDraftFieldName] = useState("");
 
   const isReception = role === "RECEPTION";
   const isMaster = role === "MASTER";
@@ -182,6 +185,26 @@ export function OutfitMeasurements({
 
   function setFieldValue(field: string, value: string) {
     onGarmentMeasurementsChange({ ...garmentMeasurements, [field]: value });
+    onGarmentMeasurementsDirty?.();
+  }
+
+  function startEditingFieldName(field: string) {
+    setEditingFieldName(field);
+    setDraftFieldName(field);
+  }
+
+  function commitFieldNameEdit(oldField: string) {
+    const newField = draftFieldName.trim();
+    setEditingFieldName(null);
+    if (!newField || newField === oldField) return;
+    if (newField in garmentMeasurements) return; // duplicate key — silently cancel
+
+    // Rebuild the map preserving insertion order
+    const updated: Record<string, string> = {};
+    for (const [k, v] of Object.entries(garmentMeasurements)) {
+      updated[k === oldField ? newField : k] = v;
+    }
+    onGarmentMeasurementsChange(updated);
     onGarmentMeasurementsDirty?.();
   }
 
@@ -311,9 +334,29 @@ export function OutfitMeasurements({
           return (
             <div key={field} className="space-y-0.5">
               <div className="flex items-center justify-between gap-1">
-                <label className="text-[11px] text-muted-foreground truncate">
-                  {field}
-                </label>
+                {/* Field name — editable inline in edit mode */}
+                {garmentEditable && editingFieldName === field ? (
+                  <input
+                    autoFocus
+                    value={draftFieldName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraftFieldName(e.target.value)}
+                    onBlur={() => commitFieldNameEdit(field)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitFieldNameEdit(field); }
+                      if (e.key === "Escape") { setEditingFieldName(null); }
+                    }}
+                    className="text-[11px] text-muted-foreground border-b border-primary bg-transparent outline-none w-full min-w-0"
+                    title="Rename field — press Enter to confirm, Esc to cancel"
+                  />
+                ) : (
+                  <label
+                    className={`text-[11px] text-muted-foreground truncate ${garmentEditable ? "cursor-pointer hover:text-primary" : ""}`}
+                    title={garmentEditable ? "Click to rename" : field}
+                    onClick={() => garmentEditable && startEditingFieldName(field)}
+                  >
+                    {field}
+                  </label>
+                )}
                 <div className="flex items-center gap-0.5 shrink-0">
                   {bodyValue && bodyValue !== "" && (
                     <span
