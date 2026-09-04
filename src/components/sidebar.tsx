@@ -14,7 +14,6 @@ import {
   LogOut,
   UserCircle,
   Calendar,
-  ClipboardList,
   AlertTriangle,
   Menu,
   X,
@@ -32,16 +31,16 @@ interface SidebarProps {
 
 const roleNavItems: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
   ADMIN: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Customers",        href: "/dashboard/customers",      icon: <Users className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Orders",           href: "/dashboard/orders",         icon: <ShoppingBag className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Appointments",     href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
+    { label: "Dashboard",          href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Customers",          href: "/dashboard/customers",      icon: <Users className="h-5 w-5" /> },
+    { label: "Consultations",      href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Orders",             href: "/dashboard/orders",         icon: <ShoppingBag className="h-5 w-5" /> },
+    { label: "Outfits",            href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
+    { label: "Appointments",       href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
+    { label: "Production",         href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
-    { label: "Users",            href: "/dashboard/users",          icon: <UserCircle className="h-5 w-5" /> },
+    { label: "Blockers",           href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Users",              href: "/dashboard/users",          icon: <UserCircle className="h-5 w-5" /> },
   ],
   RECEPTION: [
     { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -52,18 +51,18 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Appointments",     href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
   ],
   DESIGNER: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
+    { label: "Dashboard",          href: "/dashboard",                  icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Consultations",      href: "/dashboard/consultations",    icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Outfits",            href: "/dashboard/outfits",          icon: <Shirt className="h-5 w-5" /> },
+    { label: "Production",         href: "/dashboard/production",       icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Blockers",           href: "/dashboard/blockers",         icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   MASTER: [
     { label: "Dashboard",          href: "/dashboard",                   icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: "Production",         href: "/dashboard/production",        icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam",  icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Outfits",         href: "/dashboard/outfits",           icon: <Shirt className="h-5 w-5" /> },
+    { label: "Outfits",            href: "/dashboard/outfits",           icon: <Shirt className="h-5 w-5" /> },
     { label: "Blockers",           href: "/dashboard/blockers",          icon: <AlertTriangle className="h-5 w-5" /> },
   ],
 };
@@ -75,8 +74,8 @@ export function Sidebar({ role, userName }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center border-b bg-card px-3 lg:hidden">
+      {/* ── MOBILE: sticky top bar (in document flow, scrolls with page) ── */}
+      <div className="sticky top-0 z-40 flex h-14 items-center border-b bg-card px-3 lg:hidden">
         <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="shrink-0">
           <Menu className="h-5 w-5" />
         </Button>
@@ -86,7 +85,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
         </div>
       </div>
 
-      {/* Mobile overlay */}
+      {/* ── MOBILE: drawer overlay ── */}
       {open && (
         <div
           className="fixed inset-0 z-50 bg-black/50 lg:hidden"
@@ -94,13 +93,17 @@ export function Sidebar({ role, userName }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* ── MOBILE: slide-in drawer (fixed) + DESKTOP: sticky sidebar ── */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:relative lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          // Mobile: fixed full-height drawer, slides in/out
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200",
+          open ? "translate-x-0" : "-translate-x-full",
+          // Desktop: sticky sidebar, in document flow, full viewport height
+          "lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0"
         )}
       >
+        {/* Sidebar header */}
         <div className="flex h-14 items-center justify-between border-b px-4 lg:h-16 lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
             <Scissors className="h-6 w-6 text-primary" />
@@ -111,6 +114,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
           </Button>
         </div>
 
+        {/* Nav links */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {navItems.map((item) => (
             <Link
@@ -119,7 +123,9 @@ export function Sidebar({ role, userName }: SidebarProps) {
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                (item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href))
+                (item.href === "/dashboard"
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href))
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground"
               )}
@@ -130,6 +136,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
           ))}
         </nav>
 
+        {/* User footer */}
         <div className="border-t p-3">
           <div className="flex items-center gap-2 rounded-lg px-3 py-2 min-w-0">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
