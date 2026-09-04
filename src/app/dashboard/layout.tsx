@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
 import { RealtimeProvider } from "@/components/realtime-provider";
+// import { BlockersBanner } from "@/components/blockers-banner";
 
 export default async function DashboardLayout({
   children,
@@ -14,14 +15,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-dvh">
-      {/* Desktop sidebar — sticky, stays in view while page scrolls */}
+    <div className="flex h-screen overflow-hidden" style={{ height: '100dvh' }}>
       <Sidebar role={session.role} userName={session.name} />
-
-      {/* Main content — grows naturally, single document scroll */}
-      <main className="flex-1 min-w-0 font-sans text-sm leading-5">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden font-sans text-sm leading-5 pt-14 lg:pt-0">
         <RealtimeProvider>
-          <div className="p-3 sm:p-4 lg:p-6 xl:p-8 max-w-full space-y-3 pb-10">
+          <div className="p-3 sm:p-4 lg:p-6 xl:p-8 max-w-full space-y-3">
+            {/* <BlockersBanner /> */}
             {children}
           </div>
         </RealtimeProvider>

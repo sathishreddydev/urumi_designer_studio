@@ -397,7 +397,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
     : cleanMobile;
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Link href="/dashboard/customers">
           <Button variant="ghost" size="sm" className="gap-1 -ml-2">
@@ -410,7 +410,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
         {/* ========================================================= */}
         {/* LEFT COLUMN: ORDERS & TRACKING                            */}
         {/* ========================================================= */}
-        <div className="lg:col-span-7 space-y-4 order-2 lg:order-1">
+        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold flex items-center gap-2 truncate pr-2">
