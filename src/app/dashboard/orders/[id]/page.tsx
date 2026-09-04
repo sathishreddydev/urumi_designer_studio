@@ -548,7 +548,7 @@ export default function OrderDetailPage() {
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Outfits Workspace */}
-        <div className="font-sans text-sm lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
+        <div className="font-sans text-sm lg:col-span-7 space-y-4 order-2 lg:order-1">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold leading-5 flex items-center gap-2">

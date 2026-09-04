@@ -575,7 +575,7 @@ export default function OutfitDetailPage() {
       {/* Main Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Metadata & Measurements */}
-        <div className="lg:col-span-7 space-y-4 lg:overflow-y-auto order-2 lg:order-1">
+        <div className="lg:col-span-7 space-y-4 order-2 lg:order-1">
           <Accordion
             type="multiple"
             defaultValue={
