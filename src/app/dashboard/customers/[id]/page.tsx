@@ -398,6 +398,8 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
 
   return (
     <div className="space-y-4 pb-6">
+      <div className="flex items-center justify-between">
+        <Link href="/dashboard/customers">
           <Button variant="ghost" size="sm" className="gap-1 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Customers
           </Button>
