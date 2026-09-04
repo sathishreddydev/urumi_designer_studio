@@ -213,7 +213,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     : 0;
   const totalPaid = alreadyPaid + advance;
   const remainingBalance = estimatedTotal - alreadyPaid;
-  const isFullyPaid = isEditMode && remainingBalance <= 0;
+  const isFullyPaid = isEditMode && (estimatedTotal > 0 || alreadyPaid > 0) && remainingBalance <= 0;
   const balanceDue = estimatedTotal - totalPaid;
 
   // ── Upload helper ────────────────────────────────────────────────────────────
