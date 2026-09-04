@@ -19,7 +19,7 @@ export default async function DashboardLayout({
       <Sidebar role={session.role} userName={session.name} />
       <main className="flex-1 overflow-y-auto overflow-x-hidden font-sans text-sm leading-5 pt-14 lg:pt-0">
         <RealtimeProvider>
-          <div className="p-3 sm:p-4 lg:p-6 xl:p-8 pb-8 max-w-full space-y-3">
+          <div className="p-3 sm:p-4 lg:p-6 xl:p-8 max-w-full space-y-3">
             {/* <BlockersBanner /> */}
             {children}
           </div>

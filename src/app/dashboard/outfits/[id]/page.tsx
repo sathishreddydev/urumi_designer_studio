@@ -510,8 +510,7 @@ export default function OutfitDetailPage() {
   const isLocked = lockedStatuses.includes(outfit.status);
 
   return (
-    <div className="space-y-4">
-      {/* Header — single row: back | title+badge | actions+delete */}
+    <div className="space-y-4 pb-6">
       <div className="flex items-center gap-2 border-b pb-4">
         {/* Back button */}
         <Link href={backHref} className="shrink-0">

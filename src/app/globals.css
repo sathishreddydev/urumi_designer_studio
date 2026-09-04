@@ -53,9 +53,14 @@
   * {
     @apply border-border;
   }
+  html,
+  body {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
   body {
     @apply bg-background text-foreground font-sans text-sm leading-5;
-    overflow-x: hidden;
   }
 }
 
