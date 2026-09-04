@@ -4,6 +4,7 @@ import { customerMeasurements } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 import { measurementSchema } from "@/lib/validations";
+import { eventBus } from "@/lib/events";
 
 // GET all measurement versions for a customer
 export const GET = withPermission(
@@ -52,6 +53,9 @@ export const POST = withPermission(
         createdBy: session.id,
       })
       .returning();
+
+    // Emit event so the portal reflects the updated measurements live
+    eventBus.emit({ type: "customer_updated", customerId: id, userId: session.id, timestamp: Date.now() });
 
     return NextResponse.json(measurement, { status: 201 });
   }

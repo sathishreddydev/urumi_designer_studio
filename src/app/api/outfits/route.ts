@@ -266,8 +266,15 @@ export const POST = withPermission(
       })
       .returning();
 
+    // Look up customerId so the portal SSE can match this event even for newly-created outfits
+    const [outfitOrder] = await db
+      .select({ customerId: orders.customerId })
+      .from(orders)
+      .where(eq(orders.id, body.orderId))
+      .limit(1);
+
     // Emit event
-    eventBus.emit({ type: "outfit_updated", outfitId: outfit.id, orderId: body.orderId, timestamp: Date.now() });
+    eventBus.emit({ type: "outfit_updated", outfitId: outfit.id, orderId: body.orderId, customerId: outfitOrder?.customerId, timestamp: Date.now() });
 
     return NextResponse.json(outfit, { status: 201 });
   }

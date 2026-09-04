@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, outfits, payments, customers, referenceImages, dependencies, productionLogs, invoices } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, asc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
 
 export const GET = withPermission(
@@ -19,7 +19,7 @@ export const GET = withPermission(
     // Only include SETTLED payments in the returned list for balance calculations
     const [customerResult, orderOutfits, orderPayments] = await Promise.all([
       db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1),
-      db.select().from(outfits).where(eq(outfits.orderId, id)),
+      db.select().from(outfits).where(eq(outfits.orderId, id)).orderBy(asc(outfits.priority), asc(outfits.createdAt)),
       db.select().from(payments).where(eq(payments.orderId, id)),  // all statuses returned so UI can show voided payments
     ]);
 

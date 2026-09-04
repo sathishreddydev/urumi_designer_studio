@@ -269,10 +269,16 @@ export async function executeTransition(
   // Emit real-time event
   const { eventBus } = await import("./events");
   const [outfit] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, outfitId));
+  let workflowCustomerId: string | undefined;
+  if (outfit?.orderId) {
+    const [outfitOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq(orders.id, outfit.orderId)).limit(1);
+    workflowCustomerId = outfitOrder?.customerId;
+  }
   eventBus.emit({
     type: "outfit_updated",
     outfitId,
     orderId: outfit?.orderId,
+    customerId: workflowCustomerId,
     userId,
     timestamp: Date.now(),
   });

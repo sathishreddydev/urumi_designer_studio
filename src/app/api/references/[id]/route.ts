@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { referenceImages } from "@/lib/db/schema";
+import { referenceImages, outfits, orders } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 
 export const DELETE = withPermission(
@@ -35,7 +35,14 @@ export const DELETE = withPermission(
 
     // Emit event
     const { eventBus } = await import("@/lib/events");
-    eventBus.emit({ type: "reference_updated", outfitId: ref.outfitId, timestamp: Date.now() });
+    // Look up customerId so portal SSE can match this event
+    let refCustomerId: string | undefined;
+    const [refOutfit] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, ref.outfitId)).limit(1);
+    if (refOutfit?.orderId) {
+      const [refOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq(orders.id, refOutfit.orderId)).limit(1);
+      refCustomerId = refOrder?.customerId;
+    }
+    eventBus.emit({ type: "reference_updated", outfitId: ref.outfitId, customerId: refCustomerId, timestamp: Date.now() });
 
     return NextResponse.json({ success: true });
   }

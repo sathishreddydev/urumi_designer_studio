@@ -194,11 +194,22 @@ export const PATCH = withPermission(
     const [final] = await db.select().from(outfits).where(eq(outfits.id, id));
 
     // Emit event for any outfit update (field changes, assignments, etc.)
+    // Look up customerId so the portal SSE can match even if the outfit was created after the SSE connected
     const { eventBus } = await import("@/lib/events");
+    let outfitCustomerId: string | undefined;
+    if (final?.orderId) {
+      const [outfitOrder] = await db
+        .select({ customerId: orders.customerId })
+        .from(orders)
+        .where(eq(orders.id, final.orderId))
+        .limit(1);
+      outfitCustomerId = outfitOrder?.customerId;
+    }
     eventBus.emit({
       type: "outfit_updated",
       outfitId: id,
       orderId: final?.orderId,
+      customerId: outfitCustomerId,
       userId: session.id,
       timestamp: Date.now(),
     });
@@ -212,8 +223,21 @@ export const DELETE = withPermission(
   async (_request, { params, session }) => {
     const { id } = await params;
 
-    // Get orderId before deleting for event emission
-    const [outfit] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, id));
+    // Get orderId + customerId before deleting for event emission
+    const [outfit] = await db
+      .select({ orderId: outfits.orderId })
+      .from(outfits)
+      .where(eq(outfits.id, id));
+
+    let deletedOutfitCustomerId: string | undefined;
+    if (outfit?.orderId) {
+      const [outfitOrder] = await db
+        .select({ customerId: orders.customerId })
+        .from(orders)
+        .where(eq(orders.id, outfit.orderId))
+        .limit(1);
+      deletedOutfitCustomerId = outfitOrder?.customerId;
+    }
 
     // Delete related data
     await db.delete(referenceImages).where(eq(referenceImages.outfitId, id));
@@ -229,6 +253,7 @@ export const DELETE = withPermission(
       type: "outfit_deleted",
       outfitId: id,
       orderId: outfit?.orderId,
+      customerId: deletedOutfitCustomerId,
       userId: session.id,
       timestamp: Date.now(),
     });

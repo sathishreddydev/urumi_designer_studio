@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { referenceImages } from "@/lib/db/schema";
+import { referenceImages, orders } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { withPermission, withAuth } from "@/lib/api-guard";
 
@@ -110,7 +110,8 @@ export const PATCH = withPermission(
 
         // Emit outfit_updated for status regression
         const { eventBus } = await import("@/lib/events");
-        eventBus.emit({ type: "outfit_updated", outfitId: id, orderId: outfit.orderId, userId: session.id, timestamp: Date.now() });
+        const [refOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq(orders.id, outfit.orderId)).limit(1);
+        eventBus.emit({ type: "outfit_updated", outfitId: id, orderId: outfit.orderId, customerId: refOrder?.customerId, userId: session.id, timestamp: Date.now() });
       }
     }
 
@@ -143,7 +144,8 @@ export const PATCH = withPermission(
 
         // Emit outfit_updated for status regression
         const { eventBus } = await import("@/lib/events");
-        eventBus.emit({ type: "outfit_updated", outfitId: oid, orderId: outfit.orderId, userId: session.id, timestamp: Date.now() });
+        const [refOrder2] = await db.select({ customerId: orders.customerId }).from(orders).where(eq(orders.id, outfit.orderId)).limit(1);
+        eventBus.emit({ type: "outfit_updated", outfitId: oid, orderId: outfit.orderId, customerId: refOrder2?.customerId, userId: session.id, timestamp: Date.now() });
       }
     }
 

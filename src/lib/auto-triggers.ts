@@ -7,7 +7,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { outfits, productionLogs } from "./db/schema";
+import { outfits, productionLogs, orders } from "./db/schema";
 
 type OutfitStatus = string;
 
@@ -27,10 +27,16 @@ async function advanceStatus(outfitId: string, newStatus: OutfitStatus, triggere
   // Emit real-time event
   const { eventBus } = await import("./events");
   const [outfit] = await db.select({ orderId: outfits.orderId }).from(outfits).where(eq(outfits.id, outfitId));
+  let autoCustomerId: string | undefined;
+  if (outfit?.orderId) {
+    const [outfitOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq(orders.id, outfit.orderId)).limit(1);
+    autoCustomerId = outfitOrder?.customerId;
+  }
   eventBus.emit({
     type: "outfit_updated",
     outfitId,
     orderId: outfit?.orderId,
+    customerId: autoCustomerId,
     userId: triggeredBy,
     timestamp: Date.now(),
   });
