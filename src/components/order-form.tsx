@@ -1,12 +1,10 @@
-"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Shirt, Calendar, UserCheck, Loader as Loader2, Sparkles, CreditCard, ImagePlus, X, Camera, Save, Calendar as CalendarIcon } from "lucide-react";
-import { OutfitTypeSelect } from "@/components/outfit-type-select";
+import { ArrowLeft, Plus, Trash2, Shirt, Calendar, UserCheck, Loader as Loader2, CreditCard, X, Save, Calendar as CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +21,6 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -37,6 +34,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  OutfitFormFields,
+  OutfitFormValue,
+  emptyOutfitFormValue,
+} from "@/components/outfit-form-fields";
 
 // Statuses where outfit fields are still editable
 const EDITABLE_STATUSES = [
@@ -55,190 +57,52 @@ const EDITABLE_STATUSES = [
   "TRIAL",
   "ALTERATION",
   "QC",
-  "READY_FOR_DELIVERY"
+  "READY_FOR_DELIVERY",
 ];
 
-// ─── Camera Modal ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function CameraCaptureModal({
-  open,
-  onClose,
-  onCapture,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCapture: (file: File) => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function startCamera() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setError("This browser does not support camera capture.");
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch {
-        if (!cancelled)
-          setError(
-            "Camera access was blocked or unavailable. Please use Upload Material Photos instead.",
-          );
-      }
-    }
-
-    startCamera();
-
-    return () => {
-      cancelled = true;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    };
-  }, [open]);
-
-  function handleCapture() {
-    const video = videoRef.current;
-    if (!video) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `customer-material-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-        });
-        onCapture(file);
-        onClose();
-      },
-      "image/jpeg",
-      0.9,
-    );
-  }
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-3 shadow-2xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-slate-900">Take Photo</h4>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
-          >
-            Close
-          </button>
-        </div>
-        {error ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            {error}
-          </div>
-        ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="aspect-video w-full rounded-lg bg-black object-cover"
-          />
-        )}
-        <div className="mt-3 flex gap-2">
-          <Button className="flex-1" onClick={handleCapture} disabled={!!error}>
-            Capture
-          </Button>
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface OutfitAddOn {
-  id: string;
-  name: string;
-  price: string; // string in form state, converted to number on save
-  notes: string;
-}
-
-interface OutfitEntry {
+interface OutfitEntry extends OutfitFormValue {
   id?: string;
-  name: string;
-  type: string;
-  occasion: string;
-  price: string;
-  maggamRequired: boolean;
-  designerId: string;
-  fabricImages: File[]; // new images to upload
-  existingFabricRefs?: any[]; // already-saved refs (edit mode)
-  addOns: OutfitAddOn[];
   status?: string;
   isNew?: boolean;
   isDeleted?: boolean;
 }
 
-function emptyAddOn(): OutfitAddOn {
-  return { id: crypto.randomUUID(), name: "", price: "", notes: "" };
-}
-
 function emptyOutfit(isNew = true): OutfitEntry {
-  return {
-    name: "",
-    type: "",
-    occasion: "",
-    price: "",
-    maggamRequired: false,
-    designerId: "",
-    fabricImages: [],
-    existingFabricRefs: [],
-    addOns: [],
-    isNew,
-  };
+  return { ...emptyOutfitFormValue(), isNew };
 }
 
-// ─── Props ───────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface OrderFormProps {
   /** When provided the form operates in edit mode */
   orderId?: string;
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Helper: build API payload from an OutfitEntry ───────────────────────────
+
+function outfitPayload(outfit: OutfitEntry) {
+  return {
+    name: outfit.name,
+    type: outfit.type,
+    occasion: outfit.occasion || undefined,
+    price: outfit.price ? Number(outfit.price) : undefined,
+    maggamRequired: outfit.maggamRequired,
+    designerId: outfit.designerId || undefined,
+    masterId: outfit.masterId || undefined,
+    addOns: (outfit.addOns || [])
+      .filter((a) => a.name && a.price)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        price: Number(a.price),
+        notes: a.notes || undefined,
+      })),
+  };
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function OrderForm({ orderId }: OrderFormProps) {
   const isEditMode = Boolean(orderId);
@@ -248,7 +112,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const queryClient = useQueryClient();
   const { isAdmin } = usePermissions();
 
-  // ── Form State ──────────────────────────────────────────────────────────────
+  // ── Form State ───────────────────────────────────────────────────────────────
   const [customerId, setCustomerId] = useState(preselectedCustomerId);
   const [trialDate, setTrialDate] = useState<Date | undefined>(undefined);
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(undefined);
@@ -256,12 +120,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const [advanceMethod, setAdvanceMethod] = useState("CASH");
   const [notes, setNotes] = useState("");
   const [outfits, setOutfits] = useState<OutfitEntry[]>([emptyOutfit()]);
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraIndex, setCameraIndex] = useState<number | null>(null);
   const [deleteOutfitId, setDeleteOutfitId] = useState<string | null>(null);
-  const [outfitTypeSearch, setOutfitTypeSearch] = useState("");
 
-  // ── Queries ─────────────────────────────────────────────────────────────────
+  // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: customersData, isLoading: isLoadingCustomers } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
@@ -294,50 +155,49 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   const customers = customersData?.customers || [];
   const assignedDesignerIds = new Set(outfits.map((o) => o.designerId).filter(Boolean));
-  const designers = (staff || []).filter((u: any) => u.role === "DESIGNER" && (u.active || assignedDesignerIds.has(u.id)));
+  const assignedMasterIds = new Set(outfits.map((o) => o.masterId).filter(Boolean));
+  const designers = (staff || []).filter(
+    (u: any) => u.role === "DESIGNER" && (u.active || assignedDesignerIds.has(u.id)),
+  );
+  const masters = (staff || []).filter(
+    (u: any) => u.role === "MASTER" && (u.active || assignedMasterIds.has(u.id)),
+  );
   const selectedCustomer = customers.find((c: any) => c.id === customerId);
 
-  // ── Populate form in edit mode ──────────────────────────────────────────────
+  // ── Populate form in edit mode ───────────────────────────────────────────────
   useEffect(() => {
     if (!order) return;
 
-    setTrialDate(
-      order.trialDate ? new Date(order.trialDate) : undefined,
-    );
-    setDeliveryDate(
-      order.deliveryDate ? new Date(order.deliveryDate) : undefined,
-    );
+    setTrialDate(order.trialDate ? new Date(order.trialDate) : undefined);
+    setDeliveryDate(order.deliveryDate ? new Date(order.deliveryDate) : undefined);
     setNotes(order.notes || "");
 
-    const existingOutfits: OutfitEntry[] = (order.outfits || []).map(
-      (o: any) => ({
-        id: o.id,
-        name: o.name || "",
-        type: o.type || "",
-        occasion: o.occasion || "",
-        price: o.price ? String(Number(o.price)) : "",
-        maggamRequired: o.maggamRequired || false,
-        designerId: o.designerId || "",
-        fabricImages: [],
-        existingFabricRefs: (o.references || []).filter(
-          (r: any) => r.type === "FABRIC",
-        ),
-        addOns: (o.addOns || []).map((a: any) => ({
-          id: a.id || crypto.randomUUID(),
-          name: a.name || "",
-          price: String(a.price ?? ""),
-          notes: a.notes || "",
-        })),
-        status: o.status || "DRAFT",
-        isNew: false,
-        isDeleted: false,
-      }),
-    );
+    const existing: OutfitEntry[] = (order.outfits || []).map((o: any) => ({
+      id: o.id,
+      name: o.name || "",
+      type: o.type || "",
+      occasion: o.occasion || "",
+      price: o.price ? String(Number(o.price)) : "",
+      maggamRequired: o.maggamRequired || false,
+      designerId: o.designerId || "",
+      masterId: o.masterId || "",
+      fabricImages: [],
+      existingFabricRefs: (o.references || []).filter((r: any) => r.type === "FABRIC"),
+      addOns: (o.addOns || []).map((a: any) => ({
+        id: a.id || crypto.randomUUID(),
+        name: a.name || "",
+        price: String(a.price ?? ""),
+        notes: a.notes || "",
+      })),
+      status: o.status || "DRAFT",
+      isNew: false,
+      isDeleted: false,
+    }));
 
-    setOutfits(existingOutfits.length > 0 ? existingOutfits : [emptyOutfit()]);
+    setOutfits(existing.length > 0 ? existing : [emptyOutfit()]);
   }, [order]);
 
-  // ── Derived values ──────────────────────────────────────────────────────────
+  // ── Derived values ───────────────────────────────────────────────────────────
   const activeOutfits = outfits.filter((o) => !o.isDeleted);
   const estimatedTotal = activeOutfits.reduce((s, o) => {
     const outfitPrice = Number(o.price) || 0;
@@ -347,22 +207,40 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const advance = Number(advanceAmount) || 0;
   const alreadyPaid = isEditMode
     ? (order?.payments || [])
-      .filter((p: any) => p.status === "SETTLED" || !p.status)
-      .reduce((s: number, p: any) => s + Number(p.amount), 0)
+        .filter((p: any) => p.status === "SETTLED" || !p.status)
+        .reduce((s: number, p: any) => s + Number(p.amount), 0)
     : 0;
   const totalPaid = alreadyPaid + advance;
   const remainingBalance = estimatedTotal - alreadyPaid;
   const isFullyPaid = isEditMode && remainingBalance <= 0;
   const balanceDue = estimatedTotal - totalPaid;
 
-  // ── Create mutation ─────────────────────────────────────────────────────────
+  // ── Upload helper ────────────────────────────────────────────────────────────
+  async function uploadFabricImages(outfitId: string, files: File[]) {
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!uploadRes.ok) continue;
+      const { url, filename } = await uploadRes.json();
+      await fetch(`/api/outfits/${outfitId}/references`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "FABRIC", url, filename }),
+      });
+    }
+  }
+
+  // ── Create mutation ──────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: async () => {
       const validOutfits = outfits.filter((o) => o.name && o.type);
       const calculatedTotal = validOutfits.reduce((s, o) => {
-        const outfitPrice = Number(o.price) || 0;
-        const addOnsTotal = (o.addOns || []).reduce((as, a) => as + (Number(a.price) || 0), 0);
-        return s + outfitPrice + addOnsTotal;
+        return (
+          s +
+          (Number(o.price) || 0) +
+          (o.addOns || []).reduce((as, a) => as + (Number(a.price) || 0), 0)
+        );
       }, 0);
 
       const orderRes = await fetch("/api/orders", {
@@ -386,38 +264,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             orderId: newOrder.id,
-            name: outfit.name,
-            type: outfit.type,
-            occasion: outfit.occasion || undefined,
-            price: outfit.price ? Number(outfit.price) : undefined,
-            maggamRequired: outfit.maggamRequired,
             deliveryDate: deliveryDate?.toISOString() || undefined,
             trialDate: trialDate?.toISOString() || undefined,
-            designerId: outfit.designerId || undefined,
-            addOns: (outfit.addOns || [])
-              .filter((a) => a.name && a.price)
-              .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
+            ...outfitPayload(outfit),
           }),
         });
-
         if (outfitRes.ok && outfit.fabricImages.length > 0) {
-          const createdOutfit = await outfitRes.json();
-          for (const file of outfit.fabricImages) {
-            const formData = new FormData();
-            formData.append("file", file);
-            const uploadRes = await fetch("/api/upload", {
-              method: "POST",
-              body: formData,
-            });
-            if (uploadRes.ok) {
-              const { url, filename } = await uploadRes.json();
-              await fetch(`/api/outfits/${createdOutfit.id}/references`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ type: "FABRIC", url, filename }),
-              });
-            }
-          }
+          const created = await outfitRes.json();
+          await uploadFabricImages(created.id, outfit.fabricImages);
         }
       }
 
@@ -436,7 +290,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           const err = await paymentRes.json().catch(() => ({}));
           throw new Error(
             err.error ||
-            "Order created but advance payment failed — please add it manually from the order page.",
+              "Order created but advance payment failed — please add it manually from the order page.",
           );
         }
       }
@@ -449,15 +303,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       router.push(`/dashboard/orders/${newOrder.id}`);
     },
     onError: (err: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Order creation failed",
-        description: err.message,
-      });
+      toast({ variant: "destructive", title: "Order creation failed", description: err.message });
     },
   });
 
-  // ── Save (edit) mutation ────────────────────────────────────────────────────
+  // ── Save (edit) mutation ─────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
       const orderRes = await fetch(`/api/orders/${orderId}`, {
@@ -475,7 +325,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         throw new Error(err.error || "Failed to save order details");
       }
 
-      // Record advance/additional payment if entered
       if (advanceAmount && Number(advanceAmount) > 0) {
         const paymentRes = await fetch("/api/payments", {
           method: "POST",
@@ -491,7 +340,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           const err = await paymentRes.json().catch(() => ({}));
           throw new Error(
             err.error ||
-            "Order saved but payment failed — please add it manually from the order page.",
+              "Order saved but payment failed — please add it manually from the order page.",
           );
         }
       }
@@ -508,97 +357,42 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               orderId,
-              name: outfit.name,
-              type: outfit.type,
-              occasion: outfit.occasion || undefined,
-              price: outfit.price ? Number(outfit.price) : undefined,
-              maggamRequired: outfit.maggamRequired,
               deliveryDate: deliveryDate?.toISOString() || undefined,
               trialDate: trialDate?.toISOString() || undefined,
-              designerId: outfit.designerId || undefined,
-              addOns: (outfit.addOns || [])
-                .filter((a) => a.name && a.price)
-                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
+              ...outfitPayload(outfit),
             }),
           });
-
-          // Upload any fabric images for the new outfit
           if (outfitRes.ok && outfit.fabricImages.length > 0) {
-            const createdOutfit = await outfitRes.json();
-            for (const file of outfit.fabricImages) {
-              const formData = new FormData();
-              formData.append("file", file);
-              const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
-              if (uploadRes.ok) {
-                const { url, filename } = await uploadRes.json();
-                await fetch(`/api/outfits/${createdOutfit.id}/references`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ type: "FABRIC", url, filename }),
-                });
-              }
-            }
+            const created = await outfitRes.json();
+            await uploadFabricImages(created.id, outfit.fabricImages);
           }
-        } else if (
-          !outfit.isNew &&
-          !outfit.isDeleted &&
-          outfit.id &&
-          isEditable
-        ) {
+        } else if (!outfit.isNew && !outfit.isDeleted && outfit.id && isEditable) {
           await fetch(`/api/outfits/${outfit.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: outfit.name,
-              type: outfit.type,
-              occasion: outfit.occasion || undefined,
-              price: outfit.price ? Number(outfit.price) : undefined,
-              maggamRequired: outfit.maggamRequired,
-              designerId: outfit.designerId || undefined,
               deliveryDate: deliveryDate?.toISOString() || undefined,
               trialDate: trialDate?.toISOString() || undefined,
-              addOns: (outfit.addOns || [])
-                .filter((a) => a.name && a.price)
-                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
+              ...outfitPayload(outfit),
             }),
           });
-
-          // Upload any new fabric images added to an existing outfit
           if (outfit.fabricImages.length > 0) {
-            for (const file of outfit.fabricImages) {
-              const formData = new FormData();
-              formData.append("file", file);
-              const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
-              if (uploadRes.ok) {
-                const { url, filename } = await uploadRes.json();
-                await fetch(`/api/outfits/${outfit.id}/references`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ type: "FABRIC", url, filename }),
-                });
-              }
-            }
+            await uploadFabricImages(outfit.id, outfit.fabricImages);
           }
-        } else if (
-          !outfit.isNew &&
-          !outfit.isDeleted &&
-          outfit.id &&
-          !isEditable
-        ) {
-          // Outfit is in production — only update add-ons (always allowed by API)
+        } else if (!outfit.isNew && !outfit.isDeleted && outfit.id && !isEditable) {
+          // Outfit is in production — only add-ons are still editable
           await fetch(`/api/outfits/${outfit.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               addOns: (outfit.addOns || [])
                 .filter((a) => a.name && a.price)
-                .map((a) => ({ id: a.id, name: a.name, price: Number(a.price), notes: a.notes || undefined })),
+                .map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  price: Number(a.price),
+                  notes: a.notes || undefined,
+                })),
             }),
           });
         }
@@ -612,15 +406,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       router.push(`/dashboard/orders/${orderId}`);
     },
     onError: (err: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Save failed",
-        description: err.message,
-      });
+      toast({ variant: "destructive", title: "Save failed", description: err.message });
     },
   });
 
-  // ── Outfit helpers ──────────────────────────────────────────────────────────
+  // ── Outfit helpers ───────────────────────────────────────────────────────────
   function addOutfit() {
     setOutfits((prev) => [...prev, emptyOutfit()]);
   }
@@ -637,56 +427,22 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   function confirmDeleteOutfit() {
     if (!deleteOutfitId) return;
     setOutfits((prev) =>
-      prev.map((o) =>
-        o.id === deleteOutfitId ? { ...o, isDeleted: true } : o,
-      ),
+      prev.map((o) => (o.id === deleteOutfitId ? { ...o, isDeleted: true } : o)),
     );
     setDeleteOutfitId(null);
   }
 
-  function updateOutfit(index: number, field: keyof OutfitEntry, value: any) {
-    setOutfits((prev) =>
-      prev.map((o, i) => (i === index ? { ...o, [field]: value } : o)),
-    );
+  function updateOutfit(index: number, value: OutfitFormValue) {
+    setOutfits((prev) => prev.map((o, i) => (i === index ? { ...o, ...value } : o)));
   }
 
-  function handleFabricImageSelect(index: number, files: FileList | null) {
-    if (!files) return;
-    const newFiles = Array.from(files).filter((f) =>
-      ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(f.type),
-    );
-    setOutfits((prev) =>
-      prev.map((o, i) =>
-        i === index
-          ? { ...o, fabricImages: [...o.fabricImages, ...newFiles] }
-          : o,
-      ),
-    );
-  }
-
-  function removeFabricImage(outfitIndex: number, imageIndex: number) {
-    setOutfits((prev) =>
-      prev.map((o, i) =>
-        i === outfitIndex
-          ? {
-            ...o,
-            fabricImages: o.fabricImages.filter((_, fi) => fi !== imageIndex),
-          }
-          : o,
-      ),
-    );
-  }
-
-  // ── Guards ──────────────────────────────────────────────────────────────────
+  // ── Guards ───────────────────────────────────────────────────────────────────
   const validOutfitCount = activeOutfits.filter((o) => o.name && o.type).length;
   const canSubmit = isEditMode
     ? validOutfitCount > 0
     : Boolean(customerId && validOutfitCount > 0);
 
-  const isPending = isEditMode
-    ? saveMutation.isPending
-    : createMutation.isPending;
-
+  const isPending = isEditMode ? saveMutation.isPending : createMutation.isPending;
   const mutationError = isEditMode ? saveMutation.error : createMutation.error;
 
   const backUrl = isEditMode
@@ -695,7 +451,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       ? `/dashboard/customers/${preselectedCustomerId}`
       : "/dashboard/orders";
 
-  // ── Loading state (edit only) ───────────────────────────────────────────────
+  // ── Loading state (edit only) ────────────────────────────────────────────────
   if (isEditMode && isLoadingOrder) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -706,7 +462,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   if (isEditMode && !order) return <p>Order not found</p>;
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header */}
@@ -731,15 +487,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           <Link href={backUrl} className="hidden sm:block">
-            <Button variant="ghost" size="sm">
-              Cancel
-            </Button>
+            <Button variant="ghost" size="sm">Cancel</Button>
           </Link>
           <Button
             size="sm"
-            onClick={() =>
-              isEditMode ? saveMutation.mutate() : createMutation.mutate()
-            }
+            onClick={() => (isEditMode ? saveMutation.mutate() : createMutation.mutate())}
             disabled={!canSubmit || isPending}
           >
             {isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
@@ -794,26 +546,18 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               return (
                 <Card
                   key={outfit.id || `new-${index}`}
-                  className={`relative overflow-hidden border ${!isEditable ? "opacity-80" : ""
-                    }`}
+                  className={`relative overflow-hidden border ${!isEditable ? "opacity-80" : ""}`}
                 >
                   <CardHeader className="bg-muted/30 pb-3 pt-3 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="font-mono bg-background"
-                      >
+                      <Badge variant="outline" className="font-mono bg-background">
                         #{displayIndex}
                       </Badge>
                       {isEditMode && outfit.isNew && (
-                        <Badge variant="secondary" className="text-xs">
-                          New
-                        </Badge>
+                        <Badge variant="secondary" className="text-xs">New</Badge>
                       )}
                       {isEditMode && !isEditable && (
-                        <Badge variant="destructive" className="text-xs">
-                          In Production
-                        </Badge>
+                        <Badge variant="destructive" className="text-xs">In Production</Badge>
                       )}
                       <CardTitle className="text-sm font-medium">
                         {outfit.name || `Outfit Item ${displayIndex}`}
@@ -831,297 +575,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     )}
                   </CardHeader>
 
-                  <CardContent className="pt-4 space-y-4">
-                    {isEditMode && !isEditable && (
-                      <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1.5">
-                        This outfit is in production — name, type, price and other fields are locked. You can still edit add-ons below.
-                      </p>
-                    )}
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {/* Item Name */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">
-                          Item Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          value={outfit.name}
-                          onChange={(e) =>
-                            updateOutfit(index, "name", e.target.value)
-                          }
-                          placeholder="e.g., Heavy Silk Blouse"
-                          disabled={!isEditable}
-                        />
-                      </div>
-
-                      {/* Outfit Type */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">
-                          Type <span className="text-destructive">*</span>
-                        </Label>
-                        <OutfitTypeSelect
-                          value={outfit.type}
-                          onValueChange={(val) =>
-                            updateOutfit(index, "type", val)
-                          }
-                          disabled={!isEditable}
-                        />
-                      </div>
-
-                      {/* Price */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">
-                          Estimated price (₹)
-                        </Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">
-                            ₹
-                          </span>
-                          <Input
-                            type="number"
-                            className="pl-7"
-                            value={outfit.price}
-                            onChange={(e) =>
-                              updateOutfit(index, "price", e.target.value)
-                            }
-                            placeholder="0.00"
-                            disabled={isEditMode && !isEditable}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Assign Designer (Admin Only) */}
-                      {isAdmin && (
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold">
-                            Assigned Designer
-                          </Label>
-                          <Select
-                            value={outfit.designerId}
-                            onValueChange={(val) =>
-                              updateOutfit(index, "designerId", val)
-                            }
-                            disabled={isEditMode && !isEditable}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Assign later..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {designers.map((d: any) => (
-                                <SelectItem key={d.id} value={d.id}>
-                                  {d.name}{!d.active && " (Inactive)"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    {/* Maggam Work Checkbox */}
-                    <div className="flex items-center space-x-2 pt-1">
-                      <Checkbox
-                        id={`maggam-${index}`}
-                        checked={outfit.maggamRequired}
-                        onCheckedChange={(checked) =>
-                          updateOutfit(
-                            index,
-                            "maggamRequired",
-                            Boolean(checked),
-                          )
-                        }
-                        disabled={isEditMode && !isEditable}
-                      />
-                      <label
-                        htmlFor={`maggam-${index}`}
-                        className="text-xs font-medium leading-none cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                        Maggam / Hand Embroidery Work Required
-                      </label>
-                    </div>
-
-                    <Separator />
-
-                    {/* Add-ons Section */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold flex items-center gap-1.5">
-                          <Plus className="h-3.5 w-3.5 text-primary" />
-                          Add-ons (Sourced Items)
-                        </Label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const updated = [...outfits];
-                            updated[index].addOns = [...updated[index].addOns, emptyAddOn()];
-                            setOutfits(updated);
-                          }}
-                        >
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                          Add Item
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Items sourced externally (e.g., dupatta) with separate pricing
-                      </p>
-
-                      {outfit.addOns.length > 0 && (
-                        <div className="space-y-2">
-                          {outfit.addOns.map((addOn, addOnIdx) => (
-                            <div key={addOn.id} className="flex gap-2 items-start p-2 border rounded-md">
-                              <div className="flex-1 grid grid-cols-2 gap-2">
-                                <Input
-                                  placeholder="Item name"
-                                  value={addOn.name}
-                                  onChange={(e) => {
-                                    const updated = [...outfits];
-                                    updated[index].addOns[addOnIdx].name = e.target.value;
-                                    setOutfits(updated);
-                                  }}
-                                  className="h-8 text-xs"
-                                />
-                                <Input
-                                  placeholder="Price"
-                                  type="number"
-                                  value={addOn.price}
-                                  onChange={(e) => {
-                                    const updated = [...outfits];
-                                    updated[index].addOns[addOnIdx].price = e.target.value;
-                                    setOutfits(updated);
-                                  }}
-                                  className="h-8 text-xs"
-                                />
-                                <Input
-                                  placeholder="Notes (optional)"
-                                  value={addOn.notes}
-                                  onChange={(e) => {
-                                    const updated = [...outfits];
-                                    updated[index].addOns[addOnIdx].notes = e.target.value;
-                                    setOutfits(updated);
-                                  }}
-                                  className="h-8 text-xs col-span-2"
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  const updated = [...outfits];
-                                  updated[index].addOns = updated[index].addOns.filter((_, i) => i !== addOnIdx);
-                                  setOutfits(updated);
-                                }}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    {/* Fabric Images */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-semibold flex items-center gap-1.5">
-                        <ImagePlus className="h-3.5 w-3.5 text-primary" />
-                        Customer Material Images
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {isEditMode
-                          ? "Add new photos or view existing material images."
-                          : "Upload photos of the customer's fabric material (optional)."}
-                      </p>
-
-                      {/* Existing refs (edit mode) */}
-                      {isEditMode &&
-                        (outfit.existingFabricRefs || []).length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {(outfit.existingFabricRefs || []).map(
-                              (ref: any) => (
-                                <div
-                                  key={ref.id}
-                                  className="relative w-16 h-16 rounded-md overflow-hidden border"
-                                >
-                                  <img
-                                    src={ref.url}
-                                    alt="Fabric"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              ),
-                            )}
-                          </div>
-                        )}
-
-                      {/* New image previews */}
-                      {outfit.fabricImages.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {outfit.fabricImages.map((file, imgIdx) => (
-                            <div
-                              key={imgIdx}
-                              className="relative group w-16 h-16 rounded-md overflow-hidden border"
-                            >
-                              <img
-                                src={URL.createObjectURL(file)}
-                                alt={`Fabric ${imgIdx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeFabricImage(index, imgIdx)}
-                                className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-bl p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Upload + Camera buttons */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label
-                          htmlFor={`fabric-upload-${index}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md cursor-pointer hover:bg-muted transition-colors"
-                        >
-                          <ImagePlus className="h-3.5 w-3.5" />
-                          {outfit.fabricImages.length > 0 ||
-                            (outfit.existingFabricRefs || []).length > 0
-                            ? "Add More"
-                            : "Upload Material Photos"}
-                        </label>
-                        <input
-                          id={`fabric-upload-${index}`}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          multiple
-                          className="hidden"
-                          onChange={(e) =>
-                            handleFabricImageSelect(index, e.target.files)
-                          }
-                        />
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setCameraIndex(index);
-                            setCameraOpen(true);
-                          }}
-                        >
-                          <Camera className="h-3.5 w-3.5 mr-1.5" />
-                          Take Photo
-                        </Button>
-                      </div>
-                    </div>
+                  <CardContent className="pt-4">
+                    <OutfitFormFields
+                      value={outfit}
+                      onChange={(val) => updateOutfit(index, val)}
+                      showStaffAssignment={isAdmin}
+                      designers={designers}
+                      masters={masters}
+                      coreFieldsLocked={isEditMode && !isEditable}
+                      isEditMode={isEditMode}
+                    />
                   </CardContent>
                 </Card>
               );
@@ -1141,45 +604,29 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               {isEditMode ? (
-                // Edit: read-only customer display
                 <div className="rounded-md border p-3 bg-muted/40 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">
-                      {order.customer?.name}
-                    </p>
+                    <p className="text-sm font-medium">{order.customer?.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {order.customer?.mobile ||
-                        order.customer?.email ||
-                        "No contact info"}
+                      {order.customer?.mobile || order.customer?.email || "No contact info"}
                     </p>
                   </div>
                   <Badge variant="secondary">{order.orderNumber}</Badge>
                 </div>
               ) : preselectedCustomerId && selectedCustomer ? (
-                // New + preselected: show locked customer
                 <div className="rounded-md border p-3 bg-muted/40 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">
-                      {selectedCustomer.name}
-                    </p>
+                    <p className="text-sm font-medium">{selectedCustomer.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {selectedCustomer.mobile ||
-                        selectedCustomer.email ||
-                        "No contact info"}
+                      {selectedCustomer.mobile || selectedCustomer.email || "No contact info"}
                     </p>
                   </div>
                   <Badge variant="secondary">Preselected</Badge>
                 </div>
               ) : (
-                // New: customer selector
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">
-                    Select Customer *
-                  </Label>
-                  <Select
-                    value={customerId}
-                    onValueChange={(val) => setCustomerId(val)}
-                  >
+                  <Label className="text-xs font-semibold">Select Customer *</Label>
+                  <Select value={customerId} onValueChange={(val) => setCustomerId(val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Search or select customer..." />
                     </SelectTrigger>
@@ -1288,9 +735,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               <div className="space-y-3 bg-muted/30 p-3 rounded-lg border">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Estimated Total</span>
-                  <span className="font-semibold text-sm">
-                    ₹{estimatedTotal.toLocaleString()}
-                  </span>
+                  <span className="font-semibold text-sm">₹{estimatedTotal.toLocaleString()}</span>
                 </div>
 
                 {isEditMode && (
@@ -1328,10 +773,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         max={isEditMode ? remainingBalance : undefined}
                         className="bg-background flex-1"
                       />
-                      <Select
-                        value={advanceMethod}
-                        onValueChange={setAdvanceMethod}
-                      >
+                      <Select value={advanceMethod} onValueChange={setAdvanceMethod}>
                         <SelectTrigger className="h-9 w-28 px-2 text-xs">
                           <SelectValue placeholder="Method" />
                         </SelectTrigger>
@@ -1339,9 +781,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           <SelectItem value="CASH">Cash</SelectItem>
                           <SelectItem value="UPI">UPI</SelectItem>
                           <SelectItem value="CARD">Card</SelectItem>
-                          <SelectItem value="BANK_TRANSFER">
-                            Bank Transfer
-                          </SelectItem>
+                          <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1351,13 +791,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <Separator />
 
                 <div className="flex justify-between items-center text-xs pt-1">
-                  <span className="font-medium text-muted-foreground">
-                    Balance Due
-                  </span>
-                  <span
-                    className={`font-bold text-sm ${balanceDue > 0 ? "text-red-600" : "text-emerald-600"
-                      }`}
-                  >
+                  <span className="font-medium text-muted-foreground">Balance Due</span>
+                  <span className={`font-bold text-sm ${balanceDue > 0 ? "text-red-600" : "text-emerald-600"}`}>
                     ₹{Math.max(0, balanceDue).toLocaleString()}
                   </span>
                 </div>
@@ -1377,9 +812,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
               {/* Submit Button */}
               <Button
-                onClick={() =>
-                  isEditMode ? saveMutation.mutate() : createMutation.mutate()
-                }
+                onClick={() => (isEditMode ? saveMutation.mutate() : createMutation.mutate())}
                 disabled={!canSubmit || isPending}
                 className="w-full"
                 size="lg"
@@ -1392,12 +825,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 ) : isEditMode ? (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Changes ({validOutfitCount} Item
-                    {validOutfitCount !== 1 ? "s" : ""})
+                    Save Changes ({validOutfitCount} Item{validOutfitCount !== 1 ? "s" : ""})
                   </>
                 ) : (
-                  `Create Order (${validOutfitCount} Item${validOutfitCount !== 1 ? "s" : ""
-                  })`
+                  `Create Order (${validOutfitCount} Item${validOutfitCount !== 1 ? "s" : ""})`
                 )}
               </Button>
 
@@ -1411,38 +842,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         </div>
       </div>
 
-      {/* Camera Modal */}
-      <CameraCaptureModal
-        open={cameraOpen}
-        onClose={() => {
-          setCameraOpen(false);
-          setCameraIndex(null);
-        }}
-        onCapture={(file) => {
-          if (cameraIndex === null) return;
-          setOutfits((prev) =>
-            prev.map((o, i) =>
-              i === cameraIndex
-                ? { ...o, fabricImages: [...o.fabricImages, file] }
-                : o,
-            ),
-          );
-          setCameraIndex(null);
-        }}
-      />
-
       {/* Delete Outfit Confirmation (edit mode) */}
-      <AlertDialog
-        open={!!deleteOutfitId}
-        onOpenChange={() => setDeleteOutfitId(null)}
-      >
+      <AlertDialog open={!!deleteOutfitId} onOpenChange={() => setDeleteOutfitId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Outfit</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete this outfit and all its related data
-              (reference images, production logs, etc.) when you save. Are you
-              sure?
+              (reference images, production logs, etc.) when you save. Are you sure?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

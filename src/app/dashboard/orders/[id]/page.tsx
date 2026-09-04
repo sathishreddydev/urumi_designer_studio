@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -25,8 +25,6 @@ import {
   Shirt,
   Trash2,
   ImageIcon,
-  ImagePlus,
-  Camera,
   X,
   Calendar,
   ExternalLink,
@@ -40,8 +38,11 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
-import { CameraCaptureModal } from "@/components/camera-capture-modal";
-import { OutfitTypeSelect } from "@/components/outfit-type-select";
+import {
+  OutfitFormFields,
+  OutfitFormValue,
+  emptyOutfitFormValue,
+} from "@/components/outfit-form-fields";
 
 // ─── Per-Outfit Status Updater ───────────────────────────────────────────────
 
@@ -158,20 +159,7 @@ export default function OrderDetailPage() {
   const [paymentAmountError, setPaymentAmountError] = useState("");
   const [outfitFormKey, setOutfitFormKey] = useState(0);
   const [paymentFormKey, setPaymentFormKey] = useState(0);
-  const [newOutfitFabricImages, setNewOutfitFabricImages] = useState<File[]>(
-    [],
-  );
-  const [cameraOpen, setCameraOpen] = useState(false);
-
-  // Stable blob URLs for fabric image previews — revoked when images change or component unmounts
-  const blobUrlsRef = useRef<string[]>([]);
-  const fabricPreviewUrls = useMemo(() => {
-    blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    const urls = newOutfitFabricImages.map((f) => URL.createObjectURL(f));
-    blobUrlsRef.current = urls;
-    return urls;
-  }, [newOutfitFabricImages]);
-  useEffect(() => () => blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  const [newOutfitValue, setNewOutfitValue] = useState<OutfitFormValue>(emptyOutfitFormValue());
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.id],
@@ -255,25 +243,37 @@ export default function OrderDetailPage() {
 
   // Mutations
   const addOutfitMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const { fabricImages = [], ...outfitData } = data;
+    mutationFn: async (value: OutfitFormValue) => {
       const res = await fetch("/api/outfits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...outfitData, orderId: params.id }),
+        body: JSON.stringify({
+          orderId: params.id,
+          name: value.name,
+          type: value.type,
+          occasion: value.occasion || undefined,
+          price: value.price ? Number(value.price) : undefined,
+          maggamRequired: value.maggamRequired,
+          designerId: value.designerId || undefined,
+          masterId: value.masterId || undefined,
+          addOns: (value.addOns || [])
+            .filter((a) => a.name && a.price)
+            .map((a) => ({
+              id: a.id,
+              name: a.name,
+              price: Number(a.price),
+              notes: a.notes || undefined,
+            })),
+        }),
       });
       if (!res.ok) throw new Error("Failed to add outfit");
       const createdOutfit = await res.json();
 
-      for (const file of fabricImages as File[]) {
+      for (const file of value.fabricImages) {
         const formData = new FormData();
         formData.append("file", file);
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
         if (!uploadRes.ok) continue;
-
         const { url, filename } = await uploadRes.json();
         await fetch(`/api/outfits/${createdOutfit.id}/references`, {
           method: "POST",
@@ -288,8 +288,11 @@ export default function OrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
       setShowAddOutfit(false);
       setOutfitFormKey((prev) => prev + 1);
-      setNewOutfitFabricImages([]);
+      setNewOutfitValue(emptyOutfitFormValue());
       toast({ title: "Outfit Added", description: "New item added to order." });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: "Failed to add outfit", description: err.message });
     },
   });
 
@@ -571,191 +574,20 @@ export default function OrderDetailPage() {
             <CardContent className="space-y-4 pt-0">
               {/* Inline Add Outfit Form Panel */}
               {showAddOutfit && (
-                <form
+                <div
                   key={outfitFormKey}
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const form = new FormData(e.currentTarget);
-                    addOutfitMutation.mutate({
-                      name: form.get("name"),
-                      type: form.get("type"),
-                      occasion: form.get("occasion") || undefined,
-                      price: form.get("price")
-                        ? Number(form.get("price"))
-                        : undefined,
-                      maggamRequired: form.get("maggamRequired") === "on",
-                      designerId:
-                        form.get("designerId") === "none"
-                          ? undefined
-                          : form.get("designerId"),
-                      fabricImages: newOutfitFabricImages,
-                    });
-                  }}
-                  className="bg-muted/40 p-4 border rounded-lg space-y-4 my-2 transition-all"
+                  className="bg-muted/40 p-4 border rounded-lg space-y-4 my-2"
                 >
                   <p className="text-sm font-semibold leading-5 border-b pb-2">
                     New Outfit Details
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="name">
-                        Item Name
-                      </Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="e.g., Heavy Silk Blouse"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="type">
-                        Type
-                      </Label>
-                      <OutfitTypeSelect name="type" required />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        className="text-xs font-semibold"
-                        htmlFor="occasion"
-                      >
-                        Occasion
-                      </Label>
-                      <Input
-                        id="occasion"
-                        name="occasion"
-                        placeholder="e.g. Wedding Reception"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold" htmlFor="price">
-                        Estimated Price (₹)
-                      </Label>
-                      <Input
-                        id="price"
-                        name="price"
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="0"
-                      />
-                    </div>
-                    {isAdmin && (
-                      <div className="space-y-1.5">
-                        <Label
-                          className="text-xs font-semibold"
-                          htmlFor="designerId"
-                        >
-                          Assigned Designer
-                        </Label>
-                        <Select name="designerId" defaultValue="none">
-                          <SelectTrigger id="designerId">
-                            <SelectValue placeholder="Assign later..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              Assign later...
-                            </SelectItem>
-                            {designers.map((designer: any) => (
-                              <SelectItem key={designer.id} value={designer.id}>
-                                {designer.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="maggamRequired"
-                      id="maggamRequired"
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <Label
-                      htmlFor="maggamRequired"
-                      className="text-xs font-medium leading-4"
-                    >
-                      Requires Maggam Work
-                    </Label>
-                  </div>
-                  <div className="space-y-2 border-t pt-3">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <ImagePlus className="h-3.5 w-3.5 text-primary" />
-                      Customer Material Images
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Upload photos of the customer's fabric material
-                      (optional).
-                    </p>
-                    {newOutfitFabricImages.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {newOutfitFabricImages.map((file, index) => (
-                          <div
-                            key={`${file.name}-${index}`}
-                            className="relative group h-16 w-16 overflow-hidden rounded-md border"
-                          >
-                            <img
-                              src={fabricPreviewUrls[index]}
-                              alt={`Fabric ${index + 1}`}
-                              className="h-full w-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setNewOutfitFabricImages((current) =>
-                                  current.filter(
-                                    (_, fileIndex) => fileIndex !== index,
-                                  ),
-                                )
-                              }
-                              className="absolute right-0 top-0 rounded-bl bg-destructive p-0.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                              aria-label={`Remove fabric image ${index + 1}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label
-                        htmlFor="new-outfit-fabric-upload"
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium leading-4 transition-colors hover:bg-muted"
-                      >
-                        <ImagePlus className="h-3.5 w-3.5" />
-                        {newOutfitFabricImages.length > 0
-                          ? "Add More"
-                          : "Upload Material Photos"}
-                      </label>
-                      <input
-                        id="new-outfit-fabric-upload"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            setNewOutfitFabricImages((current) => [
-                              ...current,
-                              ...Array.from(e.target.files || []),
-                            ]);
-                          }
-                          e.currentTarget.value = "";
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCameraOpen(true)}
-                      >
-                        <Camera className="mr-1.5 h-3.5 w-3.5" />
-                        Take Photo
-                      </Button>
-                    </div>
-                  </div>
+                  <OutfitFormFields
+                    value={newOutfitValue}
+                    onChange={setNewOutfitValue}
+                    showStaffAssignment={isAdmin}
+                    designers={designers}
+                    masters={masters}
+                  />
                   <div className="flex justify-end gap-2 pt-1 border-t">
                     <Button
                       type="button"
@@ -764,20 +596,21 @@ export default function OrderDetailPage() {
                       onClick={() => {
                         setShowAddOutfit(false);
                         setOutfitFormKey((prev) => prev + 1);
-                        setNewOutfitFabricImages([]);
+                        setNewOutfitValue(emptyOutfitFormValue());
                       }}
                     >
                       Cancel
                     </Button>
                     <LoadingButton
-                      type="submit"
                       size="sm"
                       loading={addOutfitMutation.isPending}
+                      disabled={!newOutfitValue.name || !newOutfitValue.type}
+                      onClick={() => addOutfitMutation.mutate(newOutfitValue)}
                     >
                       Save Outfit Item
                     </LoadingButton>
                   </div>
-                </form>
+                </div>
               )}
 
               {/* Outfits List */}
@@ -1298,14 +1131,6 @@ export default function OrderDetailPage() {
           )}
         </div>
       </div>
-
-      <CameraCaptureModal
-        open={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onCapture={(file) =>
-          setNewOutfitFabricImages((current) => [...current, file])
-        }
-      />
 
       {/* Global Image Viewer Component */}
       <ImageViewer

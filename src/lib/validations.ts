@@ -35,6 +35,7 @@ export const outfitSchema = z.object({
   // price and designerId are part of the outfit payload and must be validated
   price: z.number().nonnegative("Price must be 0 or positive").optional(),
   designerId: z.string().optional(),
+  masterId: z.string().optional(),
   addOns: z.array(z.object({
     id: z.string(),
     name: z.string(),

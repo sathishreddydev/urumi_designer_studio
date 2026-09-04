@@ -259,6 +259,7 @@ export const POST = withPermission(
         maggamRequired: parsed.data.maggamRequired,
         price: parsed.data.price != null ? String(parsed.data.price) : null,
         designerId: parsed.data.designerId || null,
+        masterId: parsed.data.masterId || null,
         measurementSnapshotId,
         garmentMeasurements: Object.keys(garmentMeasurements).length > 0 ? garmentMeasurements : null,
         addOns: parsed.data.addOns && parsed.data.addOns.length > 0 ? parsed.data.addOns : null,
