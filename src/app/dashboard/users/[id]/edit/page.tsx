@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useEffect } from "react";
+import { ROLES } from "@/lib/permissions";
 
 interface EditUserForm {
   name: string;
@@ -43,23 +43,36 @@ export default function EditUserPage() {
 
   const user = users?.find((u: any) => u.id === params.id);
 
-  const { register, handleSubmit, setValue, watch, reset, formState } = useForm<EditUserForm>({
-    defaultValues: { name: "", phone: "", role: "", password: "", active: true },
+  if (!user) {
+    return <div className="h-8 w-48 animate-pulse rounded bg-muted" />;
+  }
+
+  // Only rendered once user is available — form is initialised with real values
+  return <EditUserForm user={user} userId={params.id as string} router={router} queryClient={queryClient} />;
+}
+
+function EditUserForm({
+  user,
+  userId,
+  router,
+  queryClient,
+}: {
+  user: any;
+  userId: string;
+  router: ReturnType<typeof useRouter>;
+  queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const { register, handleSubmit, setValue, watch } = useForm<EditUserForm>({
+    defaultValues: {
+      name: user.name,
+      phone: user.phone || "",
+      role: user.role || "",
+      password: "",
+      active: user.active,
+    },
   });
 
   const currentRole = watch("role");
-
-  useEffect(() => {
-    if (user) {
-      reset({
-        name: user.name,
-        phone: user.phone || "",
-        role: user.role || "",
-        password: "",
-        active: user.active,
-      });
-    }
-  }, [user, reset]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<EditUserForm>) => {
@@ -70,7 +83,7 @@ export default function EditUserPage() {
       if (data.password) payload.password = data.password;
       if (data.active !== undefined) payload.active = data.active;
 
-      const res = await fetch(`/api/users/${params.id}`, {
+      const res = await fetch(`/api/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -83,10 +96,6 @@ export default function EditUserPage() {
       router.push("/dashboard/users");
     },
   });
-
-  if (!user) {
-    return <div className="h-8 w-48 animate-pulse rounded bg-muted" />;
-  }
 
   return (
     <div className="space-y-4">
@@ -114,13 +123,15 @@ export default function EditUserPage() {
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Select value={currentRole} onValueChange={(val) => setValue("role", val, { shouldDirty: true })}>
+                <Select
+                  value={currentRole}
+                  onValueChange={(val) => setValue("role", val, { shouldDirty: true })}
+                >
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="RECEPTION">Reception</SelectItem>
-                    <SelectItem value="DESIGNER">Designer</SelectItem>
-                    <SelectItem value="MASTER">Master</SelectItem>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

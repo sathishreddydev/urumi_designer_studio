@@ -35,6 +35,16 @@ export interface PermissionContext {
   isAssigned?: boolean;
 }
 
+// ─── ROLE REGISTRY ──────────────────────────────────────────────────────────
+
+export const ROLES: { value: Role; label: string }[] = [
+  { value: "ADMIN",         label: "Admin" },
+  { value: "STORE_MANAGER", label: "Store Manager" },
+  { value: "RECEPTION",     label: "Reception" },
+  { value: "DESIGNER",      label: "Designer" },
+  { value: "MASTER",        label: "Master" },
+];
+
 // ─── PERMISSION MATRIX ──────────────────────────────────────────────────────
 
 const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {

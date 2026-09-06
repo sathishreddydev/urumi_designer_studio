@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { userSchema, type UserInput } from "@/lib/validations";
+import { ROLES } from "@/lib/permissions";
 import Link from "next/link";
 
 export default function NewUserPage() {
@@ -107,10 +108,9 @@ export default function NewUserPage() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="RECEPTION">Reception</SelectItem>
-                    <SelectItem value="DESIGNER">Designer</SelectItem>
-                    <SelectItem value="MASTER">Master</SelectItem>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
