@@ -48,7 +48,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (stats.role === "ADMIN" || stats.role === "RECEPTION") {
+  if (stats.role === "ADMIN" || stats.role === "STORE_MANAGER" || stats.role === "RECEPTION") {
     // Post-production items that need attention
     const postProduction =
       (stats.productionCompleted || 0) +
@@ -105,7 +105,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <DashboardReports />
+        {stats.role === "ADMIN" && <DashboardReports />}
         <DeadlineAlerts />
       </div>
     );

@@ -14,7 +14,7 @@ import {
 
 // ─── ENUMS ──────────────────────────────────────────────────────────────────
 
-export const roleEnum = pgEnum("role", ["ADMIN", "RECEPTION", "DESIGNER", "MASTER"]);
+export const roleEnum = pgEnum("role", ["ADMIN", "STORE_MANAGER", "RECEPTION", "DESIGNER", "MASTER"]);
 
 export const outfitStatusEnum = pgEnum("outfit_status", [
   "DRAFT",

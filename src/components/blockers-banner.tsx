@@ -20,7 +20,7 @@ export function BlockersBanner() {
       return res.json();
     },
     refetchInterval: 30000, // refresh every 30s
-    enabled: role === "ADMIN" || role === "DESIGNER",
+    enabled: role === "ADMIN" || role === "STORE_MANAGER" || role === "DESIGNER",
   });
 
   const resolveMutation = useMutation({
@@ -39,7 +39,7 @@ export function BlockersBanner() {
   });
 
   if (!blockers || blockers.length === 0) return null;
-  if (role !== "ADMIN" && role !== "DESIGNER") return null;
+  if (role !== "ADMIN" && role !== "STORE_MANAGER" && role !== "DESIGNER") return null;
 
   return (
     <div className="rounded-lg border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20 p-3 space-y-2">

@@ -53,7 +53,7 @@ function getNextStatuses(
   maggamRequired: boolean,
   role: string
 ): { status: string; label: string; variant?: "destructive" | "default" | "outline" }[] {
-  if (role === "MASTER" || role === "ADMIN") {
+  if (role === "MASTER" || role === "ADMIN" || role === "STORE_MANAGER") {
     if (current === "PRODUCTION_READY") return [{ status: "PATTERN_DRAFTING", label: "Start Pattern" }];
     if (current === "PATTERN_DRAFTING")
       return maggamRequired
@@ -64,7 +64,7 @@ function getNextStatuses(
     if (current === "FABRIC_CUTTING") return [{ status: "STITCHING", label: "Stitching" }];
     if (current === "STITCHING") return [{ status: "PRODUCTION_COMPLETED", label: "Mark Complete" }];
   }
-  if (role === "DESIGNER" || role === "ADMIN") {
+  if (role === "DESIGNER" || role === "ADMIN" || role === "STORE_MANAGER") {
     if (current === "MAGGAM_REVIEW")
       return [
         { status: "MAGGAM_REVIEWED", label: "Approve",  },

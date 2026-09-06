@@ -478,7 +478,7 @@ export default function OutfitDetailPage() {
     "DELIVERED",
   ];
   const canUploadCompletion =
-    (role === "ADMIN" || role === "RECEPTION" || role === "DESIGNER") &&
+    (role === "ADMIN" || role === "STORE_MANAGER" || role === "RECEPTION" || role === "DESIGNER") &&
     completionStatuses.includes(outfit.status);
 
   const materialLockedStatuses = [
@@ -496,7 +496,7 @@ export default function OutfitDetailPage() {
     "DELIVERED",
   ];
   const canManageCustomerMaterial =
-    (role === "ADMIN" || role === "RECEPTION") &&
+    (role === "ADMIN" || role === "STORE_MANAGER" || role === "RECEPTION") &&
     !materialLockedStatuses.includes(outfit.status);
 
   const lockedStatuses = [
@@ -1642,10 +1642,10 @@ function AssignMasterSelect({
   currentMasterId: string | null;
   onAssign: (masterId: string) => void;
 }) {
-  const { isAdmin, role } = usePermissions();
+  const { isAdmin, isAdminOrStoreManager, role } = usePermissions();
 
-  // Only ADMIN and DESIGNER can assign masters — guard the query
-  const canFetch = isAdmin || role === "DESIGNER";
+  // Only ADMIN, STORE_MANAGER and DESIGNER can assign masters — guard the query
+  const canFetch = isAdminOrStoreManager || role === "DESIGNER";
 
   const { data: staff } = useQuery({
     queryKey: ["staff-masters", currentMasterId],

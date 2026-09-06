@@ -111,7 +111,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get("customerId") || "";
   const queryClient = useQueryClient();
-  const { isAdmin } = usePermissions();
+  const { isAdminOrStoreManager } = usePermissions();
 
   // ── Form State ───────────────────────────────────────────────────────────────
   const [customerId, setCustomerId] = useState(preselectedCustomerId);
@@ -151,7 +151,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: isAdmin,
+    enabled: isAdminOrStoreManager,
   });
 
   const customers = customersData?.customers || [];
@@ -580,7 +580,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     <OutfitFormFields
                       value={outfit}
                       onChange={(val) => updateOutfit(index, val)}
-                      showStaffAssignment={isAdmin}
+                      showStaffAssignment={isAdminOrStoreManager}
                       designers={designers}
                       masters={masters}
                       coreFieldsLocked={isEditMode && !isEditable}

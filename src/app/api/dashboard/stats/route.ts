@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.role === "ADMIN" || session.role === "RECEPTION") {
+  if (session.role === "ADMIN" || session.role === "STORE_MANAGER" || session.role === "RECEPTION") {
     const [{ total: totalCustomers }] = await db.select({ total: count() }).from(customers);
     const [{ total: activeOrders }] = await db
       .select({ total: count() })

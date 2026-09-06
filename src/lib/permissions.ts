@@ -1,6 +1,6 @@
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
-export type Role = "ADMIN" | "RECEPTION" | "DESIGNER" | "MASTER" | "CUSTOMER";
+export type Role = "ADMIN" | "STORE_MANAGER" | "RECEPTION" | "DESIGNER" | "MASTER" | "CUSTOMER";
 
 export type Resource =
   | "customer"
@@ -50,6 +50,20 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     payment: ["create", "read", "delete"],   // ADMIN can void payments
     portal: ["create", "read"],
     user: ["create", "read", "update", "delete"],
+  },
+  // Store Manager has identical capabilities to ADMIN except user management
+  STORE_MANAGER: {
+    customer: ["create", "read", "update", "delete"],
+    order: ["create", "read", "update", "delete"],
+    outfit: ["create", "read", "update", "delete"],
+    measurement: ["create", "read", "update"],
+    reference: ["create", "read", "update", "upload", "select", "lock"],
+    material: ["create", "read", "update"],
+    production: ["read", "update", "transition", "view_progress"],
+    dependency: ["create", "read", "update"],
+    payment: ["create", "read", "delete"],
+    portal: ["create", "read"],
+    user: [],  // no access to user management
   },
   RECEPTION: {
     customer: ["create", "read", "update"],
@@ -113,7 +127,7 @@ export function hasPermission(
   action: Action,
   context?: PermissionContext
 ): boolean {
-  // Admin has full access
+  // ADMIN and STORE_MANAGER have full access (STORE_MANAGER limited to non-user resources)
   if (role === "ADMIN") return true;
 
   const allowedActions = PERMISSION_MATRIX[role]?.[resource] ?? [];
@@ -141,6 +155,9 @@ export function requirePermission(
 export function getPermittedActions(role: Role, resource: Resource): Action[] {
   if (role === "ADMIN") {
     return ["create", "read", "update", "delete", "upload", "select", "lock", "release", "transition", "view_progress"];
+  }
+  if (role === "STORE_MANAGER") {
+    return (PERMISSION_MATRIX.STORE_MANAGER[resource] ?? []) as Action[];
   }
   return (PERMISSION_MATRIX[role]?.[resource] ?? []) as Action[];
 }

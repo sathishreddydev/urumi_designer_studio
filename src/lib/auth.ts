@@ -11,7 +11,7 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
-export type Role = "ADMIN" | "RECEPTION" | "DESIGNER" | "MASTER";
+export type Role = "ADMIN" | "STORE_MANAGER" | "RECEPTION" | "DESIGNER" | "MASTER";
 
 export interface SessionUser {
   id: string;

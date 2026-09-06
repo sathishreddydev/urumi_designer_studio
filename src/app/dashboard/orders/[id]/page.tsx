@@ -135,7 +135,7 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { can, isAdmin } = usePermissions();
+  const { can, isAdminOrStoreManager } = usePermissions();
 
   // Resolve back destination from ?from= param
   const from = searchParams.get("from");
@@ -177,7 +177,7 @@ export default function OrderDetailPage() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: isAdmin,
+    enabled: isAdminOrStoreManager,
   });
 
   const assignedDesignerIds = useMemo(
@@ -584,7 +584,7 @@ export default function OrderDetailPage() {
                   <OutfitFormFields
                     value={newOutfitValue}
                     onChange={setNewOutfitValue}
-                    showStaffAssignment={isAdmin}
+                    showStaffAssignment={isAdminOrStoreManager}
                     designers={designers}
                     masters={masters}
                   />
@@ -755,7 +755,7 @@ export default function OrderDetailPage() {
                     })()}
 
                     {/* Admin Staff Assignments */}
-                    {isAdmin && !isCompleted && (
+                    {isAdminOrStoreManager && !isCompleted && (
                       <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs">
                         <div className="space-y-1">
                           <Label className="text-[11px] leading-4 text-muted-foreground">
@@ -1111,7 +1111,7 @@ export default function OrderDetailPage() {
                           <span className="font-semibold text-sm">
                             ₹{Number(p.amount).toLocaleString()}
                           </span>
-                          {isAdmin && (
+                          {isAdminOrStoreManager && (
                             <Button
                               variant="ghost"
                               size="icon"

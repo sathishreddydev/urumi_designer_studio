@@ -9,8 +9,8 @@ export const DELETE = withPermission(
   async (_request, { params, session }) => {
     const { id } = await params;
 
-    // Only ADMIN can delete payments
-    if (session.role !== "ADMIN") {
+    // Only ADMIN and STORE_MANAGER can delete payments
+    if (session.role !== "ADMIN" && session.role !== "STORE_MANAGER") {
       return NextResponse.json(
         { error: "Only admins can void payments" },
         { status: 403 }

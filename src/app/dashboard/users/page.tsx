@@ -22,6 +22,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "bg-red-100 text-red-700",
+  STORE_MANAGER: "bg-orange-100 text-orange-700",
   RECEPTION: "bg-blue-100 text-blue-700",
   DESIGNER: "bg-purple-100 text-purple-700",
   MASTER: "bg-green-100 text-green-700",

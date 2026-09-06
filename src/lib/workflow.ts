@@ -47,56 +47,56 @@ export interface TransitionResult {
 
 const TRANSITION_RULES: TransitionRule[] = [
   // Design phase
-  { from: "DRAFT", to: "DESIGN_IN_PROGRESS", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "DESIGN_IN_PROGRESS", to: "WAITING_FOR_REFERENCES", allowedRoles: ["ADMIN", "DESIGNER"] },
+  { from: "DRAFT", to: "DESIGN_IN_PROGRESS", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
+  { from: "DESIGN_IN_PROGRESS", to: "WAITING_FOR_REFERENCES", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
 
   // Release to production (refs must be locked)
   {
     from: "WAITING_FOR_REFERENCES",
     to: "PRODUCTION_READY",
-    allowedRoles: ["ADMIN", "DESIGNER"],
+    allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"],
     preconditions: [{ type: "references_locked" }],
   },
 
   // Dependency handling
-  { from: "WAITING_FOR_REFERENCES", to: "WAITING_FOR_DEPENDENCIES", allowedRoles: ["ADMIN", "DESIGNER", "MASTER"] },
+  { from: "WAITING_FOR_REFERENCES", to: "WAITING_FOR_DEPENDENCIES", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER", "MASTER"] },
   {
     from: "WAITING_FOR_DEPENDENCIES",
     to: "PRODUCTION_READY",
-    allowedRoles: ["ADMIN", "DESIGNER"],
+    allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"],
     preconditions: [{ type: "no_pending_dependencies" }],
   },
 
   // Production phase — Master/Admin
-  { from: "PRODUCTION_READY", to: "PATTERN_DRAFTING", allowedRoles: ["ADMIN", "MASTER"] },
+  { from: "PRODUCTION_READY", to: "PATTERN_DRAFTING", allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"] },
   {
     from: "PATTERN_DRAFTING",
     to: "MAGGAM_WORK",
-    allowedRoles: ["ADMIN", "MASTER"],
+    allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"],
     preconditions: [{ type: "maggam_required" }],
   },
   {
     from: "PATTERN_DRAFTING",
     to: "FABRIC_CUTTING",
-    allowedRoles: ["ADMIN", "MASTER"],
+    allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"],
     preconditions: [{ type: "maggam_not_required" }],
   },
-  { from: "MAGGAM_WORK", to: "MAGGAM_REVIEW", allowedRoles: ["ADMIN", "MASTER"] },
-  { from: "MAGGAM_REVIEW", to: "MAGGAM_REVIEWED", allowedRoles: ["ADMIN", "DESIGNER"] }, // approve
-  { from: "MAGGAM_REVIEW", to: "MAGGAM_WORK", allowedRoles: ["ADMIN", "DESIGNER"] },     // rework
-  { from: "MAGGAM_REVIEWED", to: "FABRIC_CUTTING", allowedRoles: ["ADMIN", "MASTER"] },
-  { from: "FABRIC_CUTTING", to: "STITCHING", allowedRoles: ["ADMIN", "MASTER"] },
-  { from: "STITCHING", to: "PRODUCTION_COMPLETED", allowedRoles: ["ADMIN", "MASTER"] },
+  { from: "MAGGAM_WORK", to: "MAGGAM_REVIEW", allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"] },
+  { from: "MAGGAM_REVIEW", to: "MAGGAM_REVIEWED", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] }, // approve
+  { from: "MAGGAM_REVIEW", to: "MAGGAM_WORK", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },     // rework
+  { from: "MAGGAM_REVIEWED", to: "FABRIC_CUTTING", allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"] },
+  { from: "FABRIC_CUTTING", to: "STITCHING", allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"] },
+  { from: "STITCHING", to: "PRODUCTION_COMPLETED", allowedRoles: ["ADMIN", "STORE_MANAGER", "MASTER"] },
 
   // Post-production — Designer/Admin
-  { from: "PRODUCTION_COMPLETED", to: "TRIAL", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "TRIAL", to: "ALTERATION", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "TRIAL", to: "QC", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "ALTERATION", to: "QC", allowedRoles: ["ADMIN", "DESIGNER"] },
-  { from: "QC", to: "READY_FOR_DELIVERY", allowedRoles: ["ADMIN", "DESIGNER"] },
+  { from: "PRODUCTION_COMPLETED", to: "TRIAL", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
+  { from: "TRIAL", to: "ALTERATION", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
+  { from: "TRIAL", to: "QC", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
+  { from: "ALTERATION", to: "QC", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
+  { from: "QC", to: "READY_FOR_DELIVERY", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
 
   // Delivery — Reception/Admin
-  { from: "READY_FOR_DELIVERY", to: "DELIVERED", allowedRoles: ["ADMIN", "RECEPTION"] },
+  { from: "READY_FOR_DELIVERY", to: "DELIVERED", allowedRoles: ["ADMIN", "STORE_MANAGER", "RECEPTION"] },
 ];
 
 // ─── PRECONDITION EVALUATION ────────────────────────────────────────────────

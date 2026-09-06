@@ -33,6 +33,8 @@ export function usePermissions() {
     role,
     session,
     isAdmin: role === "ADMIN",
+    isStoreManager: role === "STORE_MANAGER",
+    isAdminOrStoreManager: role === "ADMIN" || role === "STORE_MANAGER",
     isDesigner: role === "DESIGNER",
     isMaster: role === "MASTER",
     isReception: role === "RECEPTION",

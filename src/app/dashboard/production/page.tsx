@@ -215,7 +215,7 @@ export default function ProductionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "DESIGNER") ? (
+                        {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "STORE_MANAGER" || role === "DESIGNER") ? (
                           <div className="flex gap-1.5 justify-end">
                             <LoadingButton
                               size="sm"
@@ -333,7 +333,7 @@ export default function ProductionPage() {
                   )}
 
                   {/* Action */}
-                  {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "DESIGNER") ? (
+                  {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "STORE_MANAGER" || role === "DESIGNER") ? (
                     <div className="flex gap-2">
                       <LoadingButton
                         size="sm"
@@ -395,7 +395,7 @@ export default function ProductionPage() {
 }
 
 function getNextStatus(current: string, maggamRequired: boolean, role: string): string | null {
-  if (role === "MASTER" || role === "ADMIN") {
+  if (role === "MASTER" || role === "ADMIN" || role === "STORE_MANAGER") {
     const masterTransitions: Record<string, string> = {
       PRODUCTION_READY: "PATTERN_DRAFTING",
       PATTERN_DRAFTING: maggamRequired ? "MAGGAM_WORK" : "FABRIC_CUTTING",
@@ -406,7 +406,7 @@ function getNextStatus(current: string, maggamRequired: boolean, role: string): 
     };
     if (masterTransitions[current]) return masterTransitions[current];
   }
-  if (role === "DESIGNER" || role === "ADMIN") {
+  if (role === "DESIGNER" || role === "ADMIN" || role === "STORE_MANAGER") {
     if (current === "MAGGAM_REVIEW") return "MAGGAM_REVIEWED"; // approve — handled separately with two buttons
   }
   return null;
