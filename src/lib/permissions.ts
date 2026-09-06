@@ -13,7 +13,8 @@ export type Resource =
   | "dependency"
   | "payment"
   | "portal"
-  | "user";
+  | "user"
+  | "employee";
 
 export type Action =
   | "create"
@@ -57,11 +58,11 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     material: ["create", "read", "update"],
     production: ["read", "update", "transition", "view_progress"],
     dependency: ["create", "read", "update"],
-    payment: ["create", "read", "delete"],   // ADMIN can void payments
+    payment: ["create", "read", "delete"],
     portal: ["create", "read"],
     user: ["create", "read", "update", "delete"],
+    employee: ["create", "read", "update", "delete"],
   },
-  // Store Manager has identical capabilities to ADMIN except user management
   STORE_MANAGER: {
     customer: ["create", "read", "update", "delete"],
     order: ["create", "read", "update", "delete"],
@@ -73,7 +74,8 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     dependency: ["create", "read", "update"],
     payment: ["create", "read", "delete"],
     portal: ["create", "read"],
-    user: [],  // no access to user management
+    user: [],
+    employee: ["create", "read", "update", "delete"],
   },
   RECEPTION: {
     customer: ["create", "read", "update"],
@@ -84,9 +86,10 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     material: [],
     production: ["read", "view_progress"],
     dependency: [],
-    payment: ["create", "read"],             // RECEPTION can record but not void
+    payment: ["create", "read"],
     portal: ["create", "read"],
     user: [],
+    employee: ["read"],
   },
   DESIGNER: {
     customer: ["read"],
@@ -100,6 +103,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     payment: [],
     portal: [],
     user: [],
+    employee: [],
   },
   MASTER: {
     customer: [],
@@ -113,6 +117,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     payment: [],
     portal: [],
     user: [],
+    employee: [],
   },
   CUSTOMER: {
     customer: [],
@@ -126,6 +131,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     payment: ["read"],
     portal: ["read"],
     user: [],
+    employee: [],
   },
 };
 

@@ -137,7 +137,7 @@ function UserCard({
                       <Badge className={ROLE_COLORS[user.role]}>{user.role}</Badge>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-                    {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
+                    {user.phone && <p className="text-xs text-muted-foreground">Phone: {user.phone}</p>}
                   </div>
                 </div>
                 {user.role !== "ADMIN" && (

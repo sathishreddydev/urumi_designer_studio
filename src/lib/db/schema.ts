@@ -55,6 +55,10 @@ export const dependencyStatusEnum = pgEnum("dependency_status", ["PENDING", "AVA
 export const paymentMethodEnum = pgEnum("payment_method", ["CASH", "CARD", "UPI", "BANK_TRANSFER"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["PENDING", "SETTLED", "FAILED", "REFUNDED"]);
 
+export const employeePayCycleEnum = pgEnum("employee_pay_cycle", ["WEEKLY", "MONTHLY"]);
+export const attendanceStatusEnum = pgEnum("attendance_status", ["PRESENT", "ABSENT", "HALF_DAY", "HOLIDAY"]);
+export const advanceStatusEnum = pgEnum("advance_status", ["OUTSTANDING", "PARTIALLY_RECOVERED", "RECOVERED"]);
+
 // ─── TABLES ─────────────────────────────────────────────────────────────────
 // IDs are generated in application code using short alphanumeric strings.
 // The $defaultFn runs at insert time in the app (not in the DB).
@@ -244,6 +248,63 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ─── EMPLOYEES ───────────────────────────────────────────────────────────────
+
+export const employees = pgTable("employees", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("emp")),
+  name: text("name").notNull(),
+  phone: text("phone").notNull().unique(),
+  jobRole: text("job_role").notNull(),          // e.g. Tailor, Embroidery, Helper
+  payCycle: employeePayCycleEnum("pay_cycle").notNull().default("MONTHLY"),
+  salaryAmount: decimal("salary_amount", { precision: 10, scale: 2 }).notNull(),
+  shiftStart: text("shift_start"),              // e.g. "09:00"  (optional)
+  shiftEnd: text("shift_end"),                  // e.g. "18:00"  (optional)
+  active: boolean("active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const employeeAttendance = pgTable("employee_attendance", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("att")),
+  employeeId: varchar("employee_id", { length: 20 }).references(() => employees.id).notNull(),
+  date: text("date").notNull(),                 // "YYYY-MM-DD" — avoids timezone issues
+  status: attendanceStatusEnum("status").notNull(),
+  checkIn: text("check_in"),                    // "HH:MM" (optional)
+  checkOut: text("check_out"),                  // "HH:MM" (optional)
+  notes: text("notes"),
+  recordedBy: varchar("recorded_by", { length: 20 }).references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const employeeSalaryPayments = pgTable("employee_salary_payments", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("sal")),
+  employeeId: varchar("employee_id", { length: 20 }).references(() => employees.id).notNull(),
+  periodStart: text("period_start").notNull(),  // "YYYY-MM-DD"
+  periodEnd: text("period_end").notNull(),       // "YYYY-MM-DD"
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }).notNull(),
+  deductions: decimal("deductions", { precision: 10, scale: 2 }).notNull().default("0"),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  method: paymentMethodEnum("method").notNull().default("CASH"),
+  paidAt: timestamp("paid_at").notNull().defaultNow(),
+  paidBy: varchar("paid_by", { length: 20 }).references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const employeeAdvances = pgTable("employee_advances", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("adv")),
+  employeeId: varchar("employee_id", { length: 20 }).references(() => employees.id).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason"),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  issuedBy: varchar("issued_by", { length: 20 }).references(() => users.id),
+  recoveredAmount: decimal("recovered_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  status: advanceStatusEnum("status").notNull().default("OUTSTANDING"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ─── CONSULTATIONS ───────────────────────────────────────────────────────────
 
 export type OutfitIdea = {
@@ -289,3 +350,12 @@ export type NewPayment = typeof payments.$inferInsert;
 export type Invoice = typeof invoices.$inferSelect;
 export type NewInvoice = typeof invoices.$inferInsert;
 export type ProductionLog = typeof productionLogs.$inferSelect;
+
+export type Employee = typeof employees.$inferSelect;
+export type NewEmployee = typeof employees.$inferInsert;
+export type EmployeeAttendance = typeof employeeAttendance.$inferSelect;
+export type NewEmployeeAttendance = typeof employeeAttendance.$inferInsert;
+export type EmployeeSalaryPayment = typeof employeeSalaryPayments.$inferSelect;
+export type NewEmployeeSalaryPayment = typeof employeeSalaryPayments.$inferInsert;
+export type EmployeeAdvance = typeof employeeAdvances.$inferSelect;
+export type NewEmployeeAdvance = typeof employeeAdvances.$inferInsert;
