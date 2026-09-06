@@ -23,6 +23,7 @@ import {
   Sparkles,
   MessageSquare,
   Briefcase,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -43,6 +44,7 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
     { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
     { label: "Employees",        href: "/dashboard/employees",      icon: <Briefcase className="h-5 w-5" /> },
+    { label: "Expenditures",     href: "/dashboard/expenditures",   icon: <Receipt className="h-5 w-5" /> },
     { label: "Users",            href: "/dashboard/users",          icon: <UserCircle className="h-5 w-5" /> },
   ],
   // Store Manager: same as ADMIN but without the Users page
@@ -57,6 +59,7 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
     { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
     { label: "Employees",        href: "/dashboard/employees",      icon: <Briefcase className="h-5 w-5" /> },
+    { label: "Expenditures",     href: "/dashboard/expenditures",   icon: <Receipt className="h-5 w-5" /> },
   ],
   RECEPTION: [
     { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },

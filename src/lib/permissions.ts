@@ -14,7 +14,8 @@ export type Resource =
   | "payment"
   | "portal"
   | "user"
-  | "employee";
+  | "employee"
+  | "expenditure";
 
 export type Action =
   | "create"
@@ -62,6 +63,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: ["create", "read"],
     user: ["create", "read", "update", "delete"],
     employee: ["create", "read", "update", "delete"],
+    expenditure: ["create", "read", "update", "delete"],
   },
   STORE_MANAGER: {
     customer: ["create", "read", "update", "delete"],
@@ -76,6 +78,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: ["create", "read"],
     user: [],
     employee: ["create", "read", "update", "delete"],
+    expenditure: ["create", "read", "update", "delete"],
   },
   RECEPTION: {
     customer: ["create", "read", "update"],
@@ -90,6 +93,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: ["create", "read"],
     user: [],
     employee: ["read"],
+    expenditure: [],
   },
   DESIGNER: {
     customer: ["read"],
@@ -104,6 +108,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: [],
     user: [],
     employee: [],
+    expenditure: [],
   },
   MASTER: {
     customer: [],
@@ -118,6 +123,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: [],
     user: [],
     employee: [],
+    expenditure: [],
   },
   CUSTOMER: {
     customer: [],
@@ -132,6 +138,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     portal: ["read"],
     user: [],
     employee: [],
+    expenditure: [],
   },
 };
 

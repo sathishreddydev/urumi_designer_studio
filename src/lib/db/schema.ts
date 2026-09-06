@@ -59,6 +59,18 @@ export const employeePayCycleEnum = pgEnum("employee_pay_cycle", ["WEEKLY", "MON
 export const attendanceStatusEnum = pgEnum("attendance_status", ["PRESENT", "ABSENT", "HALF_DAY", "HOLIDAY"]);
 export const advanceStatusEnum = pgEnum("advance_status", ["OUTSTANDING", "PARTIALLY_RECOVERED", "RECOVERED"]);
 
+export const expenditureCategoryEnum = pgEnum("expenditure_category", [
+  "RENT",
+  "MATERIAL",
+  "ELECTRICITY",
+  "WATER",
+  "EQUIPMENT",
+  "MAINTENANCE",
+  "TRANSPORT",
+  "MARKETING",
+  "MISCELLANEOUS",
+]);
+
 // ─── TABLES ─────────────────────────────────────────────────────────────────
 // IDs are generated in application code using short alphanumeric strings.
 // The $defaultFn runs at insert time in the app (not in the DB).
@@ -248,6 +260,24 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ─── STORE EXPENDITURES ──────────────────────────────────────────────────────
+
+export const storeExpenditures = pgTable("store_expenditures", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("exp")),
+  date: text("date").notNull(),                   // "YYYY-MM-DD"
+  category: expenditureCategoryEnum("category").notNull(),
+  customCategory: text("custom_category"),         // for MISCELLANEOUS / overrides
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  method: paymentMethodEnum("method").notNull().default("CASH"),
+  vendor: text("vendor"),                          // who was paid
+  receiptUrl: text("receipt_url"),                 // optional photo of receipt
+  recordedBy: varchar("recorded_by", { length: 20 }).references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ─── EMPLOYEES ───────────────────────────────────────────────────────────────
 
 export const employees = pgTable("employees", {
@@ -359,3 +389,6 @@ export type EmployeeSalaryPayment = typeof employeeSalaryPayments.$inferSelect;
 export type NewEmployeeSalaryPayment = typeof employeeSalaryPayments.$inferInsert;
 export type EmployeeAdvance = typeof employeeAdvances.$inferSelect;
 export type NewEmployeeAdvance = typeof employeeAdvances.$inferInsert;
+
+export type StoreExpenditure = typeof storeExpenditures.$inferSelect;
+export type NewStoreExpenditure = typeof storeExpenditures.$inferInsert;
