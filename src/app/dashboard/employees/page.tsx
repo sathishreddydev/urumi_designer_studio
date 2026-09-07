@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -24,7 +23,6 @@ import {
   Phone,
   Clock,
   CalendarIcon,
-  IndianRupee,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -64,19 +62,6 @@ function rangeLabel(dates: Date[], mode: "week" | "month"): string {
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   return `${fmt(dates[0])} – ${fmt(dates[dates.length - 1])}`;
-}
-
-function monthStart(payCycle: string): string {
-  const now = new Date();
-  if (payCycle === "WEEKLY") return toYMD(getWeekDates(now)[0]);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
-function monthEnd(payCycle: string): string {
-  const now = new Date();
-  if (payCycle === "WEEKLY") return toYMD(getWeekDates(now)[6]);
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return toYMD(last);
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -558,200 +543,312 @@ function AttendanceTab() {
 
 // ─── Salary Tab ───────────────────────────────────────────────────────────────
 
+// Get current week's Monday as YYYY-MM-DD
+function currentWeekMonday(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((day + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  return toYMD(monday);
+}
+
+function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function prevPeriod(period: string, isWeek: boolean): string {
+  if (isWeek) {
+    const d = new Date(period + "T00:00:00");
+    d.setDate(d.getDate() - 7);
+    return toYMD(d);
+  }
+  const [y, m] = period.split("-").map(Number);
+  const prev = new Date(y, m - 2, 1);
+  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function nextPeriod(period: string, isWeek: boolean): string {
+  if (isWeek) {
+    const d = new Date(period + "T00:00:00");
+    d.setDate(d.getDate() + 7);
+    return toYMD(d);
+  }
+  const [y, m] = period.split("-").map(Number);
+  const next = new Date(y, m, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function periodLabel(period: string, isWeek: boolean): string {
+  if (isWeek) {
+    const start = new Date(period + "T00:00:00");
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  }
+  const [y, m] = period.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
 function SalaryTab() {
   const queryClient = useQueryClient();
-  const [openPayForm, setOpenPayForm] = useState<string | null>(null);
-  const [gross, setGross]             = useState("");
-  const [deductions, setDeductions]   = useState("0");
-  const [method, setMethod]           = useState("CASH");
-  const [notes, setNotes]             = useState("");
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd]     = useState("");
 
-  const { data: summary = [], isLoading } = useQuery({
-    queryKey: ["salary-summary"],
+  // Unified period mode — monthly uses YYYY-MM, weekly uses YYYY-MM-DD (monday)
+  const [viewMode, setViewMode] = useState<"monthly" | "weekly">("monthly");
+  const [monthPeriod, setMonthPeriod] = useState(currentYearMonth());
+  const [weekPeriod, setWeekPeriod]   = useState(currentWeekMonday());
+
+  const period  = viewMode === "monthly" ? monthPeriod : weekPeriod;
+  const isWeek  = viewMode === "weekly";
+
+  // Per-card payment method state
+  const [methods, setMethods] = useState<Record<string, string>>({});
+  const [notes, setNotes]     = useState<Record<string, string>>({});
+  const [showBreakdown, setShowBreakdown] = useState<Record<string, boolean>>({});
+
+  function getMethod(id: string) { return methods[id] ?? "CASH"; }
+  function getNote(id: string)   { return notes[id] ?? ""; }
+
+  const { data: payrollData, isLoading } = useQuery({
+    queryKey: ["payroll", period],
     queryFn: async () => {
-      const res = await fetch("/api/employees/salary/summary");
+      const res = await fetch(`/api/employees/salary/payroll?period=${period}`);
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
   });
 
+  const payroll: any[] = payrollData?.payroll ?? [];
+
   const saveMutation = useMutation({
-    mutationFn: async ({ employeeId }: { employeeId: string }) => {
+    mutationFn: async ({
+      employeeId,
+      periodStart,
+      periodEnd,
+      grossAmount,
+      netAmount,
+      method,
+      note,
+    }: {
+      employeeId: string;
+      periodStart: string;
+      periodEnd: string;
+      grossAmount: number;
+      netAmount: number;
+      method: string;
+      note: string;
+    }) => {
       const res = await fetch(`/api/employees/${employeeId}/salary`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           periodStart,
           periodEnd,
-          grossAmount: parseFloat(gross),
-          deductions: parseFloat(deductions || "0"),
-          netAmount: Math.max(0, parseFloat(gross) - parseFloat(deductions || "0")),
+          grossAmount,
+          deductions: 0,
+          netAmount,
           method,
-          notes: notes || undefined,
+          notes: note || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) throw new Error("Failed");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["salary-summary"] });
-      closeForm();
+      queryClient.invalidateQueries({ queryKey: ["payroll", period] });
     },
   });
 
-  function openForm(emp: any) {
-    setOpenPayForm(emp.id);
-    setGross(String(Number(emp.salaryAmount)));
-    setDeductions("0");
-    setMethod("CASH");
-    setNotes("");
-    setPeriodStart(monthStart(emp.payCycle));
-    setPeriodEnd(monthEnd(emp.payCycle));
-  }
-
-  function closeForm() {
-    setOpenPayForm(null);
-    setGross("");
-    setDeductions("0");
-    setNotes("");
-  }
-
-  const net = Math.max(0, parseFloat(gross || "0") - parseFloat(deductions || "0"));
-  const overdueCount = summary.filter((s: any) => s.overdue).length;
+  const unpaidCount = payroll.filter((p: any) => !p.paidThisPeriod).length;
 
   return (
     <div className="space-y-4">
-      {!isLoading && overdueCount > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>
-            <span className="font-semibold">{overdueCount} employee{overdueCount > 1 ? "s" : ""}</span>{" "}
-            overdue for payment
+
+      {/* ── Period selector ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Mode toggle */}
+        <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
+          {(["monthly", "weekly"] as const).map((m) => (
+            <button key={m} onClick={() => setViewMode(m)}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${
+                viewMode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+              }`}
+            >{m}</button>
+          ))}
+        </div>
+
+        {/* Period navigator */}
+        <div className="flex items-center gap-1 rounded-md border px-1 py-0.5">
+          <button
+            onClick={() => isWeek ? setWeekPeriod(prevPeriod(period, true)) : setMonthPeriod(prevPeriod(period, false))}
+            className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"
+          >‹</button>
+          <span className="text-sm font-medium px-2 min-w-[10rem] text-center">
+            {periodLabel(period, isWeek)}
           </span>
+          <button
+            onClick={() => isWeek ? setWeekPeriod(nextPeriod(period, true)) : setMonthPeriod(nextPeriod(period, false))}
+            className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"
+          >›</button>
+        </div>
+
+        {/* Jump to current */}
+        <button
+          onClick={() => { setMonthPeriod(currentYearMonth()); setWeekPeriod(currentWeekMonday()); }}
+          className="text-xs text-primary hover:underline"
+        >
+          Today
+        </button>
+      </div>
+
+      {/* ── Summary banner ── */}
+      {!isLoading && unpaidCount > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span><span className="font-semibold">{unpaidCount} employee{unpaidCount > 1 ? "s" : ""}</span> unpaid for this period</span>
         </div>
       )}
 
+      {/* ── Payroll cards ── */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse"><CardContent className="h-16 pt-4" /></Card>
+            <Card key={i} className="animate-pulse"><CardContent className="h-20 pt-4" /></Card>
           ))}
         </div>
-      ) : summary.length === 0 ? (
+      ) : payroll.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">No active employees found.</CardContent></Card>
       ) : (
         <div className="space-y-3">
-          {summary.map(({ employee: emp, lastPayment, overdue }: any) => {
-            const isOpen = openPayForm === emp.id;
+          {payroll.map((row: any) => {
+            const { employee: emp, attendance, calculation, paidThisPeriod, period: pd } = row;
+            const isPaid = !!paidThisPeriod;
+            const hasUnmarked = attendance.unmarkedWorkingDays > 0;
+            const isBreakdownOpen = showBreakdown[emp.id];
+
             return (
-              <Card key={emp.id} className={overdue && !isOpen ? "border-red-200" : ""}>
-                <CardContent className="pt-4 pb-4 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <IndianRupee className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
+              <Card key={emp.id} className={isPaid ? "opacity-70" : hasUnmarked ? "border-amber-200" : ""}>
+                <CardContent className="pt-3 pb-3 space-y-2">
+
+                  {/* ── Top row: name + badges + net pay ── */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Link href={`/dashboard/employees/${emp.id}`} className="font-medium hover:text-primary transition-colors">
+                        <Link href={`/dashboard/employees/${emp.id}`}
+                          className="font-semibold hover:text-primary transition-colors">
                           {emp.name}
                         </Link>
                         <Badge className={emp.payCycle === "WEEKLY" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}>
                           {emp.payCycle}
                         </Badge>
-                        {overdue ? (
-                          <Badge className="bg-red-100 text-red-700">Overdue</Badge>
-                        ) : (
+                        {isPaid && (
                           <Badge className="bg-green-100 text-green-700">
                             <CheckCircle2 className="h-3 w-3 mr-1" />Paid
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {emp.jobRole} · ₹{Number(emp.salaryAmount).toLocaleString()}/{emp.payCycle === "WEEKLY" ? "wk" : "mo"}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{emp.jobRole}</p>
                     </div>
-                    <div className="shrink-0 text-right">
-                      {lastPayment ? (
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Last paid {new Date(lastPayment.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-red-500 mb-1">Never paid</p>
-                      )}
-                      <Button
-                        size="sm"
-                        variant={overdue ? "default" : "outline"}
-                        onClick={() => isOpen ? closeForm() : openForm(emp)}
-                      >
-                        {isOpen ? "Cancel" : overdue ? "Pay Now" : "Pay Again"}
-                      </Button>
+
+                    {/* Net pay — prominent */}
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold leading-none">
+                        ₹{calculation.netPayable.toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">net payable</p>
                     </div>
                   </div>
 
-                  {isOpen && (
-                    <div className="border-t pt-3 space-y-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Record Payment</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Period Start</Label>
-                          <Input type="date" value={periodStart}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodStart(e.target.value)}
-                            className="h-8 text-xs" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Period End</Label>
-                          <Input type="date" value={periodEnd}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodEnd(e.target.value)}
-                            className="h-8 text-xs" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Gross Amount (₹)</Label>
-                          <Input type="number" min={0} value={gross}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGross(e.target.value)}
-                            className="h-8 text-xs" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Deductions (₹)</Label>
-                          <Input type="number" min={0} value={deductions}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeductions(e.target.value)}
-                            className="h-8 text-xs" />
-                        </div>
-                      </div>
-                      <div className="rounded-md bg-muted px-3 py-2 text-sm">
-                        Net payable: <span className="font-bold">₹{net.toLocaleString()}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Payment Method</Label>
-                          <Select value={method} onValueChange={setMethod}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CASH">Cash</SelectItem>
-                              <SelectItem value="UPI">UPI</SelectItem>
-                              <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                              <SelectItem value="CARD">Card</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Notes</Label>
-                          <Input value={notes}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
-                            className="h-8 text-xs" placeholder="Optional" />
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          size="sm"
-                          disabled={saveMutation.isPending || !periodStart || !periodEnd || !gross}
-                          onClick={() => saveMutation.mutate({ employeeId: emp.id })}
-                        >
-                          {saveMutation.isPending ? "Saving…" : "Record Payment"}
-                        </Button>
-                      </div>
+                  {/* ── Attendance summary row ── */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span className="text-green-600 font-medium">{attendance.present}P</span>
+                    {attendance.halfDay > 0 && <span className="text-yellow-600 font-medium">{attendance.halfDay}½</span>}
+                    {attendance.absent > 0  && <span className="text-red-500 font-medium">{attendance.absent}A</span>}
+                    <span className="text-muted-foreground">/ {pd.workingDays} days</span>
+                    {hasUnmarked && !isPaid && (
+                      <span className="text-amber-600 font-medium">⚠ {attendance.unmarkedWorkingDays} unmarked</span>
+                    )}
+                    {calculation.outstandingAdvances > 0 && (
+                      <span className="text-orange-600 font-medium">
+                        advance −₹{calculation.outstandingAdvances.toLocaleString("en-IN")}
+                      </span>
+                    )}
+                    {/* Breakdown toggle */}
+                    <button
+                      onClick={() => setShowBreakdown((prev: Record<string, boolean>) => ({ ...prev, [emp.id]: !isBreakdownOpen }))}
+                      className="text-primary/70 hover:text-primary text-[10px] underline"
+                    >
+                      {isBreakdownOpen ? "hide" : "how?"}
+                    </button>
+                  </div>
+
+                  {/* ── Breakdown (collapsible) ── */}
+                  {isBreakdownOpen && (
+                    <div className="rounded-md bg-muted/50 px-3 py-2 text-xs space-y-0.5 text-muted-foreground">
+                      <p>₹{Number(emp.salaryAmount).toLocaleString()} ÷ {pd.workingDays} days = <span className="font-medium text-foreground">₹{calculation.perDay}/day</span></p>
+                      <p>{attendance.effectiveDays} effective days × ₹{calculation.perDay} = <span className="font-medium text-foreground">₹{calculation.grossEarned.toLocaleString()}</span></p>
+                      {calculation.outstandingAdvances > 0 && (
+                        <p>− ₹{calculation.outstandingAdvances.toLocaleString()} advance = <span className="font-semibold text-foreground">₹{calculation.netPayable.toLocaleString()}</span></p>
+                      )}
                     </div>
                   )}
+
+                  {/* ── Payment row (only if not paid) ── */}
+                  {!isPaid && (
+                    <div className="flex items-center gap-2 pt-1 border-t">
+                      <Select
+                        value={getMethod(emp.id)}
+                        onValueChange={(v: string) => setMethods((prev: Record<string, string>) => ({ ...prev, [emp.id]: v }))}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-24 shrink-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                          <SelectItem value="CARD">Card</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Note (optional)"
+                        value={getNote(emp.id)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setNotes((prev: Record<string, string>) => ({ ...prev, [emp.id]: e.target.value }))
+                        }
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        className="h-7 shrink-0"
+                        disabled={saveMutation.isPending || calculation.netPayable <= 0}
+                        onClick={() =>
+                          saveMutation.mutate({
+                            employeeId: emp.id,
+                            periodStart: pd.start,
+                            periodEnd: pd.end,
+                            grossAmount: calculation.grossEarned,
+                            netAmount: calculation.netPayable,
+                            method: getMethod(emp.id),
+                            note: getNote(emp.id),
+                          })
+                        }
+                      >
+                        ✓ Pay ₹{calculation.netPayable.toLocaleString("en-IN")}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* ── Already paid stamp ── */}
+                  {isPaid && (
+                    <p className="text-xs text-green-600">
+                      Paid ₹{Number(paidThisPeriod.netAmount).toLocaleString("en-IN")} on{" "}
+                      {new Date(paidThisPeriod.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {" "}· {paidThisPeriod.method}
+                    </p>
+                  )}
+
                 </CardContent>
               </Card>
             );
