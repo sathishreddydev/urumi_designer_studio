@@ -108,8 +108,10 @@ export const GET = withPermission(
       const absent   = empAttendance.filter((a) => a.status === "ABSENT").length;
       const holiday  = empAttendance.filter((a) => a.status === "HOLIDAY").length;
 
-      // For weekly: always divide by 6; for monthly: divide by working days in period
-      const divisor = isWeek ? 6 : workingDays;
+      // Universal per-day rate:
+      // Weekly employees: weeklyAmount ÷ 6 (Mon–Sat)
+      // Monthly employees: monthlyAmount ÷ working days in the period
+      const divisor = emp.payCycle === "WEEKLY" ? 6 : workingDays;
       const perDay = divisor > 0 ? Number(emp.salaryAmount) / divisor : 0;
 
       const effectiveDays = present + halfDay * 0.5;

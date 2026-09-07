@@ -620,6 +620,8 @@ function SalaryTab() {
     },
   });
 
+  // All employees shown in both views — per-day rate handles the difference:
+  // Weekly: weeklyAmount ÷ 6 per day | Monthly: monthlyAmount ÷ workingDays per day
   const payroll: any[] = payrollData?.payroll ?? [];
 
   const saveMutation = useMutation({
