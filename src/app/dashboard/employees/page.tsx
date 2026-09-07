@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,35 +68,35 @@ function rangeLabel(dates: Date[], mode: "week" | "month"): string {
 
 function monthStart(payCycle: string): string {
   const now = new Date();
-  if (payCycle === "WEEKLY") {
-    return toYMD(getWeekDates(now)[0]);
-  }
+  if (payCycle === "WEEKLY") return toYMD(getWeekDates(now)[0]);
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function monthEnd(payCycle: string): string {
   const now = new Date();
-  if (payCycle === "WEEKLY") {
-    return toYMD(getWeekDates(now)[6]);
-  }
+  if (payCycle === "WEEKLY") return toYMD(getWeekDates(now)[6]);
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return toYMD(last);
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  PRESENT:  "bg-green-500 text-white",
-  ABSENT:   "bg-red-500 text-white",
-  HALF_DAY: "bg-yellow-400 text-white",
-  HOLIDAY:  "bg-blue-400 text-white",
-};
+// ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS_SHORT: Record<string, string> = {
-  PRESENT: "P", HALF_DAY: "½", ABSENT: "A", HOLIDAY: "H",
-};
+// Primary 3 shown always in cell; Holiday accessible via the cell label
+const PRIMARY_STATUSES = [
+  { key: "PRESENT",  label: "P",  title: "Present",  active: "bg-green-500 text-white border-green-500",  inactive: "border-green-300 text-green-600 hover:bg-green-50" },
+  { key: "ABSENT",   label: "A",  title: "Absent",   active: "bg-red-500 text-white border-red-500",      inactive: "border-red-300 text-red-500 hover:bg-red-50" },
+  { key: "HALF_DAY", label: "½",  title: "Half Day", active: "bg-yellow-400 text-white border-yellow-400",inactive: "border-yellow-300 text-yellow-600 hover:bg-yellow-50" },
+  { key: "HOLIDAY",  label: "H",  title: "Holiday",  active: "bg-blue-400 text-white border-blue-400",    inactive: "border-blue-300 text-blue-500 hover:bg-blue-50" },
+] as const;
 
-const STATUSES = ["PRESENT", "HALF_DAY", "ABSENT", "HOLIDAY"] as const;
-const STATUS_LABELS: Record<string, string> = {
-  PRESENT: "Present", HALF_DAY: "Half", ABSENT: "Absent", HOLIDAY: "Holiday",
+type StatusKey = typeof PRIMARY_STATUSES[number]["key"] | "";
+
+// Summary pill colors
+const PILL_COLORS: Record<string, string> = {
+  PRESENT:  "bg-green-100 text-green-700",
+  ABSENT:   "bg-red-100 text-red-700",
+  HALF_DAY: "bg-yellow-100 text-yellow-700",
+  HOLIDAY:  "bg-blue-100 text-blue-700",
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -179,17 +179,11 @@ function StaffTab() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="h-20 pt-6" />
-            </Card>
+            <Card key={i} className="animate-pulse"><CardContent className="h-20 pt-6" /></Card>
           ))}
         </div>
       ) : employees.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No employees found.
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-12 text-center text-muted-foreground">No employees found.</CardContent></Card>
       ) : (
         <div className="space-y-3">
           {employees.map((emp: any) => (
@@ -216,12 +210,8 @@ function StaffTab() {
                     </div>
                   </div>
                   <div className="mt-2 ml-[52px] flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    {emp.phone && (
-                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {emp.phone}</span>
-                    )}
-                    {emp.shiftStart && emp.shiftEnd && (
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {emp.shiftStart} – {emp.shiftEnd}</span>
-                    )}
+                    {emp.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{emp.phone}</span>}
+                    {emp.shiftStart && emp.shiftEnd && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{emp.shiftStart} – {emp.shiftEnd}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -233,66 +223,62 @@ function StaffTab() {
   );
 }
 
-// ─── Status Picker (inline segmented) ────────────────────────────────────────
+// ─── Inline status pill group — always visible in each cell ──────────────────
 
-function StatusPicker({
-  current,
+function StatusPills({
+  status,
   onSelect,
-  onClose,
+  compact,
 }: {
-  current: string;
-  onSelect: (s: string) => void;
-  onClose: () => void;
+  status: StatusKey;
+  onSelect: (s: StatusKey) => void;
+  compact?: boolean; // month mode — show only active + minimal inactive dots
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  if (compact) {
+    // Month view: single compact chip showing current status, click to cycle
+    // Full picker on long-press handled via right-click context
+    const active = PRIMARY_STATUSES.find((s) => s.key === status);
+    return (
+      <div className="flex gap-0.5 justify-center">
+        {PRIMARY_STATUSES.map((s) => (
+          <button
+            key={s.key}
+            title={s.title}
+            onClick={() => onSelect(status === s.key ? "" : s.key as StatusKey)}
+            className={`
+              h-5 w-5 rounded text-[9px] font-bold border transition-all duration-100
+              ${status === s.key
+                ? s.active
+                : "border-border/50 text-muted-foreground/30 hover:border-current hover:" + s.inactive
+              }
+            `}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function keyHandler(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("keydown", keyHandler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("keydown", keyHandler);
-    };
-  }, [onClose]);
-
+  // Week view: always show all 4 pills side by side
   return (
-    <div
-      ref={ref}
-      className="absolute z-50 mt-1 flex gap-1 rounded-lg border bg-popover p-1.5 shadow-lg"
-      style={{ top: "100%", left: "50%", transform: "translateX(-50%)" }}
-    >
-      {STATUSES.map((s) => (
+    <div className="flex gap-1 justify-center">
+      {PRIMARY_STATUSES.map((s) => (
         <button
-          key={s}
-          onClick={() => { onSelect(s); onClose(); }}
+          key={s.key}
+          title={s.title}
+          onClick={() => onSelect(status === s.key ? "" : s.key as StatusKey)}
           className={`
-            flex flex-col items-center gap-0.5 rounded-md px-2 py-1.5 text-[10px] font-semibold
-            transition-colors border-2
-            ${current === s
-              ? STATUS_STYLES[s] + " border-transparent"
-              : "border-border hover:border-primary/40 hover:bg-muted text-foreground"
+            h-7 px-1.5 rounded border text-[10px] font-bold transition-all duration-100 min-w-[1.5rem]
+            ${status === s.key
+              ? s.active + " shadow-sm scale-105"
+              : s.inactive
             }
           `}
         >
-          <span className="text-sm font-bold">{STATUS_SHORT[s]}</span>
-          <span className="text-[9px] leading-none opacity-80">{STATUS_LABELS[s]}</span>
+          {s.label}
         </button>
       ))}
-      {current && (
-        <button
-          onClick={() => { onSelect(""); onClose(); }}
-          className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1.5 text-[10px] font-semibold border-2 border-border hover:border-red-300 hover:bg-red-50 text-muted-foreground"
-        >
-          <span className="text-sm font-bold">✕</span>
-          <span className="text-[9px] leading-none">Clear</span>
-        </button>
-      )}
     </div>
   );
 }
@@ -303,9 +289,7 @@ function AttendanceTab() {
   const queryClient = useQueryClient();
   const todayYMD = toYMD(new Date());
 
-  // Mode: week or month
-  const [mode, setMode] = useState<"week" | "month">("week");
-  // Single anchor date drives both week and month
+  const [mode, setMode]     = useState<"week" | "month">("week");
   const [anchor, setAnchor] = useState(new Date());
   const [calOpen, setCalOpen] = useState(false);
 
@@ -314,10 +298,6 @@ function AttendanceTab() {
     [mode, anchor]
   );
 
-  // Active cell picker: `${empId}|${date}` or null
-  const [activePicker, setActivePicker] = useState<string | null>(null);
-
-  // Employees
   const { data: empData, isLoading: empLoading } = useQuery({
     queryKey: ["employees", ""],
     queryFn: async () => {
@@ -328,7 +308,6 @@ function AttendanceTab() {
   });
   const employees: any[] = (empData?.employees ?? []).filter((e: any) => e.active);
 
-  // Attendance fetch — months covered by displayDates
   const months = useMemo(
     () => [...new Set<string>(displayDates.map((d) => toYMD(d).slice(0, 7)))],
     [displayDates]
@@ -361,7 +340,6 @@ function AttendanceTab() {
 
   const saveMutation = useMutation({
     mutationFn: async (records: { employeeId: string; date: string; status: string }[]) => {
-      // Filter out "clear" (empty status) — no API call needed for clear
       const toSave = records.filter((r) => r.status !== "");
       if (toSave.length === 0) return;
       const res = await fetch("/api/employees/attendance/bulk", {
@@ -369,8 +347,7 @@ function AttendanceTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ records: toSave }),
       });
-      if (!res.ok) throw new Error("Failed to save");
-      return res.json();
+      if (!res.ok) throw new Error("Failed");
     },
     onSuccess: () => {
       setOptimistic({});
@@ -378,121 +355,80 @@ function AttendanceTab() {
     },
   });
 
-  function getStatus(empId: string, date: string): string {
+  function getStatus(empId: string, date: string): StatusKey {
     const key = `${empId}|${date}`;
-    if (optimistic[key] !== undefined) return optimistic[key];
-    return recMap[key]?.status ?? "";
+    if (optimistic[key] !== undefined) return optimistic[key] as StatusKey;
+    return (recMap[key]?.status ?? "") as StatusKey;
   }
 
-  function handleSelect(empId: string, date: string, status: string) {
+  function handleSelect(empId: string, date: string, status: StatusKey) {
     const key = `${empId}|${date}`;
     setOptimistic((prev) => ({ ...prev, [key]: status }));
-    saveMutation.mutate([{ employeeId: empId, date, status }]);
+    if (status) saveMutation.mutate([{ employeeId: empId, date, status }]);
   }
 
-  // Week stats
   const stats = useMemo(() => {
-    let present = 0, absent = 0, halfDay = 0, unmarked = 0;
+    const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0, HOLIDAY: 0, "": 0 };
     for (const emp of employees) {
       for (const d of displayDates) {
         const s = getStatus(emp.id, toYMD(d));
-        if (s === "PRESENT") present++;
-        else if (s === "ABSENT") absent++;
-        else if (s === "HALF_DAY") halfDay++;
-        else unmarked++;
+        counts[s] = (counts[s] ?? 0) + 1;
       }
     }
-    return { present, absent, halfDay, unmarked };
+    return counts;
   }, [recMap, optimistic, employees, displayDates]);
 
   const isLoading = empLoading || attLoading;
 
-  // Column header width — narrower in month mode
-  const colW = mode === "month" ? "min-w-[2.5rem]" : "min-w-[3.5rem]";
-
   return (
     <div className="space-y-4">
-      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+
+      {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Calendar popover */}
         <Popover open={calOpen} onOpenChange={setCalOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 text-sm font-medium">
+            <Button variant="outline" size="sm" className="gap-2 font-medium">
               <CalendarIcon className="h-4 w-4" />
               {rangeLabel(displayDates, mode)}
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
             <div className="p-3 border-b space-y-2">
-              {/* Quick shortcuts */}
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-xs"
-                  onClick={() => {
-                    setMode("week");
-                    setAnchor(new Date());
-                    setCalOpen(false);
-                  }}
-                >
+                <Button size="sm" variant="outline" className="flex-1 text-xs"
+                  onClick={() => { setMode("week"); setAnchor(new Date()); setCalOpen(false); }}>
                   This Week
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-xs"
-                  onClick={() => {
-                    setMode("month");
-                    setAnchor(new Date());
-                    setCalOpen(false);
-                  }}
-                >
+                <Button size="sm" variant="outline" className="flex-1 text-xs"
+                  onClick={() => { setMode("month"); setAnchor(new Date()); setCalOpen(false); }}>
                   This Month
                 </Button>
               </div>
-              {/* Mode toggle */}
               <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
                 {(["week", "month"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMode(m)}
+                  <button key={m} onClick={() => setMode(m)}
                     className={`flex-1 rounded py-1 text-xs font-medium transition-colors capitalize ${
                       mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
                     }`}
-                  >
-                    {m}
-                  </button>
+                  >{m}</button>
                 ))}
               </div>
             </div>
-            {/* Calendar — week mode: click any day to jump to that week */}
             {mode === "week" ? (
               <Calendar
                 mode="single"
                 selected={anchor}
-                onSelect={(d) => {
-                  if (d) { setAnchor(d); setCalOpen(false); }
-                }}
+                onSelect={(d) => { if (d) { setAnchor(d); setCalOpen(false); } }}
                 fromYear={2020}
                 toYear={new Date().getFullYear() + 1}
-                modifiers={{
-                  weekSelected: (day: Date) => {
-                    const week = getWeekDates(anchor);
-                    return day >= week[0] && day <= week[6];
-                  },
-                }}
-                modifiersClassNames={{
-                  weekSelected: "bg-primary/10 text-primary rounded-none",
-                }}
+                modifiers={{ weekSelected: (day: Date) => { const w = getWeekDates(anchor); return day >= w[0] && day <= w[6]; } }}
+                modifiersClassNames={{ weekSelected: "bg-primary/10 text-primary rounded-none" }}
               />
             ) : (
               <Calendar
                 mode="single"
                 selected={new Date(anchor.getFullYear(), anchor.getMonth(), 1)}
-                onSelect={(d) => {
-                  if (d) { setAnchor(d); setCalOpen(false); }
-                }}
+                onSelect={(d) => { if (d) { setAnchor(d); setCalOpen(false); } }}
                 fromYear={2020}
                 toYear={new Date().getFullYear() + 1}
               />
@@ -500,31 +436,32 @@ function AttendanceTab() {
           </PopoverContent>
         </Popover>
 
-        {/* Inline mode pills */}
         <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
           {(["week", "month"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
+            <button key={m} onClick={() => setMode(m)}
               className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${
                 mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
               }`}
-            >
-              {m}
-            </button>
+            >{m}</button>
           ))}
         </div>
       </div>
 
-      {/* ── Summary pills ──────────────────────────────────────────────── */}
+      {/* ── Summary pills ── */}
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-medium">{stats.present} Present</span>
-        <span className="rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 font-medium">{stats.halfDay} Half Day</span>
-        <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 font-medium">{stats.absent} Absent</span>
-        <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">{stats.unmarked} Unmarked</span>
+        {PRIMARY_STATUSES.map((s) => (
+          <span key={s.key} className={`rounded-full px-2 py-0.5 font-medium ${PILL_COLORS[s.key]}`}>
+            {stats[s.key] ?? 0} {s.title}
+          </span>
+        ))}
+        {(stats[""] ?? 0) > 0 && (
+          <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+            {stats[""]} Unmarked
+          </span>
+        )}
       </div>
 
-      {/* ── Grid ──────────────────────────────────────────────────────── */}
+      {/* ── Grid ── */}
       {isLoading ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground text-sm animate-pulse">Loading…</CardContent></Card>
       ) : employees.length === 0 ? (
@@ -535,27 +472,26 @@ function AttendanceTab() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground w-32 min-w-[8rem] sticky left-0 bg-muted/40 z-10">
+                  {/* Sticky name column */}
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground sticky left-0 bg-muted/40 z-10 border-r"
+                    style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
                     Employee
                   </th>
                   {displayDates.map((d) => {
                     const ymd = toYMD(d);
                     const isToday = ymd === todayYMD;
-                    const dayName = d.toLocaleDateString("en-IN", { weekday: "short" }).slice(0, 2);
                     return (
-                      <th
-                        key={ymd}
-                        className={`px-1 py-2 text-center font-medium ${colW} ${
-                          isToday ? "text-primary bg-primary/5" : "text-muted-foreground"
-                        }`}
+                      <th key={ymd}
+                        className={`py-2 text-center font-medium ${isToday ? "text-primary bg-primary/5" : "text-muted-foreground"}`}
+                        style={{ minWidth: mode === "week" ? "7rem" : "2.2rem", padding: mode === "week" ? "0.5rem 0.25rem" : "0.5rem 0.1rem" }}
                       >
                         {mode === "week" ? (
                           <>
-                            <div className="text-[10px]">{dayName}</div>
+                            <div className="text-[10px]">{d.toLocaleDateString("en-IN", { weekday: "short" })}</div>
                             <div className={`text-xs ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
                           </>
                         ) : (
-                          <div className={`text-xs ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
+                          <div className={`text-[10px] ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
                         )}
                       </th>
                     );
@@ -564,46 +500,32 @@ function AttendanceTab() {
               </thead>
               <tbody>
                 {employees.map((emp: any, idx: number) => (
-                  <tr key={emp.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                    <td className="px-3 py-2 sticky left-0 bg-inherit z-10 border-r">
-                      <Link href={`/dashboard/employees/${emp.id}`} className="font-medium hover:text-primary transition-colors truncate block max-w-[7rem]">
+                  <tr key={emp.id} className={`border-b last:border-b-0 ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
+                    <td className="px-3 py-2 sticky left-0 bg-inherit z-10 border-r"
+                      style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
+                      <Link href={`/dashboard/employees/${emp.id}`}
+                        className="font-medium hover:text-primary transition-colors block truncate"
+                        style={{ maxWidth: mode === "week" ? "8rem" : "6.5rem" }}>
                         {emp.name}
                       </Link>
                       {mode === "week" && (
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[7rem]">{emp.jobRole}</p>
+                        <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{emp.jobRole}</p>
                       )}
                     </td>
                     {displayDates.map((d) => {
                       const ymd = toYMD(d);
                       const status = getStatus(emp.id, ymd);
-                      const pickerKey = `${emp.id}|${ymd}`;
-                      const isOpen = activePicker === pickerKey;
                       const isToday = ymd === todayYMD;
                       return (
-                        <td key={ymd} className={`px-1 py-1.5 text-center relative ${isToday ? "bg-primary/5" : ""}`}>
-                          <button
-                            onClick={() => setActivePicker(isOpen ? null : pickerKey)}
-                            title="Click to set attendance"
-                            className={`
-                              h-8 w-8 rounded-md border text-xs font-bold mx-auto block
-                              transition-all duration-100
-                              ${status
-                                ? STATUS_STYLES[status] + " border-transparent"
-                                : isToday
-                                  ? "border-primary/50 text-primary/50 hover:bg-primary/5"
-                                  : "border-border text-muted-foreground/40 hover:border-primary/40 hover:bg-muted"
-                              }
-                            `}
-                          >
-                            {status ? STATUS_SHORT[status] : "·"}
-                          </button>
-                          {isOpen && (
-                            <StatusPicker
-                              current={status}
-                              onSelect={(s) => handleSelect(emp.id, ymd, s)}
-                              onClose={() => setActivePicker(null)}
-                            />
-                          )}
+                        <td key={ymd}
+                          className={`text-center ${isToday ? "bg-primary/5" : ""}`}
+                          style={{ padding: mode === "week" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
+                        >
+                          <StatusPills
+                            status={status}
+                            onSelect={(s) => handleSelect(emp.id, ymd, s)}
+                            compact={mode === "month"}
+                          />
                         </td>
                       );
                     })}
@@ -615,17 +537,20 @@ function AttendanceTab() {
         </Card>
       )}
 
-      {/* ── Legend ────────────────────────────────────────────────────── */}
+      {/* ── Legend ── */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
-        <span className="font-medium text-foreground">Click cell to mark:</span>
-        {STATUSES.map((s) => (
-          <span key={s} className="flex items-center gap-1">
-            <span className={`h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold ${STATUS_STYLES[s]}`}>
-              {STATUS_SHORT[s]}
+        <span className="font-medium text-foreground">
+          {mode === "week" ? "Tap P·A·½·H to mark:" : "Tap dots to mark:"}
+        </span>
+        {PRIMARY_STATUSES.map((s) => (
+          <span key={s.key} className="flex items-center gap-1">
+            <span className={`h-4 w-5 rounded text-[9px] font-bold flex items-center justify-center border ${s.active}`}>
+              {s.label}
             </span>
-            {STATUS_LABELS[s]}
+            {s.title}
           </span>
         ))}
+        <span className="text-muted-foreground italic">tap again to clear</span>
       </div>
     </div>
   );
@@ -770,19 +695,27 @@ function SalaryTab() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">Period Start</Label>
-                          <Input type="date" value={periodStart} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodStart(e.target.value)} className="h-8 text-xs" />
+                          <Input type="date" value={periodStart}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodStart(e.target.value)}
+                            className="h-8 text-xs" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Period End</Label>
-                          <Input type="date" value={periodEnd} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodEnd(e.target.value)} className="h-8 text-xs" />
+                          <Input type="date" value={periodEnd}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodEnd(e.target.value)}
+                            className="h-8 text-xs" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Gross Amount (₹)</Label>
-                          <Input type="number" min={0} value={gross} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGross(e.target.value)} className="h-8 text-xs" />
+                          <Input type="number" min={0} value={gross}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGross(e.target.value)}
+                            className="h-8 text-xs" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Deductions (₹)</Label>
-                          <Input type="number" min={0} value={deductions} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeductions(e.target.value)} className="h-8 text-xs" />
+                          <Input type="number" min={0} value={deductions}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeductions(e.target.value)}
+                            className="h-8 text-xs" />
                         </div>
                       </div>
                       <div className="rounded-md bg-muted px-3 py-2 text-sm">
@@ -803,7 +736,9 @@ function SalaryTab() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Notes</Label>
-                          <Input value={notes} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+                          <Input value={notes}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
+                            className="h-8 text-xs" placeholder="Optional" />
                         </div>
                       </div>
                       <div className="flex justify-end">
