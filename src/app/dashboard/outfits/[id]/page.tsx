@@ -2052,6 +2052,105 @@ function CompletionPhotosSection({
 }
 
 // ─── DESIGN NOTES SECTION ─────────────────────────────────────────────────
+
+// A single inline-editable note row.
+// • readOnly  → shows text as plain paragraph (hidden if empty)
+// • editable  → shows text + ✎ Edit  OR  "+ Add" when empty
+//   clicking opens a textarea inline; only one field open at a time
+function NoteField({
+  label,
+  value,
+  placeholder,
+  isOpen,
+  readOnly,
+  onOpen,
+  onClose,
+  onChange,
+  onMicTranscript,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  isOpen: boolean;
+  readOnly: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onChange: (v: string) => void;
+  onMicTranscript: (t: string) => void;
+}) {
+  const hasContent = value.trim().length > 0;
+
+  // In read-only mode hide empty fields entirely
+  if (readOnly && !hasContent) return null;
+
+  return (
+    <div className="space-y-1">
+      {/* Row header: label + action button */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-foreground">{label}</span>
+        {!readOnly && (
+          isOpen ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          ) : hasContent ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 transition-colors"
+            >
+              <span>✎</span> Edit
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+            >
+              <span>＋</span> Add
+            </button>
+          )
+        )}
+      </div>
+
+      {/* Content area */}
+      {isOpen ? (
+        <div className="space-y-1.5">
+          <Textarea
+            autoFocus
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows={3}
+            className="resize-none text-sm"
+          />
+          <div className="flex justify-end">
+            <VoiceToTextButton onTranscript={onMicTranscript} />
+          </div>
+        </div>
+      ) : readOnly ? (
+        // read-only: plain text
+        <p className="text-sm text-foreground whitespace-pre-wrap">{value}</p>
+      ) : hasContent ? (
+        // editable with content: show preview, click to edit
+        <p
+          className="text-sm text-foreground whitespace-pre-wrap cursor-pointer hover:bg-muted/40 rounded px-1 -mx-1 py-0.5 transition-colors"
+          onClick={onOpen}
+        >
+          {value}
+        </p>
+      ) : (
+        // editable, empty: subtle hint
+        <p className="text-[11px] text-muted-foreground italic">No notes yet</p>
+      )}
+    </div>
+  );
+}
+
 function DesignNotesSection({
   outfit,
   updateMutation,
@@ -2069,23 +2168,26 @@ function DesignNotesSection({
     notes: { id: string; url: string; label: string; createdAt: string }[],
   ) => void;
 }) {
-  const [designerNotes, setDesignerNotes] = useState(
-    outfit.designerNotes || "",
-  );
-  const [specialInstructions, setSpecialInstructions] = useState(
-    outfit.specialInstructions || "",
-  );
+  const [designerNotes, setDesignerNotes] = useState(outfit.designerNotes || "");
+  const [specialInstructions, setSpecialInstructions] = useState(outfit.specialInstructions || "");
   const [trialNotes, setTrialNotes] = useState(outfit.trialNotes || "");
-  const [alterationNotes, setAlterationNotes] = useState(
-    outfit.alterationNotes || "",
-  );
+  const [alterationNotes, setAlterationNotes] = useState(outfit.alterationNotes || "");
   const [localVoiceNotes, setLocalVoiceNotes] = useState(voiceNotes || []);
   const [saving, setSaving] = useState(false);
+
+  // Which field textarea is currently open — only one at a time
+  const [openField, setOpenField] = useState<string | null>(null);
+
+  function openOnly(field: string) {
+    setOpenField(field);
+  }
+  function closeField() {
+    setOpenField(null);
+  }
 
   // Sync when SSE re-fetches outfit data from server
   useEffect(() => {
     if (readOnly) {
-      // Master — always sync to latest server data
       setDesignerNotes(outfit.designerNotes || "");
       setSpecialInstructions(outfit.specialInstructions || "");
       setTrialNotes(outfit.trialNotes || "");
@@ -2101,7 +2203,7 @@ function DesignNotesSection({
     readOnly,
   ]);
 
-  // After a successful save, sync voice notes back in edit mode too
+  // Sync voice notes back after save in edit mode
   useEffect(() => {
     if (!readOnly && voiceNotes) {
       setLocalVoiceNotes(voiceNotes);
@@ -2119,14 +2221,9 @@ function DesignNotesSection({
   function handleSave() {
     if (saving) return;
     setSaving(true);
+    setOpenField(null);
     updateMutation.mutate(
-      {
-        designerNotes,
-        specialInstructions,
-        trialNotes,
-        alterationNotes,
-        voiceNotes: localVoiceNotes,
-      },
+      { designerNotes, specialInstructions, trialNotes, alterationNotes, voiceNotes: localVoiceNotes },
       {
         onSuccess: () => setSaving(false),
         onError: () => setSaving(false),
@@ -2141,186 +2238,26 @@ function DesignNotesSection({
     setTrialNotes(outfit.trialNotes || "");
     setAlterationNotes(outfit.alterationNotes || "");
     setLocalVoiceNotes(voiceNotes || []);
+    setOpenField(null);
   }
 
   return (
     <div className="space-y-4">
-      {/* Designer Instructions */}
+
+      {/* ── Voice Notes — first ─────────────────────────────────── */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold text-muted-foreground">
-          Designer Instructions
-        </Label>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              Design notes, neck pattern, embellishments
-            </span>
-            {!readOnly && (
-              <VoiceToTextButton
-                onTranscript={(text) => {
-                  setDesignerNotes((prev: string) =>
-                    prev ? prev + " " + text : text,
-                  );
-                }}
-              />
-            )}
-          </div>
-          <div className="px-2">
-            <Textarea
-              value={designerNotes}
-              placeholder={
-                readOnly
-                  ? "No designer instructions recorded."
-                  : "Design notes, neck pattern preferences, embellishments..."
-              }
-              rows={3}
-              readOnly={readOnly}
-              className={
-                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
-              }
-              onChange={(e) => {
-                if (!readOnly) setDesignerNotes(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              Special tailoring instructions
-            </span>
-            {!readOnly && (
-              <VoiceToTextButton
-                onTranscript={(text) => {
-                  setSpecialInstructions((prev: string) =>
-                    prev ? prev + " " + text : text,
-                  );
-                }}
-              />
-            )}
-          </div>
-          <div className="px-2">
-            <Textarea
-              value={specialInstructions}
-              placeholder={
-                readOnly
-                  ? "No special instructions recorded."
-                  : "Special tailoring instructions..."
-              }
-              rows={2}
-              readOnly={readOnly}
-              className={
-                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
-              }
-              onChange={(e) => {
-                if (!readOnly) setSpecialInstructions(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Trial & Alterations */}
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold text-muted-foreground">
-          Trial & Alterations
-        </Label>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              Fit feedback during trial
-            </span>
-            {!readOnly && (
-              <VoiceToTextButton
-                onTranscript={(text) => {
-                  setTrialNotes((prev: string) =>
-                    prev ? prev + " " + text : text,
-                  );
-                }}
-              />
-            )}
-          </div>
-          <div className="px-2">
-            <Textarea
-              value={trialNotes}
-              placeholder={
-                readOnly
-                  ? "No trial notes recorded."
-                  : "Fit feedback during trial..."
-              }
-              rows={2}
-              readOnly={readOnly}
-              className={
-                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
-              }
-              onChange={(e) => {
-                if (!readOnly) setTrialNotes(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              Alteration fixes
-            </span>
-            {!readOnly && (
-              <VoiceToTextButton
-                onTranscript={(text) => {
-                  setAlterationNotes((prev: string) =>
-                    prev ? prev + " " + text : text,
-                  );
-                }}
-              />
-            )}
-          </div>
-          <div className="px-2">
-            <Textarea
-              value={alterationNotes}
-              placeholder={
-                readOnly
-                  ? "No alteration notes recorded."
-                  : "Alteration fixes (e.g., shorten sleeves, tighten waist)..."
-              }
-              rows={2}
-              readOnly={readOnly}
-              className={
-                readOnly ? "bg-muted/40 cursor-default resize-none" : ""
-              }
-              onChange={(e) => {
-                if (!readOnly) setAlterationNotes(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Voice Notes */}
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold text-muted-foreground">
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">
           Voice Notes
-        </Label>
+        </p>
         <p className="text-[11px] text-muted-foreground">
-          Record verbal instructions — plays back for the tailor in the
-          workshop.
+          Record verbal instructions — plays back for the tailor in the workshop.
         </p>
         <VoiceNoteRecorder
           notes={localVoiceNotes}
           label="Design & Fitting"
           canRecord={!readOnly && !isLocked}
           onAdd={(note) => {
-            setLocalVoiceNotes((prev: typeof localVoiceNotes) => [
-              ...prev,
-              note,
-            ]);
+            setLocalVoiceNotes((prev: typeof localVoiceNotes) => [...prev, note]);
           }}
           onDelete={(id) => {
             setLocalVoiceNotes((prev: typeof localVoiceNotes) =>
@@ -2330,7 +2267,73 @@ function DesignNotesSection({
         />
       </div>
 
-      {/* Save / Cancel — only for editable mode */}
+      <Separator />
+
+      {/* ── Designer Instructions ────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">
+          Design
+        </p>
+
+        <NoteField
+          label="Design notes"
+          value={designerNotes}
+          placeholder="Design notes, neck pattern preferences, embellishments..."
+          isOpen={openField === "designer"}
+          readOnly={readOnly}
+          onOpen={() => openOnly("designer")}
+          onClose={closeField}
+          onChange={setDesignerNotes}
+          onMicTranscript={(t) => setDesignerNotes((p) => p ? p + " " + t : t)}
+        />
+
+        <NoteField
+          label="Special tailoring"
+          value={specialInstructions}
+          placeholder="Special tailoring instructions..."
+          isOpen={openField === "special"}
+          readOnly={readOnly}
+          onOpen={() => openOnly("special")}
+          onClose={closeField}
+          onChange={setSpecialInstructions}
+          onMicTranscript={(t) => setSpecialInstructions((p) => p ? p + " " + t : t)}
+        />
+      </div>
+
+      <Separator />
+
+      {/* ── Trial & Alterations ──────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">
+          Trial &amp; Alterations
+        </p>
+
+        <NoteField
+          label="Fit feedback"
+          value={trialNotes}
+          placeholder="Fit feedback during trial..."
+          isOpen={openField === "trial"}
+          readOnly={readOnly}
+          onOpen={() => openOnly("trial")}
+          onClose={closeField}
+          onChange={setTrialNotes}
+          onMicTranscript={(t) => setTrialNotes((p) => p ? p + " " + t : t)}
+        />
+
+        <NoteField
+          label="Alteration fixes"
+          value={alterationNotes}
+          placeholder="Alteration fixes (e.g., shorten sleeves, tighten waist)..."
+          isOpen={openField === "alteration"}
+          readOnly={readOnly}
+          onOpen={() => openOnly("alteration")}
+          onClose={closeField}
+          onChange={setAlterationNotes}
+          onMicTranscript={(t) => setAlterationNotes((p) => p ? p + " " + t : t)}
+        />
+      </div>
+
+      {/* ── Single Save bar ─────────────────────────────────────── */}
       {!readOnly && (
         <div className="flex items-center gap-2 pt-1 border-t">
           <Button
