@@ -2284,7 +2284,7 @@ function DesignNotesSection({
           onOpen={() => openOnly("designer")}
           onClose={closeField}
           onChange={setDesignerNotes}
-          onMicTranscript={(t) => setDesignerNotes((p) => p ? p + " " + t : t)}
+          onMicTranscript={(t) => setDesignerNotes(designerNotes ? designerNotes + " " + t : t)}
         />
 
         <NoteField
@@ -2296,7 +2296,7 @@ function DesignNotesSection({
           onOpen={() => openOnly("special")}
           onClose={closeField}
           onChange={setSpecialInstructions}
-          onMicTranscript={(t) => setSpecialInstructions((p) => p ? p + " " + t : t)}
+          onMicTranscript={(t) => setSpecialInstructions(specialInstructions ? specialInstructions + " " + t : t)}
         />
       </div>
 
@@ -2317,7 +2317,7 @@ function DesignNotesSection({
           onOpen={() => openOnly("trial")}
           onClose={closeField}
           onChange={setTrialNotes}
-          onMicTranscript={(t) => setTrialNotes((p) => p ? p + " " + t : t)}
+          onMicTranscript={(t) => setTrialNotes(trialNotes ? trialNotes + " " + t : t)}
         />
 
         <NoteField
@@ -2329,7 +2329,7 @@ function DesignNotesSection({
           onOpen={() => openOnly("alteration")}
           onClose={closeField}
           onChange={setAlterationNotes}
-          onMicTranscript={(t) => setAlterationNotes((p) => p ? p + " " + t : t)}
+          onMicTranscript={(t) => setAlterationNotes(alterationNotes ? alterationNotes + " " + t : t)}
         />
       </div>
 
