@@ -2175,6 +2175,8 @@ function DesignNotesSection({
   const [localVoiceNotes, setLocalVoiceNotes] = useState(voiceNotes || []);
   const [saving, setSaving] = useState(false);
 
+  const effectiveReadOnly = readOnly || isLocked;
+
   // Which field textarea is currently open — only one at a time
   const [openField, setOpenField] = useState<string | null>(null);
 
@@ -2255,7 +2257,7 @@ function DesignNotesSection({
         <VoiceNoteRecorder
           notes={localVoiceNotes}
           label="Design & Fitting"
-          canRecord={!readOnly && !isLocked}
+          canRecord={!effectiveReadOnly}
           onAdd={(note) => {
             setLocalVoiceNotes((prev: typeof localVoiceNotes) => [...prev, note]);
           }}
@@ -2280,7 +2282,7 @@ function DesignNotesSection({
           value={designerNotes}
           placeholder="Design notes, neck pattern preferences, embellishments..."
           isOpen={openField === "designer"}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           onOpen={() => openOnly("designer")}
           onClose={closeField}
           onChange={setDesignerNotes}
@@ -2292,7 +2294,7 @@ function DesignNotesSection({
           value={specialInstructions}
           placeholder="Special tailoring instructions..."
           isOpen={openField === "special"}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           onOpen={() => openOnly("special")}
           onClose={closeField}
           onChange={setSpecialInstructions}
@@ -2313,7 +2315,7 @@ function DesignNotesSection({
           value={trialNotes}
           placeholder="Fit feedback during trial..."
           isOpen={openField === "trial"}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           onOpen={() => openOnly("trial")}
           onClose={closeField}
           onChange={setTrialNotes}
@@ -2325,7 +2327,7 @@ function DesignNotesSection({
           value={alterationNotes}
           placeholder="Alteration fixes (e.g., shorten sleeves, tighten waist)..."
           isOpen={openField === "alteration"}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           onOpen={() => openOnly("alteration")}
           onClose={closeField}
           onChange={setAlterationNotes}
@@ -2334,7 +2336,7 @@ function DesignNotesSection({
       </div>
 
       {/* ── Single Save bar ─────────────────────────────────────── */}
-      {!readOnly && (
+      {!effectiveReadOnly && (
         <div className="flex items-center gap-2 pt-1 border-t">
           <Button
             size="sm"
