@@ -2122,14 +2122,14 @@ function NoteField({
 
       {/* Content area */}
       {isOpen ? (
-        <div className="mt-2">
+        <div className="mx-2">
           <Textarea
             autoFocus
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             rows={3}
-            className="resize-none text-sm"
+            className="resize-none text-sm px-3 py-2"
           />
         </div>
       ) : readOnly ? (
