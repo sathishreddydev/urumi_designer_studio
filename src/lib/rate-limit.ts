@@ -79,6 +79,7 @@ const globalForRateLimit = globalThis as unknown as {
   loginLimiter?: RateLimiter;
   portalLimiter?: RateLimiter;
   uploadLimiter?: RateLimiter;
+  aiLimiter?: RateLimiter;
 };
 
 /** Login: 5 attempts per 15 minutes per IP */
@@ -105,9 +106,18 @@ if (!globalForRateLimit.uploadLimiter) {
   });
 }
 
+/** AI scans: 20 requests per 10 minutes per IP */
+if (!globalForRateLimit.aiLimiter) {
+  globalForRateLimit.aiLimiter = new RateLimiter({
+    maxRequests: 20,
+    windowMs: 10 * 60 * 1000,
+  });
+}
+
 export const loginLimiter = globalForRateLimit.loginLimiter;
 export const portalLimiter = globalForRateLimit.portalLimiter;
 export const uploadLimiter = globalForRateLimit.uploadLimiter;
+export const aiLimiter = globalForRateLimit.aiLimiter;
 
 /**
  * Extract client IP from request headers.

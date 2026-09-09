@@ -66,6 +66,7 @@ import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
 import { CameraCaptureModal } from "@/components/camera-capture-modal";
 import { parseVoiceTranscript } from "@/hooks/use-measurement-voice";
+import { ScanMeasurementChit } from "@/components/scan-measurement-chit";
 import { createWorker } from "tesseract.js";
 import { MeasurementZoomModal } from "@/components/measurement-zoom-modal";
 // Body measurements grouped into sections.
@@ -788,6 +789,37 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
 
                   {/* ── VOICE INPUT ── */}
                   <MeasurementVoiceInput onResult={voiceOnResult} />
+
+                  {/* ── AI SCAN ── */}
+                  <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-primary">✦ AI Scan</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Photo any measurement chit — AI reads it instantly
+                      </span>
+                    </div>
+                    <ScanMeasurementChit
+                      disabled={measurementFileReading}
+                      onApply={(values) => {
+                        setMeasurementValues((prev) => {
+                          const overwritten: string[] = [];
+                          for (const [k, v] of Object.entries(values)) {
+                            if (prev[k] && prev[k] !== "" && prev[k] !== v) {
+                              overwritten.push(`${k}: ${prev[k]}" → ${v}"`);
+                            }
+                          }
+                          if (overwritten.length > 0) {
+                            setTimeout(() => toast({
+                              title: "Some values updated",
+                              description: overwritten.slice(0, 3).join(" · ") +
+                                (overwritten.length > 3 ? ` +${overwritten.length - 3} more` : ""),
+                            }), 0);
+                          }
+                          return { ...prev, ...values };
+                        });
+                      }}
+                    />
+                  </div>
 
                   <div className="rounded-md border border-dashed p-3 space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
