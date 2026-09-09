@@ -66,7 +66,7 @@ import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { MeasurementVoiceInput } from "@/components/measurement-voice-input";
 import { CameraCaptureModal } from "@/components/camera-capture-modal";
 import { parseVoiceTranscript } from "@/hooks/use-measurement-voice";
-import { ScanMeasurementChit } from "@/components/scan-measurement-chit";
+// import { ScanMeasurementChit } from "@/components/scan-measurement-chit"; // uncomment with AI Scan block below
 import { createWorker } from "tesseract.js";
 import { MeasurementZoomModal } from "@/components/measurement-zoom-modal";
 // Body measurements grouped into sections.
@@ -790,7 +790,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                   {/* ── VOICE INPUT ── */}
                   <MeasurementVoiceInput onResult={voiceOnResult} />
 
-                  {/* ── AI SCAN ── */}
+                  {/* ── AI SCAN (disabled — uncomment to enable once GEMINI_API_KEY is set) ──
                   <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-primary">✦ AI Scan</span>
@@ -820,6 +820,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                       }}
                     />
                   </div>
+                  ── END AI SCAN ── */}
 
                   <div className="rounded-md border border-dashed p-3 space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
