@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { compressImage } from "@/lib/compress-image";
 import {
   Scissors,
   Calendar,
@@ -1098,6 +1099,7 @@ function PortalUpload({
     },
   ];
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [uploaded, setUploaded] = useState<{ url: string; type: string }[]>([]);
 
@@ -1111,14 +1113,22 @@ function PortalUpload({
     if (!files) return;
 
     setUploading(true);
+    setUploadError(null);
 
     const imageFiles = files instanceof File ? [files] : Array.from(files);
 
     for (const file of imageFiles) {
+      // Reject files that compression cannot reliably bring under the 5MB limit
+      if (file.size > 20 * 1024 * 1024) {
+        setUploadError(`"${file.name}" is over 20MB. Please use a smaller image.`);
+        continue;
+      }
+
       try {
+        const compressed = await compressImage(file);
         const formData = new FormData();
 
-        formData.append("file", file);
+        formData.append("file", compressed);
         formData.append("outfitId", outfitId);
         formData.append("type", selectedType);
 
@@ -1137,9 +1147,12 @@ function PortalUpload({
               type: selectedType,
             },
           ]);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setUploadError(err?.error ?? `Could not upload "${file.name}". Please try again.`);
         }
       } catch {
-        // Handle upload errors per file
+        setUploadError("Upload failed. Please check your connection and try again.");
       }
     }
 
@@ -1171,6 +1184,14 @@ function PortalUpload({
           </button>
         ))}
       </div>
+
+      {/* Upload error */}
+      {uploadError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 flex items-start gap-1.5">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>{uploadError}</span>
+        </div>
+      )}
 
       {/* Uploaded previews */}
       {uploaded.length > 0 && (

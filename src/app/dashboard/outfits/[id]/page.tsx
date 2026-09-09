@@ -19,6 +19,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ImageViewer } from "@/components/image-viewer";
+import { compressImage } from "@/lib/compress-image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -363,8 +364,12 @@ export default function OutfitDetailPage() {
       type: string;
       isWorkPhoto?: boolean;
     }) => {
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error("File too large. Please use an image under 20MB.");
+      }
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const uploadRes = await fetch("/api/upload", {
         method: "POST",
         body: formData,
@@ -398,6 +403,13 @@ export default function OutfitDetailPage() {
     onSettled: () => {
       setUploadingType(null);
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message ?? "Could not upload image. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

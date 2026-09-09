@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/hooks/use-permissions";
+import { compressImage } from "@/lib/compress-image";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -219,10 +220,28 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   // ── Upload helper ────────────────────────────────────────────────────────────
   async function uploadFabricImages(outfitId: string, files: File[]) {
     for (const file of files) {
+      // Reject files that are too large to compress down to the 10MB limit
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `"${file.name}" is over 20MB and cannot be uploaded. Please use a smaller image.`,
+          variant: "destructive",
+        });
+        continue;
+      }
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!uploadRes.ok) continue;
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        toast({
+          title: "Upload failed",
+          description: err?.error ?? `Could not upload "${file.name}". Please try again.`,
+          variant: "destructive",
+        });
+        continue;
+      }
       const { url, filename } = await uploadRes.json();
       await fetch(`/api/outfits/${outfitId}/references`, {
         method: "POST",

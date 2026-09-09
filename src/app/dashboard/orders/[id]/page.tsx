@@ -38,6 +38,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
+import { compressImage } from "@/lib/compress-image";
 import {
   OutfitFormFields,
   OutfitFormValue,
@@ -270,10 +271,27 @@ export default function OrderDetailPage() {
       const createdOutfit = await res.json();
 
       for (const file of value.fabricImages) {
+        if (file.size > 20 * 1024 * 1024) {
+          toast({
+            title: "File too large",
+            description: `"${file.name}" is over 20MB. Please use a smaller image.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+        const compressed = await compressImage(file);
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", compressed);
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        if (!uploadRes.ok) continue;
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          toast({
+            title: "Upload failed",
+            description: err?.error ?? `Could not upload "${file.name}". Please try again.`,
+            variant: "destructive",
+          });
+          continue;
+        }
         const { url, filename } = await uploadRes.json();
         await fetch(`/api/outfits/${createdOutfit.id}/references`, {
           method: "POST",
