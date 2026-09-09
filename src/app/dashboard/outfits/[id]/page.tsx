@@ -1041,7 +1041,7 @@ export default function OutfitDetailPage() {
                   <UserCheck className="h-3.5 w-3.5" /> Master
                 </span>
                 <div className="w-1/2">
-                  {can("update", "outfit") && role !== "MASTER" ? (
+                  {can("update", "outfit") && role !== "MASTER" && !isLocked ? (
                     <AssignMasterSelect
                       outfitId={outfit.id}
                       currentMasterId={outfit.masterId}
