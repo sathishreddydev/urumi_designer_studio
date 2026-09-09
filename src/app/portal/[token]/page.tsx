@@ -121,7 +121,8 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (!data) return;
 
-    let eventSource: EventSource | null = null;
+    let active = true;
+    let lastTimestamp = Date.now();
 
     function refetchData() {
       fetch(`/api/portal/${params.token}`)
@@ -131,22 +132,29 @@ export default function CustomerPortalPage() {
         });
     }
 
-    try {
-      eventSource = new EventSource(`/api/portal/${params.token}/events`);
+    async function poll() {
+      if (!active) return;
+      try {
+        const res = await fetch(
+          `/api/portal/${params.token}/events?since=${lastTimestamp}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const body = await res.json();
+        if (body.hasUpdates) {
+          refetchData();
+        }
+        // Advance cursor to server time so next poll only gets newer events
+        if (body.serverTime) lastTimestamp = body.serverTime;
+      } catch {}
+    }
 
-      eventSource.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(event.data);
-
-          if (parsed.type === "update") {
-            refetchData();
-          }
-        } catch {}
-      };
-    } catch {}
+    const intervalId = setInterval(poll, 4000);
+    poll(); // run immediately on mount
 
     return () => {
-      eventSource?.close();
+      active = false;
+      clearInterval(intervalId);
     };
   }, [!!data, params.token]);
 

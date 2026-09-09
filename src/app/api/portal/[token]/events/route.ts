@@ -5,8 +5,14 @@ import { eq, inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * GET /api/portal/[token]/events?since=<timestamp>
+ *
+ * Polling endpoint for the customer-facing portal. Returns a JSON array of
+ * events relevant to this customer since the given timestamp.
+ */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
@@ -22,14 +28,16 @@ export async function GET(
     return new Response("Invalid token", { status: 403 });
   }
 
-  // Get this customer's order IDs
+  const { searchParams } = new URL(request.url);
+  const since = parseInt(searchParams.get("since") ?? "0", 10);
+
+  // Get this customer's order IDs and outfit IDs for filtering
   const customerOrders = await db
     .select({ id: orders.id })
     .from(orders)
     .where(eq(orders.customerId, customer.id));
   const orderIds = new Set(customerOrders.map((o) => o.id));
 
-  // Get all outfit IDs across all orders
   const outfitIds = new Set<string>();
   if (customerOrders.length > 0) {
     const allOutfits = await db
@@ -39,53 +47,20 @@ export async function GET(
     allOutfits.forEach((o) => outfitIds.add(o.id));
   }
 
-  const encoder = new TextEncoder();
-  let cleanup: (() => void) | null = null;
+  const allEvents = eventBus.since(isNaN(since) ? 0 : since);
 
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "connected" })}\n\n`));
+  const relevant = allEvents.filter((event: AppEvent) =>
+    (event.orderId && orderIds.has(event.orderId)) ||
+    (event.outfitId && outfitIds.has(event.outfitId)) ||
+    (event.customerId && event.customerId === customer.id)
+  );
 
-      const keepAlive = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(`: keepalive\n\n`));
-        } catch {
-          clearInterval(keepAlive);
-        }
-      }, 30000);
+  // Portal only needs to know "something changed" — not event details
+  const hasUpdates = relevant.length > 0;
 
-      const unsubscribe = eventBus.subscribe((event: AppEvent) => {
-        const isRelevant =
-          (event.orderId && orderIds.has(event.orderId)) ||
-          (event.outfitId && outfitIds.has(event.outfitId)) ||
-          (event.customerId && event.customerId === customer.id);
-
-        if (isRelevant) {
-          try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "update", timestamp: Date.now() })}\n\n`));
-          } catch {
-            unsubscribe();
-            clearInterval(keepAlive);
-          }
-        }
-      });
-
-      cleanup = () => {
-        unsubscribe();
-        clearInterval(keepAlive);
-      };
-    },
-    cancel() {
-      cleanup?.();
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
+  return Response.json({
+    hasUpdates,
+    events: relevant,
+    serverTime: Date.now(),
   });
 }
