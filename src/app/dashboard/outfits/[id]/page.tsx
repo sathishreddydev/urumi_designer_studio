@@ -1123,8 +1123,8 @@ export default function OutfitDetailPage() {
               )}
             </h2>
 
-            {/* Save garment measurements button — shown when dirty */}
-            {garmentMeasurementsDirty && role !== "RECEPTION" && (
+            {/* Save garment measurements button — shown when dirty and not locked */}
+            {garmentMeasurementsDirty && role !== "RECEPTION" && !isLocked && (
               <div className="flex justify-end -mt-2">
                 <Button
                   size="sm"
@@ -1139,6 +1139,14 @@ export default function OutfitDetailPage() {
               </div>
             )}
 
+            {/* Locked notice */}
+            {isLocked && (
+              <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-3 py-2 flex items-center gap-2">
+                <span>🔒</span>
+                Measurements are locked — outfit has reached a final stage.
+              </p>
+            )}
+
             <OutfitMeasurements
               customerMeasurements={outfit.customerMeasurements}
               measurementIsSnapshot={outfit.measurementIsSnapshot}
@@ -1149,6 +1157,7 @@ export default function OutfitDetailPage() {
               onGarmentMeasurementsChange={setGarmentMeasurements}
               onGarmentMeasurementsDirty={() => setGarmentMeasurementsDirty(true)}
               role={role}
+              readOnly={isLocked}
             />
           </div>
 
@@ -2245,6 +2254,14 @@ function DesignNotesSection({
 
   return (
     <div className="space-y-4">
+
+      {/* ── Locked notice ───────────────────────────────────────── */}
+      {isLocked && !readOnly && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-3 py-2 flex items-center gap-2">
+          <span>🔒</span>
+          Instructions are locked — outfit has reached a final stage and can no longer be edited.
+        </p>
+      )}
 
       {/* ── Voice Notes — first ─────────────────────────────────── */}
       <div className="space-y-2">
