@@ -2090,13 +2090,16 @@ function NoteField({
         <span className="text-xs font-medium text-foreground">{label}</span>
         {!readOnly && (
           isOpen ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Cancel
-            </button>
+            <div className="flex items-center gap-2">
+              <VoiceToTextButton onTranscript={onMicTranscript} />
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           ) : hasContent ? (
             <button
               type="button"
@@ -2119,7 +2122,7 @@ function NoteField({
 
       {/* Content area */}
       {isOpen ? (
-        <div className="space-y-1.5">
+        <div className="mt-2">
           <Textarea
             autoFocus
             value={value}
@@ -2128,9 +2131,6 @@ function NoteField({
             rows={3}
             className="resize-none text-sm"
           />
-          <div className="flex justify-end">
-            <VoiceToTextButton onTranscript={onMicTranscript} />
-          </div>
         </div>
       ) : readOnly ? (
         // read-only: plain text
