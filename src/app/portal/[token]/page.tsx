@@ -505,7 +505,14 @@ export default function CustomerPortalPage() {
 
                         const showCompletionPhotos =
                           completionRefs.length > 0 &&
-                          (outfit.status === "READY_FOR_DELIVERY" || outfit.status === "DELIVERED");
+                          [
+                            "PRODUCTION_COMPLETED",
+                            "TRIAL",
+                            "ALTERATION",
+                            "QC",
+                            "READY_FOR_DELIVERY",
+                            "DELIVERED",
+                          ].includes(outfit.status);
 
                         return (
                           <div
