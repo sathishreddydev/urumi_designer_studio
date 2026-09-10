@@ -84,6 +84,7 @@ export async function GET(
                 type: r.type,
                 url: r.url,
                 filename: r.filename,
+                isWorkPhoto: r.isWorkPhoto ?? false,
                 // Any LOCKED ref shows as "approved" in the portal — whether locked by
                 // admin, designer, or the customer themselves. The customer doesn't need
                 // to know who locked it, just that it's confirmed for production.
