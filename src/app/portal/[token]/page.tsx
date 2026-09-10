@@ -907,22 +907,24 @@ function PortalReferenceCard({
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
         />
 
-        {/* Reference type label */}
-        <span
-          className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
-            reference.type === "FABRIC"
-              ? "bg-indigo-600 text-white"
+        {/* Reference type label — hidden for completion/work photos since the section header already identifies them */}
+        {!reference.isWorkPhoto && (
+          <span
+            className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
+              reference.type === "FABRIC"
+                ? "bg-indigo-600 text-white"
+                : reference.type === "MAGGAM"
+                  ? "bg-amber-600 text-white"
+                  : "bg-slate-700 text-white"
+            }`}
+          >
+            {reference.type === "FABRIC"
+              ? "Your Fabric"
               : reference.type === "MAGGAM"
-                ? "bg-amber-600 text-white"
-                : "bg-slate-700 text-white"
-          }`}
-        >
-          {reference.type === "FABRIC"
-            ? "Customer Material"
-            : reference.type === "MAGGAM"
-              ? "Maggam"
-              : "Pattern"}
-        </span>
+                ? "Maggam"
+                : "Pattern"}
+          </span>
+        )}
 
         {feedback && (
           <div
@@ -961,7 +963,7 @@ function PortalReferenceCard({
         </div>
       )}
 
-      {reference.type === "FABRIC" && (
+      {reference.type === "FABRIC" && !reference.isWorkPhoto && (
         <div className="py-1 text-center text-[10px] font-semibold text-indigo-700 bg-indigo-50">
           Read only
         </div>
