@@ -34,30 +34,17 @@ export function VoiceNoteRecorder({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Visualizer
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const pausedRef = useRef(false); // track pause state inside rAF loop
-
-  // Sync pausedRef so the draw loop can read it without stale closure
-  useEffect(() => { pausedRef.current = paused; }, [paused]);
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      stopVisualizer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Timer ─────────────────────────────────────────────────────
   function startTimer() {
     setRecordingSeconds(0);
     timerRef.current = setInterval(() => setRecordingSeconds((s: number) => s + 1), 1000);
@@ -78,91 +65,6 @@ export function VoiceNoteRecorder({
     return `${m}:${s}`;
   }
 
-  // ── Visualizer (native Web Audio API) ────────────────────────
-  function startVisualizer(stream: MediaStream) {
-    const audioCtx = new AudioContext();
-    audioCtxRef.current = audioCtx;
-
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.8;
-    source.connect(analyser);
-    analyserRef.current = analyser;
-
-    drawBars();
-  }
-
-  function drawBars() {
-    const canvas = canvasRef.current;
-    const analyser = analyserRef.current;
-    if (!canvas || !analyser) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const bufferLength = analyser.frequencyBinCount; // 256
-    const dataArray = new Uint8Array(bufferLength);
-
-    const loop = () => {
-      animFrameRef.current = requestAnimationFrame(loop);
-
-      // Sync canvas internal resolution to its CSS display size
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const W = Math.floor(rect.width * dpr);
-      const H = Math.floor(rect.height * dpr);
-      if (canvas.width !== W || canvas.height !== H) {
-        canvas.width = W;
-        canvas.height = H;
-      }
-
-      ctx.clearRect(0, 0, W, H);
-
-      if (pausedRef.current) {
-        // flat dashed line when paused
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "rgba(148,163,184,0.6)";
-        ctx.lineWidth = 1.5 * dpr;
-        ctx.beginPath();
-        ctx.moveTo(0, H / 2);
-        ctx.lineTo(W, H / 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        return;
-      }
-
-      analyser.getByteFrequencyData(dataArray);
-
-      const barCount = 50;
-      const gap = 3 * dpr;
-      const barW = (W - gap * (barCount - 1)) / barCount;
-
-      for (let i = 0; i < barCount; i++) {
-        // sample evenly across the frequency bins (focus on lower half — more voice-relevant)
-        const binIndex = Math.floor((i / barCount) * (bufferLength * 0.6));
-        const value = dataArray[binIndex];
-        const barH = Math.max(4 * dpr, (value / 255) * H * 0.85);
-        const x = i * (barW + gap);
-        const y = (H - barH) / 2;
-
-        ctx.fillStyle = `rgba(225, 29, 72, ${0.5 + (value / 255) * 0.5})`;
-        ctx.fillRect(x, y, barW, barH);
-      }
-    };
-
-    loop();
-  }
-
-  function stopVisualizer() {
-    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
-    if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null; }
-    analyserRef.current = null;
-    const canvas = canvasRef.current;
-    if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  // ── Recording controls ────────────────────────────────────────
   async function startRecording() {
     if (!navigator.mediaDevices?.getUserMedia) {
       toast({ variant: "destructive", title: "Mic not available", description: "This browser does not support audio recording." });
@@ -176,9 +78,9 @@ export function VoiceNoteRecorder({
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
 
       mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
         stopTimer();
-        stopVisualizer();
         setRecordingSeconds(0);
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         await uploadNote(blob);
@@ -186,10 +88,10 @@ export function VoiceNoteRecorder({
 
       mr.start(100);
       mediaRecorderRef.current = mr;
+      streamRef.current = stream;
       setRecording(true);
       setPaused(false);
       startTimer();
-      startVisualizer(stream);
     } catch {
       toast({ variant: "destructive", title: "Mic blocked", description: "Allow microphone access to record a voice note." });
     }
@@ -217,7 +119,21 @@ export function VoiceNoteRecorder({
     setPaused(false);
   }
 
-  // ── Upload ────────────────────────────────────────────────────
+  function cancelRecording() {
+    const mr = mediaRecorderRef.current;
+    if (!mr) return;
+    // Null out onstop so the blob is discarded, not uploaded
+    mr.onstop = null;
+    mr.stop();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    stopTimer();
+    setRecordingSeconds(0);
+    setRecording(false);
+    setPaused(false);
+    toast({ title: "Recording cancelled" });
+  }
+
   async function uploadNote(blob: Blob) {
     setUploading(true);
     try {
@@ -235,7 +151,6 @@ export function VoiceNoteRecorder({
     }
   }
 
-  // ── Playback ──────────────────────────────────────────────────
   function togglePlay(note: VoiceNote) {
     const audio = audioRefs.current[note.id];
     if (!audio) return;
@@ -257,7 +172,6 @@ export function VoiceNoteRecorder({
     });
   }
 
-  // ── Render ────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
 
@@ -295,30 +209,24 @@ export function VoiceNoteRecorder({
         </div>
       )}
 
-      {/* Live visualizer panel — only shown while recording */}
+      {/* Recording status indicator */}
       {recording && (
-        <div className={`rounded-lg border px-3 py-2 transition-colors ${
+        <div className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors ${
           paused
             ? "bg-muted/40 border-muted"
             : "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
         }`}>
-          {/* Status row */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`h-2 w-2 rounded-full shrink-0 ${paused ? "bg-slate-400" : "bg-rose-500 animate-pulse"}`} />
-            <span className={`text-[11px] font-medium ${paused ? "text-muted-foreground" : "text-rose-600 dark:text-rose-400"}`}>
-              {paused ? "Paused" : "Recording"}
-            </span>
-            <span className="ml-auto text-xs tabular-nums font-mono text-muted-foreground">
-              {formatDuration(recordingSeconds)}
-            </span>
-          </div>
-
-          {/* Waveform canvas */}
-          <canvas
-            ref={canvasRef}
-            className="w-full rounded"
-            style={{ display: "block", height: "48px" }}
-          />
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+            paused ? "bg-slate-400" : "bg-rose-500 animate-pulse"
+          }`} />
+          <span className={`text-[12px] font-medium ${
+            paused ? "text-muted-foreground" : "text-rose-600 dark:text-rose-400"
+          }`}>
+            {paused ? "Paused" : "Recording"}
+          </span>
+          <span className="ml-auto text-xs tabular-nums font-mono text-muted-foreground">
+            {formatDuration(recordingSeconds)}
+          </span>
         </div>
       )}
 
@@ -353,6 +261,18 @@ export function VoiceNoteRecorder({
               {paused
                 ? <><Mic className="h-3.5 w-3.5 text-primary" /> Resume</>
                 : <><Pause className="h-3.5 w-3.5" /> Pause</>}
+            </Button>
+          )}
+
+          {recording && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 h-8 text-muted-foreground hover:text-destructive"
+              onClick={cancelRecording}
+            >
+              Cancel
             </Button>
           )}
         </div>
