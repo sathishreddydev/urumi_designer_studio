@@ -979,14 +979,14 @@ function PortalReferenceCard({
         )}
 
         {/* Delete button for customer-uploaded images */}
-        {isCustomerUpload && canApprove && (
+        {isCustomerUpload && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleDelete();
             }}
             disabled={deleting}
-            className="absolute top-1.5 right-1.5 bg-destructive hover:bg-destructive/90 text-white rounded-full p-1 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute top-1.5 left-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete this image"
           >
             <X className="h-3 w-3" />
