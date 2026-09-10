@@ -132,6 +132,94 @@ export async function POST(
   }
 }
 
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  try {
+    const { token } = await params;
+
+    // Validate portal token
+    const [customer] = await db
+      .select()
+      .from(customers)
+      .where(eq(customers.portalToken, token))
+      .limit(1);
+
+    if (!customer) {
+      return NextResponse.json({ error: "Invalid portal link" }, { status: 404 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const referenceId = searchParams.get("referenceId");
+
+    if (!referenceId) {
+      return NextResponse.json({ error: "Reference ID is required" }, { status: 400 });
+    }
+
+    // Get the reference image
+    const [reference] = await db
+      .select()
+      .from(referenceImages)
+      .where(eq(referenceImages.id, referenceId))
+      .limit(1);
+
+    if (!reference) {
+      return NextResponse.json({ error: "Reference not found" }, { status: 404 });
+    }
+
+    // Verify the reference belongs to an outfit owned by this customer
+    const [outfit] = await db
+      .select()
+      .from(outfits)
+      .where(eq(outfits.id, reference.outfitId))
+      .limit(1);
+
+    if (!outfit) {
+      return NextResponse.json({ error: "Invalid outfit" }, { status: 400 });
+    }
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, outfit.orderId))
+      .limit(1);
+
+    if (!order || order.customerId !== customer.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Only allow deletion of customer-uploaded images
+    if (!reference.isCustomerUpload) {
+      return NextResponse.json(
+        { error: "You can only delete images you uploaded" },
+        { status: 403 }
+      );
+    }
+
+    // Delete the reference from database
+    await db.delete(referenceImages).where(eq(referenceImages.id, referenceId));
+
+    // Optionally delete from Cloudinary or local storage
+    // (This is a soft delete - we keep the file but remove the database record)
+    // If you want to delete the actual file, you'd need to implement that here
+
+    // Emit event so designers see the update in real-time
+    const { eventBus } = await import("@/lib/events");
+    eventBus.emit({
+      type: "reference_updated",
+      outfitId: reference.outfitId,
+      customerId: customer.id,
+      timestamp: Date.now(),
+    });
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Portal delete error:", error);
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+  }
+}
+
 async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
   const apiKey = process.env.CLOUDINARY_API_KEY!;

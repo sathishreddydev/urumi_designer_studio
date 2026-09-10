@@ -34,6 +34,7 @@ import {
   Sparkles,
   Camera,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 const STATUS_ORDER = [
@@ -806,11 +807,21 @@ function PortalReferences({
 }) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [localReferences, setLocalReferences] = useState(references);
+
+  // Update local state when references prop changes
+  useEffect(() => {
+    setLocalReferences(references);
+  }, [references]);
+
+  const handleDelete = (referenceId: string) => {
+    setLocalReferences((prev) => prev.filter((ref) => ref.id !== referenceId));
+  };
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-        {references.map((ref: any, index: number) => (
+        {localReferences.map((ref: any, index: number) => (
           <PortalReferenceCard
             key={ref.id}
             reference={ref}
@@ -821,12 +832,13 @@ function PortalReferences({
               setViewerIndex(index);
               setViewerOpen(true);
             }}
+            onDelete={handleDelete}
           />
         ))}
       </div>
 
       <ImageViewer
-        images={references.map((r: any) => ({
+        images={localReferences.map((r: any) => ({
           id: r.id,
           url: r.url,
           filename: r.filename,
@@ -849,18 +861,21 @@ function PortalReferenceCard({
   outfitId,
   canApprove,
   onImageClick,
+  onDelete,
 }: {
   reference: any;
   token: string;
   outfitId: string;
   canApprove: boolean;
   onImageClick: () => void;
+  onDelete: (referenceId: string) => void;
 }) {
   const [feedback, setFeedback] = useState<"approved" | "rejected" | null>(
     reference.customerFeedback || null,
   );
 
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleFeedback(action: "approved" | "rejected") {
     setLoading(true);
@@ -887,6 +902,36 @@ function PortalReferenceCard({
       setLoading(false);
     }
   }
+
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to delete this image?")) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      const res = await fetch(
+        `/api/portal/${token}/upload?referenceId=${reference.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (res.ok) {
+        onDelete(reference.id);
+      } else {
+        const error = await res.json().catch(() => ({}));
+        alert(error?.error || "Failed to delete image");
+      }
+    } catch {
+      alert("Failed to delete image. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const isCustomerUpload = reference.isCustomerUpload;
 
   return (
     <div className="group relative rounded-lg overflow-hidden border bg-background shadow-2xs flex flex-col">
@@ -931,6 +976,21 @@ function PortalReferenceCard({
               <ThumbsDown className="h-3 w-3 text-white" />
             )}
           </div>
+        )}
+
+        {/* Delete button for customer-uploaded images */}
+        {isCustomerUpload && canApprove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            disabled={deleting}
+            className="absolute top-1.5 right-1.5 bg-destructive hover:bg-destructive/90 text-white rounded-full p-1 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete this image"
+          >
+            <X className="h-3 w-3" />
+          </button>
         )}
       </div>
 
