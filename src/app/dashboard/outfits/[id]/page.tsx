@@ -403,6 +403,7 @@ export default function OutfitDetailPage() {
     onSettled: () => {
       setUploadingType(null);
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
     },
     onError: (error: Error) => {
       toast({
