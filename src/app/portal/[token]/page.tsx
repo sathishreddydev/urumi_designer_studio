@@ -146,7 +146,7 @@ export default function CustomerPortalPage() {
         }
         // Advance cursor to server time so next poll only gets newer events
         if (body.serverTime) lastTimestamp = body.serverTime;
-      } catch {}
+      } catch { }
     }
 
     const intervalId = setInterval(poll, 4000);
@@ -322,58 +322,57 @@ export default function CustomerPortalPage() {
                   Profile Measurements
                 </span>
 
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                      profileMeasurementsOpen ? "rotate-180" : ""
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${profileMeasurementsOpen ? "rotate-180" : ""
                     }`}
-                  />
-                </button>
+                />
+              </button>
 
-                {/* Desktop Header (always visible at lg+) */}
-                <CardHeader className="hidden lg:block pb-3 border-b">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Ruler className="h-4 w-4 text-primary" />
-                    Profile Measurements
-                  </CardTitle>
-                </CardHeader>
+              {/* Desktop Header (always visible at lg+) */}
+              <CardHeader className="hidden lg:block pb-3 border-b">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Ruler className="h-4 w-4 text-primary" />
+                  Profile Measurements
+                </CardTitle>
+              </CardHeader>
 
-                {/* Content: accordion on mobile/tablet, always open on desktop */}
-                <CardContent
-                  className={`
+              {/* Content: accordion on mobile/tablet, always open on desktop */}
+              <CardContent
+                className={`
                     pt-4
                     ${profileMeasurementsOpen ? "block" : "hidden"}
                     lg:block
                   `}
-                >
-                  {data.measurements && Object.keys(data.measurements).length > 0 ? (
-                    <div className="space-y-2">
-                      {Object.entries(
-                        data.measurements as Record<string, string>,
-                      ).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between text-xs py-1 border-b border-dashed border-border/60 last:border-0"
-                        >
-                          <span className="text-muted-foreground capitalize">
-                            {key.replace(/([A-Z])/g, " $1").trim()}
-                          </span>
+              >
+                {data.measurements && Object.keys(data.measurements).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(
+                      data.measurements as Record<string, string>,
+                    ).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between text-xs py-1 border-b border-dashed border-border/60 last:border-0"
+                      >
+                        <span className="text-muted-foreground capitalize">
+                          {key.replace(/([A-Z])/g, " $1").trim()}
+                        </span>
 
-                          <span className="font-medium font-mono text-foreground">
-                            {value || "—"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-4 text-center">
-                      <Ruler className="h-6 w-6 text-muted-foreground/40" />
-                      <p className="text-xs text-muted-foreground">
-                        Measurements will be recorded by the studio during your consultation.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        <span className="font-medium font-mono text-foreground">
+                          {value || "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-4 text-center">
+                    <Ruler className="h-6 w-6 text-muted-foreground/40" />
+                    <p className="text-xs text-muted-foreground">
+                      Measurements will be recorded by the studio during your consultation.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </aside>
 
           {/* Right Content */}
@@ -482,7 +481,7 @@ export default function CustomerPortalPage() {
                         const canApprove = APPROVAL_ALLOWED_STATUSES.includes(
                           outfit.status,
                         );
-
+                        console.log("outfits", order?.outfits)
                         const progress = STATUS_PROGRESS[outfit.status] || 0;
 
                         const designRefs = (outfit.references || []).filter(
@@ -596,16 +595,16 @@ export default function CustomerPortalPage() {
                                   string
                                 >,
                               ).some(Boolean) ? (
-                                <GarmentMeasurementsPanel
-                                  measurements={outfit.garmentMeasurements}
-                                  type={outfit.type}
-                                />
-                              ) : (
-                                <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                                  <Ruler className="h-3.5 w-3.5 shrink-0" />
-                                  Garment measurements will be added by the designer.
-                                </div>
-                              )}
+                              <GarmentMeasurementsPanel
+                                measurements={outfit.garmentMeasurements}
+                                type={outfit.type}
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                                <Ruler className="h-3.5 w-3.5 shrink-0" />
+                                Garment measurements will be added by the designer.
+                              </div>
+                            )}
 
                             {/* Add-ons Display */}
                             {outfit.addOns && outfit.addOns.length > 0 && (
@@ -716,7 +715,7 @@ export default function CustomerPortalPage() {
                       })}
                     </div>
 
-            {/* Financial Summary Footer */}
+                    {/* Financial Summary Footer */}
                     {(order.totalPaid > 0 || order.estimatedAmount) && (
                       <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
                         <div className="flex items-center gap-2">
@@ -904,13 +903,12 @@ function PortalReferenceCard({
         {/* Reference type label — hidden for completion/work photos since the section header already identifies them */}
         {!reference.isWorkPhoto && (
           <span
-            className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
-              reference.type === "FABRIC"
+            className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${reference.type === "FABRIC"
                 ? "bg-indigo-600 text-white"
                 : reference.type === "MAGGAM"
                   ? "bg-amber-600 text-white"
                   : "bg-slate-700 text-white"
-            }`}
+              }`}
           >
             {reference.type === "FABRIC"
               ? "Your Fabric"
@@ -922,9 +920,8 @@ function PortalReferenceCard({
 
         {feedback && (
           <div
-            className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${
-              feedback === "approved" ? "bg-green-600" : "bg-destructive"
-            }`}
+            className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${feedback === "approved" ? "bg-green-600" : "bg-destructive"
+              }`}
           >
             {feedback === "approved" ? (
               <ThumbsUp className="h-3 w-3 text-white" />
@@ -965,9 +962,8 @@ function PortalReferenceCard({
 
       {feedback && reference.type !== "FABRIC" && (
         <div
-          className={`py-1 text-center text-[10px] font-semibold text-white ${
-            feedback === "approved" ? "bg-green-600" : "bg-destructive"
-          }`}
+          className={`py-1 text-center text-[10px] font-semibold text-white ${feedback === "approved" ? "bg-green-600" : "bg-destructive"
+            }`}
         >
           {feedback === "approved" ? "Approved" : "Rejected"}
         </div>
@@ -1142,12 +1138,12 @@ function PortalUpload({
 
     ...(maggamRequired
       ? [
-          {
-            value: "MAGGAM" as const,
-            label: "Maggam",
-            icon: "🪡",
-          },
-        ]
+        {
+          value: "MAGGAM" as const,
+          label: "Maggam",
+          icon: "🪡",
+        },
+      ]
       : []),
 
     {
@@ -1231,11 +1227,10 @@ function PortalUpload({
             key={t.value}
             type="button"
             onClick={() => setSelectedType(t.value)}
-            className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
-              selectedType === t.value
+            className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${selectedType === t.value
                 ? "bg-primary text-primary-foreground border-primary"
                 : "border-border text-muted-foreground hover:bg-muted"
-            }`}
+              }`}
           >
             <span>{t.icon}</span>
             {t.label}
