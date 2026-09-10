@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Trash2, Play, Square, Loader2 } from "lucide-react";
+import { Mic, MicOff, Trash2, Play, Square, Loader2, Pause } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { LiveAudioVisualizer } from "react-audio-visualize";
 
 export interface VoiceNote {
   id: string;
@@ -14,7 +15,7 @@ export interface VoiceNote {
 
 interface VoiceNoteRecorderProps {
   notes: VoiceNote[];
-  label: string; // e.g. "Designer Instructions", "Trial Notes"
+  label: string;
   canRecord: boolean;
   onAdd: (note: VoiceNote) => void;
   onDelete: (id: string) => void;
@@ -28,11 +29,46 @@ export function VoiceNoteRecorder({
   onDelete,
 }: VoiceNoteRecorderProps) {
   const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  // Keep MediaRecorder in state so LiveAudioVisualizer re-renders when it's set
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+
   const chunksRef = useRef<Blob[]>([]);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  function startTimer() {
+    setRecordingSeconds(0);
+    timerRef.current = setInterval(() => setRecordingSeconds((s: number) => s + 1), 1000);
+  }
+
+  function stopTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }
+
+  function pauseTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }
+
+  function resumeTimer() {
+    timerRef.current = setInterval(() => setRecordingSeconds((s: number) => s + 1), 1000);
+  }
+
+  function formatDuration(secs: number) {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  }
 
   async function startRecording() {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -50,21 +86,43 @@ export function VoiceNoteRecorder({
 
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        stopTimer();
+        setRecordingSeconds(0);
+        setMediaRecorder(null);
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         await uploadNote(blob);
       };
 
-      mediaRecorderRef.current = mr;
-      mr.start();
+      mr.start(100);
+      setMediaRecorder(mr);
       setRecording(true);
+      setPaused(false);
+      startTimer();
     } catch {
       toast({ variant: "destructive", title: "Mic blocked", description: "Allow microphone access to record a voice note." });
     }
   }
 
+  function pauseRecording() {
+    if (mediaRecorder?.state === "recording") {
+      mediaRecorder.pause();
+      setPaused(true);
+      pauseTimer();
+    }
+  }
+
+  function resumeRecording() {
+    if (mediaRecorder?.state === "paused") {
+      mediaRecorder.resume();
+      setPaused(false);
+      resumeTimer();
+    }
+  }
+
   function stopRecording() {
-    mediaRecorderRef.current?.stop();
+    mediaRecorder?.stop();
     setRecording(false);
+    setPaused(false);
   }
 
   async function uploadNote(blob: Blob) {
@@ -77,12 +135,7 @@ export function VoiceNoteRecorder({
       if (!res.ok) throw new Error("Upload failed");
 
       const { url } = await res.json();
-      onAdd({
-        id: crypto.randomUUID(),
-        url,
-        label,
-        createdAt: new Date().toISOString(),
-      });
+      onAdd({ id: crypto.randomUUID(), url, label, createdAt: new Date().toISOString() });
       toast({ title: "Voice note saved" });
     } catch {
       toast({ variant: "destructive", title: "Upload failed", description: "Could not save voice note." });
@@ -94,12 +147,10 @@ export function VoiceNoteRecorder({
   function togglePlay(note: VoiceNote) {
     const audio = audioRefs.current[note.id];
     if (!audio) return;
-
     if (playingId === note.id) {
       audio.pause();
       setPlayingId(null);
     } else {
-      // Stop any currently playing
       Object.values(audioRefs.current).forEach((a) => a?.pause());
       audio.currentTime = 0;
       audio.play();
@@ -115,8 +166,9 @@ export function VoiceNoteRecorder({
   }
 
   return (
-    <div className="space-y-2">
-      {/* Saved notes */}
+    <div className="space-y-3">
+
+      {/* ── Saved notes ─────────────────────────────────────── */}
       {notes.length > 0 && (
         <div className="space-y-1.5">
           {notes.map((note, i) => (
@@ -124,14 +176,12 @@ export function VoiceNoteRecorder({
               key={note.id}
               className="flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5"
             >
-              {/* Hidden audio element */}
               <audio
                 ref={(el) => { audioRefs.current[note.id] = el; }}
                 src={note.url}
                 preload="none"
               />
 
-              {/* Play/Stop button */}
               <button
                 type="button"
                 onClick={() => togglePlay(note)}
@@ -139,8 +189,7 @@ export function VoiceNoteRecorder({
               >
                 {playingId === note.id
                   ? <Square className="h-3 w-3" />
-                  : <Play className="h-3 w-3 ml-0.5" />
-                }
+                  : <Play className="h-3 w-3 ml-0.5" />}
               </button>
 
               <div className="min-w-0 flex-1">
@@ -162,24 +211,73 @@ export function VoiceNoteRecorder({
         </div>
       )}
 
-      {/* Record button */}
+      {/* ── Live visualizer — shown only while recording ──── */}
+      {recording && mediaRecorder && (
+        <div className={`rounded-lg border px-3 py-2 transition-colors ${paused ? "bg-muted/40 border-muted" : "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"}`}>
+          <div className="flex items-center gap-2 mb-2">
+            {/* Pulsing dot */}
+            <span className={`h-2 w-2 rounded-full shrink-0 ${paused ? "bg-muted-foreground" : "bg-rose-500 animate-pulse"}`} />
+            <span className={`text-[11px] font-medium ${paused ? "text-muted-foreground" : "text-rose-600 dark:text-rose-400"}`}>
+              {paused ? "Paused" : "Recording"}
+            </span>
+            <span className="ml-auto text-xs tabular-nums font-mono text-muted-foreground">
+              {formatDuration(recordingSeconds)}
+            </span>
+          </div>
+
+          {/* Waveform — frozen automatically when MediaRecorder is paused */}
+          <LiveAudioVisualizer
+            mediaRecorder={mediaRecorder}
+            width={320}
+            height={40}
+            barWidth={2}
+            gap={1}
+            barColor={paused ? "rgb(148,163,184)" : "hsl(346, 100%, 58%)"}
+            backgroundColor="transparent"
+            fftSize={256}
+            smoothingTimeConstant={0.8}
+          />
+        </div>
+      )}
+
+      {/* ── Controls ─────────────────────────────────────── */}
       {canRecord && (
-        <Button
-          type="button"
-          size="sm"
-          variant={recording ? "destructive" : "outline"}
-          className="gap-1.5 h-8"
-          disabled={uploading}
-          onClick={recording ? stopRecording : startRecording}
-        >
-          {uploading ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
-          ) : recording ? (
-            <><MicOff className="h-3.5 w-3.5" /> Stop Recording</>
-          ) : (
-            <><Mic className="h-3.5 w-3.5" /> {notes.length > 0 ? "Add Note" : "Record Voice Note"}</>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Record / Stop */}
+          <Button
+            type="button"
+            size="sm"
+            variant={recording ? "destructive" : "outline"}
+            className="gap-1.5 h-8"
+            disabled={uploading}
+            onClick={recording ? stopRecording : startRecording}
+          >
+            {uploading ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
+            ) : recording ? (
+              <><MicOff className="h-3.5 w-3.5" /> Stop</>
+            ) : (
+              <><Mic className="h-3.5 w-3.5" /> {notes.length > 0 ? "Add Note" : "Record Voice Note"}</>
+            )}
+          </Button>
+
+          {/* Pause / Resume */}
+          {recording && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-8"
+              onClick={paused ? resumeRecording : pauseRecording}
+            >
+              {paused ? (
+                <><Mic className="h-3.5 w-3.5 text-primary" /> Resume</>
+              ) : (
+                <><Pause className="h-3.5 w-3.5" /> Pause</>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       )}
     </div>
   );
