@@ -571,31 +571,40 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                                   <div className="min-w-0">
                                     <span className="font-medium block truncate">{outfit.name}</span>
                                     <span className="text-muted-foreground">{outfit.type}</span>
-                                    {/* Fabric image thumbnails */}
+                                    {/* Attachment type chips */}
                                     {(() => {
-                                      const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
-                                      if (fabricRefs.length === 0) return null;
+                                      const allRefs = outfit.references || [];
+                                      const patternRefs = allRefs.filter((r: any) => r.type === "PATTERN");
+                                      const fabricRefs = allRefs.filter((r: any) => r.type === "FABRIC" && !r.isWorkPhoto);
+                                      const maggamRefs = allRefs.filter((r: any) => r.type === "MAGGAM");
+                                      const completionRefs = allRefs.filter((r: any) => r.isWorkPhoto === true);
+
+                                      const groups = [
+                                        { label: "Pattern", refs: patternRefs, color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800" },
+                                        { label: "Material", refs: fabricRefs, color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800" },
+                                        { label: "Maggam", refs: maggamRefs, color: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/30 dark:text-pink-300 dark:border-pink-800" },
+                                        { label: "Done", refs: completionRefs, color: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800" },
+                                      ].filter((g) => g.refs.length > 0);
+
+                                      if (groups.length === 0) return null;
                                       return (
-                                        <div className="flex items-center gap-1 mt-1">
-                                          {fabricRefs.slice(0, 3).map((ref: any, idx: number) => (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {groups.map(({ label, refs, color }) => (
                                             <button
-                                              key={ref.id}
+                                              key={label}
                                               type="button"
-                                              className="h-5 w-5 rounded-sm overflow-hidden border border-border shrink-0 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-medium transition-colors hover:opacity-80 ${color}`}
                                               onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                setViewerImages(fabricRefs.map((r: any) => ({ id: r.id, url: r.url })));
-                                                setViewerIndex(idx);
+                                                setViewerImages(refs.map((r: any) => ({ id: r.id, url: r.url, filename: r.filename })));
+                                                setViewerIndex(0);
                                                 setViewerOpen(true);
                                               }}
                                             >
-                                              <img src={ref.url} alt="Fabric" className="h-full w-full object-cover" />
+                                              {label} <span className="font-semibold">{refs.length}</span>
                                             </button>
                                           ))}
-                                          {fabricRefs.length > 3 && (
-                                            <span className="text-[9px] text-muted-foreground">+{fabricRefs.length - 3}</span>
-                                          )}
                                         </div>
                                       );
                                     })()}
@@ -624,7 +633,7 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                                   ₹{orderPaid.toLocaleString()}
                                 </strong>
                               </span>
-                              {order.estimatedAmount && orderBalance > 0 && (
+                              {orderTotal > 0 && orderBalance > 0 && (
                                 <span className="text-destructive font-medium whitespace-nowrap">
                                   Bal: ₹{orderBalance.toLocaleString()}
                                 </span>

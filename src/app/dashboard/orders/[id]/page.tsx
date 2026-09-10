@@ -742,50 +742,51 @@ export default function OrderDetailPage() {
                       </div>
                     )}
 
-                    {/* Customer Fabric References */}
+                    {/* Attachment type chips */}
                     {(() => {
-                      const fabricRefs = (outfit.references || []).filter(
-                        (r: any) => r.type === "FABRIC",
+                      const allRefs = outfit.references || [];
+                      const patternRefs = allRefs.filter((r: any) => r.type === "PATTERN");
+                      const fabricRefs = allRefs.filter((r: any) => r.type === "FABRIC" && !r.isWorkPhoto);
+                      const maggamRefs = allRefs.filter((r: any) => r.type === "MAGGAM");
+                      const completionRefs = allRefs.filter((r: any) => r.isWorkPhoto === true);
+
+                      const groups = [
+                        { label: "Pattern", refs: patternRefs, color: "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800" },
+                        { label: "Customer Material", refs: fabricRefs, color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800" },
+                        { label: "Maggam", refs: maggamRefs, color: "bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100 dark:bg-pink-950/30 dark:text-pink-300 dark:border-pink-800" },
+                        { label: "Completion", refs: completionRefs, color: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800" },
+                      ].filter((g) => g.refs.length > 0);
+
+                      if (groups.length === 0) return (
+                        <div className="bg-muted/40 p-2.5 rounded-md text-xs">
+                          <p className="text-muted-foreground flex items-center gap-1">
+                            <ImageIcon className="h-3.5 w-3.5" /> No attachments uploaded yet.
+                          </p>
+                        </div>
                       );
+
                       return (
                         <div className="bg-muted/40 p-2.5 rounded-md text-xs space-y-1.5">
                           <p className="font-medium text-muted-foreground flex items-center gap-1">
-                            <ImageIcon className="h-3.5 w-3.5" /> Material
-                            Attachments{" "}
-                            {fabricRefs.length > 0 && `(${fabricRefs.length})`}
+                            <ImageIcon className="h-3.5 w-3.5" /> Attachments
                           </p>
-                          {fabricRefs.length > 0 ? (
-                            <div className="flex gap-2 flex-wrap">
-                              {fabricRefs.map((ref: any, idx: number) => (
-                                <button
-                                  key={ref.id}
-                                  type="button"
-                                  className="h-12 w-12 rounded border overflow-hidden relative focus:ring-2 focus:ring-primary"
-                                  onClick={() => {
-                                    setViewerImages(
-                                      fabricRefs.map((r: any) => ({
-                                        id: r.id,
-                                        url: r.url,
-                                        filename: r.filename,
-                                      })),
-                                    );
-                                    setViewerIndex(idx);
-                                    setViewerOpen(true);
-                                  }}
-                                >
-                                  <img
-                                    src={ref.url}
-                                    alt={ref.filename || "Fabric reference"}
-                                    className="h-full w-full object-cover"
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-muted-foreground">
-                              No customer material uploaded yet.
-                            </p>
-                          )}
+                          <div className="flex flex-wrap gap-1.5">
+                            {groups.map(({ label, refs, color }) => (
+                              <button
+                                key={label}
+                                type="button"
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium transition-colors ${color}`}
+                                onClick={() => {
+                                  setViewerImages(refs.map((r: any) => ({ id: r.id, url: r.url, filename: r.filename })));
+                                  setViewerIndex(0);
+                                  setViewerOpen(true);
+                                }}
+                              >
+                                {label}
+                                <span className="font-semibold">{refs.length}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
