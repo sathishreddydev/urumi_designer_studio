@@ -483,8 +483,16 @@ export default function CustomerPortalPage() {
                         );
 
                         const fabricRefs = (outfit.references || []).filter(
-                          (ref: any) => ref.type === "FABRIC",
+                          (ref: any) => ref.type === "FABRIC" && !ref.isWorkPhoto,
                         );
+
+                        const completionRefs = (outfit.references || []).filter(
+                          (ref: any) => ref.isWorkPhoto === true,
+                        );
+
+                        const showCompletionPhotos =
+                          completionRefs.length > 0 &&
+                          (outfit.status === "READY_FOR_DELIVERY" || outfit.status === "DELIVERED");
 
                         return (
                           <div
@@ -646,6 +654,27 @@ export default function CustomerPortalPage() {
 
                                 <PortalReferences
                                   references={fabricRefs}
+                                  token={params.token as string}
+                                  outfitId={outfit.id}
+                                  canApprove={false}
+                                />
+                              </div>
+                            )}
+
+                            {/* Completion Photos — shown when ready/delivered */}
+                            {showCompletionPhotos && (
+                              <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    Finished Outfit
+                                  </span>
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
+                                    ✓ Ready
+                                  </span>
+                                </div>
+
+                                <PortalReferences
+                                  references={completionRefs}
                                   token={params.token as string}
                                   outfitId={outfit.id}
                                   canApprove={false}

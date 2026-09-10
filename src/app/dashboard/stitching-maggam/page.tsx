@@ -96,7 +96,10 @@ export default function StitchingMaggamPage() {
   }, [data, role, session?.id]);
 
   // Bulk-fetch transitions for all visible outfits in one request
-  const outfitIds: string[] = allOutfits.map((o: any) => o.id);
+  const outfitIds: string[] = useMemo(
+    () => allOutfits.map((o: any) => o.id),
+    [allOutfits]
+  );
   const { data: bulkTransitions } = useQuery({
     queryKey: ["bulk-transitions-stitching", outfitIds],
     queryFn: async () => {

@@ -42,8 +42,13 @@ export default function BlockersPage() {
       if (!res.ok) throw new Error("Failed to resolve");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, { outfitId }) => {
       queryClient.invalidateQueries({ queryKey: ["active-blockers"] });
+      // Unblocking a dependency may enable new transitions — refresh the transitions cache
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
+      // Also refresh bulk-transition caches used by production/stitching-maggam pages
+      queryClient.invalidateQueries({ queryKey: ["bulk-transitions-production"] });
+      queryClient.invalidateQueries({ queryKey: ["bulk-transitions-stitching"] });
     },
   });
 

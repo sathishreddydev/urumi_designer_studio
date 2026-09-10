@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +66,10 @@ export default function ProductionPage() {
   });
 
   // Bulk-fetch transitions for all visible outfits in one request
-  const outfitIds: string[] = (data || []).map((o: any) => o.id);
+  const outfitIds: string[] = useMemo(
+    () => (data || []).map((o: any) => o.id),
+    [data]
+  );
   const { data: bulkTransitions } = useQuery({
     queryKey: ["bulk-transitions-production", outfitIds],
     queryFn: async () => {
