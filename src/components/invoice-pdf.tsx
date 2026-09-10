@@ -302,7 +302,9 @@ function fmt(date: string | null | undefined): string {
 
 function fmtCurrency(val: string | number | null | undefined): string {
   if (!val && val !== 0) return "—";
-  return `₹${Number(val).toLocaleString("en-IN")}`;
+  // Use "Rs." instead of "₹" — Helvetica (built-in PDF font) does not support
+  // the Rupee Unicode character and renders it as an apostrophe/quote.
+  return `Rs. ${Number(val).toLocaleString("en-IN")}`;
 }
 
 // ─── Document ────────────────────────────────────────────────────────────────
