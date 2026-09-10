@@ -5,7 +5,6 @@ interface ReferenceImage {
   url: string;
   filename?: string | null;
   type?: string | null;
-  isWorkPhoto?: boolean | null;
 }
 
 interface OutfitAttachmentChipsProps {
@@ -25,7 +24,7 @@ const GROUPS = [
   },
   {
     label: "Customer Material",
-    filter: (r: ReferenceImage) => r.type === "FABRIC" && !r.isWorkPhoto,
+    filter: (r: ReferenceImage) => r.type === "FABRIC",
     color:
       "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800",
   },
@@ -37,7 +36,7 @@ const GROUPS = [
   },
   {
     label: "Completion",
-    filter: (r: ReferenceImage) => r.isWorkPhoto === true,
+    filter: (r: ReferenceImage) => r.type === "COMPLETION",
     color:
       "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800",
   },

@@ -485,15 +485,15 @@ export default function CustomerPortalPage() {
                         const progress = STATUS_PROGRESS[outfit.status] || 0;
 
                         const designRefs = (outfit.references || []).filter(
-                          (ref: any) => ref.type !== "FABRIC",
+                          (ref: any) => ref.type !== "FABRIC" && ref.type !== "COMPLETION",
                         );
 
                         const fabricRefs = (outfit.references || []).filter(
-                          (ref: any) => ref.type === "FABRIC" && !ref.isWorkPhoto,
+                          (ref: any) => ref.type === "FABRIC",
                         );
 
                         const completionRefs = (outfit.references || []).filter(
-                          (ref: any) => ref.isWorkPhoto === true,
+                          (ref: any) => ref.type === "COMPLETION",
                         );
 
                         const showCompletionPhotos =
@@ -901,7 +901,7 @@ function PortalReferenceCard({
         />
 
         {/* Reference type label — hidden for completion/work photos since the section header already identifies them */}
-        {!reference.isWorkPhoto && (
+        {reference.type !== "COMPLETION" && (
           <span
             className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${reference.type === "FABRIC"
                 ? "bg-indigo-600 text-white"
@@ -914,7 +914,9 @@ function PortalReferenceCard({
               ? "Your Fabric"
               : reference.type === "MAGGAM"
                 ? "Maggam"
-                : "Pattern"}
+                : reference.type === "COMPLETION"
+                  ? "Finished Outfit"
+                  : "Pattern"}
           </span>
         )}
 
@@ -954,7 +956,7 @@ function PortalReferenceCard({
         </div>
       )}
 
-      {reference.type === "FABRIC" && !reference.isWorkPhoto && (
+      {reference.type === "FABRIC" && (
         <div className="py-1 text-center text-[10px] font-semibold text-indigo-700 bg-indigo-50">
           Read only
         </div>

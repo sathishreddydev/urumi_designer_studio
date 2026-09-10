@@ -64,7 +64,7 @@ export async function GET(
             const DESIGN_STATUSES = ["DRAFT", "DESIGN_IN_PROGRESS", "WAITING_FOR_REFERENCES", "WAITING_FOR_DEPENDENCIES"];
             const visibleRefs = DESIGN_STATUSES.includes(outfit.status)
               ? refs // Show all references during design phase for customer review
-              : refs.filter((r) => r.status === "LOCKED" || r.isWorkPhoto === true); // After production: locked refs + completion photos
+              : refs.filter((r) => r.status === "LOCKED" || r.type === "COMPLETION"); // After production: locked refs + completion photos
 
             return {
               id: outfit.id,
@@ -84,7 +84,6 @@ export async function GET(
                 type: r.type,
                 url: r.url,
                 filename: r.filename,
-                isWorkPhoto: r.isWorkPhoto ?? false,
                 // Any LOCKED ref shows as "approved" in the portal — whether locked by
                 // admin, designer, or the customer themselves. The customer doesn't need
                 // to know who locked it, just that it's confirmed for production.

@@ -36,7 +36,7 @@ export const outfitStatusEnum = pgEnum("outfit_status", [
   "DELIVERED",
 ]);
 
-export const referenceTypeEnum = pgEnum("reference_type", ["PATTERN", "MAGGAM", "FABRIC"]);
+export const referenceTypeEnum = pgEnum("reference_type", ["PATTERN", "MAGGAM", "FABRIC", "COMPLETION"]);
 
 export const referenceStatusEnum = pgEnum("reference_status", ["DRAFT", "SELECTED", "LOCKED"]);
 
@@ -196,7 +196,6 @@ export const referenceImages = pgTable("reference_images", {
   filename: text("filename").notNull(),
   uploadedBy: text("uploaded_by").notNull(),
   isCustomerUpload: boolean("is_customer_upload").notNull().default(false),
-  isWorkPhoto: boolean("is_work_photo").notNull().default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

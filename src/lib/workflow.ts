@@ -153,7 +153,7 @@ async function evaluatePrecondition(
         .where(
           and(
             eq(referenceImages.outfitId, outfitId),
-            eq(referenceImages.isWorkPhoto, true)
+            eq(referenceImages.type, "COMPLETION")
           )
         );
       return workPhotos.length > 0;

@@ -148,15 +148,14 @@ export const GET = withPermission(
           masterName = m?.name || "";
         }
 
-        // Fetch all customer material images (FABRIC type, not a work photo)
+        // Fetch all customer material images (FABRIC type)
         const materialRefs = await db
           .select({ id: referenceImages.id, url: referenceImages.url })
           .from(referenceImages)
           .where(
             drizzleAnd(
               eq(referenceImages.outfitId, outfit.id),
-              eq(referenceImages.type, "FABRIC"),
-              eq(referenceImages.isWorkPhoto, false)
+              eq(referenceImages.type, "FABRIC")
             )
           )
           .orderBy(asc(referenceImages.createdAt));

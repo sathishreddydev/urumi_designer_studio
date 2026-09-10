@@ -367,11 +367,9 @@ export default function OutfitDetailPage() {
     mutationFn: async ({
       file,
       type,
-      isWorkPhoto,
     }: {
       file: File;
       type: string;
-      isWorkPhoto?: boolean;
     }) => {
       if (file.size > 20 * 1024 * 1024) {
         throw new Error("File too large. Please use an image under 20MB.");
@@ -393,7 +391,6 @@ export default function OutfitDetailPage() {
           type,
           url,
           filename,
-          isWorkPhoto: isWorkPhoto === true,
         }),
       });
       if (!res.ok) throw new Error("Failed to save reference");
@@ -401,13 +398,11 @@ export default function OutfitDetailPage() {
     },
     onMutate: async ({
       type,
-      isWorkPhoto,
     }: {
       file: File;
       type: string;
-      isWorkPhoto?: boolean;
     }) => {
-      setUploadingType(isWorkPhoto ? "COMPLETION" : type);
+      setUploadingType(type);
     },
     onSettled: () => {
       setUploadingType(null);
@@ -483,12 +478,12 @@ export default function OutfitDetailPage() {
     (r: any) => r.type === "MAGGAM",
   );
   const fabricRefs = (outfit.references || []).filter(
-    (r: any) => r.type === "FABRIC" && !r.isWorkPhoto,
+    (r: any) => r.type === "FABRIC",
   );
 
-  // Completion / work photos — stored as FABRIC type with isWorkPhoto = true
+  // Completion photos — stored with type = "COMPLETION"
   const completionRefs = (outfit.references || []).filter(
-    (r: any) => r.isWorkPhoto === true,
+    (r: any) => r.type === "COMPLETION",
   );
 
   // Completion photo upload is available from PRODUCTION_COMPLETED onwards
@@ -1016,8 +1011,7 @@ export default function OutfitDetailPage() {
                     onUpload={(file) =>
                       uploadRefMutation.mutate({
                         file,
-                        type: "FABRIC",
-                        isWorkPhoto: true,
+                        type: "COMPLETION",
                       })
                     }
                     onDelete={(refId) => deleteRefMutation.mutate(refId)}
