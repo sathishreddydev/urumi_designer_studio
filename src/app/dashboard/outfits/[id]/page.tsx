@@ -1592,28 +1592,43 @@ function ReferenceSection({
                 )}
 
                 {canLock && !isLoading && (
+                  <div className="absolute top-1.5 right-1.5 flex gap-1">
+                    <button
+                      className={`rounded-full p-1.5 ${
+                        isLocked
+                          ? "bg-green-600 text-white"
+                          : "bg-black/60 text-white hover:bg-black/80"
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLockToggle(ref.id, isLocked);
+                      }}
+                      aria-label={isLocked ? "Unlock" : "Lock"}
+                    >
+                      {isLocked ? (
+                        <Lock className="h-3 w-3" />
+                      ) : (
+                        <Unlock className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {canUpload && !isLocked && !isLoading && (
                   <button
-                    className={`absolute top-1.5 right-1.5 rounded-full p-1.5 ${
-                      isLocked
-                        ? "bg-green-600 text-white"
-                        : "bg-black/60 text-white hover:bg-black/80"
-                    }`}
+                    className="absolute top-1.5 left-1.5 rounded-full bg-red-600 hover:bg-red-700 p-1.5 text-white"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleLockToggle(ref.id, isLocked);
+                      setDeleteRefId(ref.id);
                     }}
-                    aria-label={isLocked ? "Unlock" : "Lock"}
+                    aria-label="Delete"
                   >
-                    {isLocked ? (
-                      <Lock className="h-3 w-3" />
-                    ) : (
-                      <Unlock className="h-3 w-3" />
-                    )}
+                    <Trash2 className="h-3 w-3" />
                   </button>
                 )}
 
                 {!isLoading && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 flex items-center justify-between">
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
                     <span
                       className={`text-[10px] font-medium ${
                         isLocked
@@ -1629,18 +1644,6 @@ function ReferenceSection({
                           ? "Locked"
                           : "Draft"}
                     </span>
-                    {canUpload && !isLocked && (
-                      <button
-                        className="text-red-400 hover:text-red-300"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteRefId(ref.id);
-                        }}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
