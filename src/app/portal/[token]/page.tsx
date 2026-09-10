@@ -478,13 +478,7 @@ export default function CustomerPortalPage() {
                   <CardContent className="pt-4 space-y-6">
                     {/* Outfits Grid */}
                     <div className="space-y-4">
-                      {order.outfits.map((rawOutfit: any) => {
-                        // DB stores statuses in lowercase; all frontend constants use uppercase
-                        const outfit = {
-                          ...rawOutfit,
-                          status: (rawOutfit.status as string).toUpperCase(),
-                        };
-
+                      {order.outfits.map((outfit: any) => {
                         const canApprove = APPROVAL_ALLOWED_STATUSES.includes(
                           outfit.status,
                         );
