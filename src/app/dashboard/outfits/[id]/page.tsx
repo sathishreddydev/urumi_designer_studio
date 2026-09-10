@@ -9,6 +9,12 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -269,6 +275,7 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
       toast({
         title: "Dependency raised",
         description: "Dependency added to this outfit.",
@@ -334,6 +341,7 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
     },
   });
 
@@ -350,6 +358,7 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
     },
   });
 
@@ -423,6 +432,7 @@ export default function OutfitDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outfit", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", params.id] });
     },
   });
 
@@ -559,21 +569,31 @@ export default function OutfitDetailPage() {
 
         {/* Right side: action button(s) + delete — always stay on the right */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {availableTransitions.map((t: any) => (
-            <LoadingButton
-              key={t.status}
-              size="sm"
-              loading={transitionMutation.isPending}
-              onClick={() => transitionMutation.mutate({ newStatus: t.status })}
-              className="text-xs h-8 px-2.5 whitespace-nowrap"
-              disabled={t.status === "DELIVERED" && completionRefs.length === 0}
-              title={t.status === "DELIVERED" && completionRefs.length === 0 ? "Upload at least one completion photo before delivering" : undefined}
-            >
-              <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
-              <span className="hidden sm:inline">{t.label}</span>
-              <span className="sm:hidden">Next</span>
-            </LoadingButton>
-          ))}
+          <TooltipProvider delayDuration={200}>
+            {availableTransitions.map((t: any) => (
+              <Tooltip key={t.status}>
+                <TooltipTrigger asChild>
+                  {/* span wrapper required so tooltip works on disabled buttons */}
+                  <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                    <LoadingButton
+                      size="sm"
+                      loading={!t.blocked && transitionMutation.isPending}
+                      onClick={() => !t.blocked && transitionMutation.mutate({ newStatus: t.status })}
+                      className="text-xs h-8 px-2.5 whitespace-nowrap"
+                      disabled={t.blocked}
+                    >
+                      <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
+                      <span className="hidden sm:inline">{t.label}</span>
+                      <span className="sm:hidden">Next</span>
+                    </LoadingButton>
+                  </span>
+                </TooltipTrigger>
+                {t.blocked && t.reason && (
+                  <TooltipContent side="bottom">{t.reason}</TooltipContent>
+                )}
+              </Tooltip>
+            ))}
+          </TooltipProvider>
           {can("delete", "outfit") && (
             <Button
               variant="outline"

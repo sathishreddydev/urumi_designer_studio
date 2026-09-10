@@ -152,7 +152,7 @@ export const GET = withAuth(async (_request, { params, session }) => {
   const { id } = await params;
 
   const [outfit] = await db
-    .select({ status: outfits.status })
+    .select({ status: outfits.status, orderId: outfits.orderId })
     .from(outfits)
     .where(eq(outfits.id, id))
     .limit(1);
@@ -167,6 +167,46 @@ export const GET = withAuth(async (_request, { params, session }) => {
     session.role as Role,
     session.id
   );
+
+  // Apply payment check to the DELIVERED transition if present
+  const deliveredEntry = available.find((t) => t.status === "DELIVERED");
+  if (deliveredEntry && !deliveredEntry.blocked && outfit.orderId) {
+    const orderOutfits = await db
+      .select({ price: outfits.price, addOns: outfits.addOns })
+      .from(outfits)
+      .where(eq(outfits.orderId, outfit.orderId));
+    const outfitTotal = orderOutfits.reduce((s, o) => {
+      const outfitPrice = Number(o.price) || 0;
+      const addOnsTotal = ((o.addOns as any[]) || []).reduce(
+        (as: number, a: any) => as + (Number(a.price) || 0),
+        0
+      );
+      return s + outfitPrice + addOnsTotal;
+    }, 0);
+
+    let orderTotal = outfitTotal;
+    if (orderTotal === 0) {
+      const [ord] = await db
+        .select({ estimatedAmount: orders.estimatedAmount })
+        .from(orders)
+        .where(eq(orders.id, outfit.orderId));
+      orderTotal = ord?.estimatedAmount ? Number(ord.estimatedAmount) : 0;
+    }
+
+    const settledPayments = await db
+      .select({ amount: payments.amount, status: payments.status })
+      .from(payments)
+      .where(eq(payments.orderId, outfit.orderId));
+    const totalPaid = settledPayments
+      .filter((p) => !p.status || p.status === "SETTLED")
+      .reduce((s, p) => s + Number(p.amount), 0);
+
+    if (orderTotal > 0 && totalPaid < orderTotal) {
+      const balance = orderTotal - totalPaid;
+      deliveredEntry.blocked = true;
+      deliveredEntry.reason = `Payment not cleared — ₹${balance.toLocaleString()} still pending`;
+    }
+  }
 
   return NextResponse.json({
     currentStatus: outfit.status,

@@ -26,6 +26,12 @@ import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ALL_STATUSES = [
   "DRAFT",
@@ -54,10 +60,14 @@ const LIMIT = 20;
 function OutfitStatusUpdater({
   outfitId,
   onSuccess,
+  listQueryKey,
 }: {
   outfitId: string;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  listQueryKey?: unknown[];
 }) {
+  const queryClient = useQueryClient();
+
   const { data: transitions } = useQuery({
     queryKey: ["outfit-transitions", outfitId],
     queryFn: async () => {
@@ -81,7 +91,14 @@ function OutfitStatusUpdater({
       return res.json();
     },
     onSuccess: () => {
-      onSuccess();
+      // Invalidate per-outfit transitions so the button updates immediately
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
+      // Also refresh the list if a query key was provided
+      if (listQueryKey) {
+        queryClient.invalidateQueries({ queryKey: listQueryKey });
+      }
+      // Notify parent (e.g. to refresh its own state)
+      onSuccess?.();
       toast({ title: "Status updated" });
     },
     onError: (error: Error) => {
@@ -89,33 +106,46 @@ function OutfitStatusUpdater({
     },
   });
 
-  const available: { status: string; label: string }[] =
+  const available: { status: string; label: string; blocked: boolean; reason?: string }[] =
     transitions?.availableTransitions ?? [];
 
   if (available.length === 0) return <span className="text-[11px] text-muted-foreground">—</span>;
 
   return (
     <div className="flex flex-wrap gap-1">
-      {available.map((t) => (
-        <LoadingButton
-          key={t.status}
-          size="sm"
-          variant="outline"
-          className="h-6 gap-1 px-2 text-[11px] bg-background"
-          loading={
-            transitionMutation.isPending &&
-            transitionMutation.variables === t.status
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            transitionMutation.mutate(t.status);
-          }}
-        >
-          <ArrowRight className="h-2.5 w-2.5" />
-          {t.label}
-        </LoadingButton>
-      ))}
+      <TooltipProvider delayDuration={200}>
+        {available.map((t) => (
+          <Tooltip key={t.status}>
+            <TooltipTrigger asChild>
+              <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                <LoadingButton
+                  size="sm"
+                  variant="outline"
+                  className="h-6 gap-1 px-2 text-[11px] bg-background"
+                  loading={
+                    !t.blocked &&
+                    transitionMutation.isPending &&
+                    transitionMutation.variables === t.status
+                  }
+                  disabled={t.blocked}
+                  onClick={(e) => {
+                    if (t.blocked) return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    transitionMutation.mutate(t.status);
+                  }}
+                >
+                  <ArrowRight className="h-2.5 w-2.5" />
+                  {t.label}
+                </LoadingButton>
+              </span>
+            </TooltipTrigger>
+            {t.blocked && t.reason && (
+              <TooltipContent side="bottom">{t.reason}</TooltipContent>
+            )}
+          </Tooltip>
+        ))}
+      </TooltipProvider>
     </div>
   );
 }
@@ -175,11 +205,6 @@ export default function OutfitsPage() {
 
   function clearAll() {
     setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPage(1);
-  }
-
-  function invalidate(outfitId: string) {
-    queryClient.invalidateQueries({ queryKey });
-    queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
   }
 
   const DEADLINE_PILLS = [
@@ -476,7 +501,7 @@ export default function OutfitsPage() {
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <OutfitStatusUpdater
                             outfitId={outfit.id}
-                            onSuccess={() => invalidate(outfit.id)}
+                            listQueryKey={queryKey}
                           />
                         </td>
                       )}
@@ -570,7 +595,7 @@ export default function OutfitsPage() {
                       <span className="text-[11px] font-medium text-muted-foreground shrink-0">Move to</span>
                       <OutfitStatusUpdater
                         outfitId={outfit.id}
-                        onSuccess={() => invalidate(outfit.id)}
+                        listQueryKey={queryKey}
                       />
                     </div>
                   )}

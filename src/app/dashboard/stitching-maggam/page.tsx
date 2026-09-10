@@ -15,6 +15,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import {
   Shirt,
@@ -46,33 +52,7 @@ const ALL_TABS = [
 ] as const;
 
 type TabKey = (typeof ALL_TABS)[number]["key"];
-
-// For each status return the allowed next transitions per role
-function getNextStatuses(
-  current: string,
-  maggamRequired: boolean,
-  role: string
-): { status: string; label: string; variant?: "destructive" | "default" | "outline" }[] {
-  if (role === "MASTER" || role === "ADMIN" || role === "STORE_MANAGER") {
-    if (current === "PRODUCTION_READY") return [{ status: "PATTERN_DRAFTING", label: "Start Pattern" }];
-    if (current === "PATTERN_DRAFTING")
-      return maggamRequired
-        ? [{ status: "MAGGAM_WORK", label: "Maggam Work" }]
-        : [{ status: "FABRIC_CUTTING", label: "Fabric Cutting" }];
-    if (current === "MAGGAM_WORK") return [{ status: "MAGGAM_REVIEW", label: "Send for Review" }];
-    if (current === "MAGGAM_REVIEWED") return [{ status: "FABRIC_CUTTING", label: "Fabric Cutting" }];
-    if (current === "FABRIC_CUTTING") return [{ status: "STITCHING", label: "Stitching" }];
-    if (current === "STITCHING") return [{ status: "PRODUCTION_COMPLETED", label: "Mark Complete" }];
-  }
-  if (role === "DESIGNER" || role === "ADMIN" || role === "STORE_MANAGER") {
-    if (current === "MAGGAM_REVIEW")
-      return [
-        { status: "MAGGAM_REVIEWED", label: "Approve",  },
-        { status: "MAGGAM_WORK",     label: "Rework",   variant: "outline" },
-      ];
-  }
-  return [];
-}
+type Transition = { status: string; label: string; blocked: boolean; reason?: string };
 
 export default function StitchingMaggamPage() {
   const queryClient = useQueryClient();
@@ -106,6 +86,33 @@ export default function StitchingMaggamPage() {
     },
   });
 
+  // Scope by role — MASTER only sees their assigned outfits
+  const allOutfits = useMemo(() => {
+    const list = data || [];
+    if (role === "MASTER") {
+      return list.filter((o: any) => o.masterId === session?.id);
+    }
+    return list;
+  }, [data, role, session?.id]);
+
+  // Bulk-fetch transitions for all visible outfits in one request
+  const outfitIds: string[] = allOutfits.map((o: any) => o.id);
+  const { data: bulkTransitions } = useQuery({
+    queryKey: ["bulk-transitions-stitching", outfitIds],
+    queryFn: async () => {
+      if (outfitIds.length === 0) return {};
+      const res = await fetch("/api/outfits/transitions/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outfitIds }),
+      });
+      if (!res.ok) return {};
+      const d = await res.json();
+      return d.transitions as Record<string, Transition[]>;
+    },
+    enabled: outfitIds.length > 0,
+  });
+
   const transitionMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: string; newStatus: string }) => {
       setPendingId(id);
@@ -124,6 +131,8 @@ export default function StitchingMaggamPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stitching-maggam-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
+      queryClient.invalidateQueries({ queryKey: ["bulk-transitions-stitching"] });
+      queryClient.invalidateQueries({ queryKey: ["bulk-transitions-production"] });
       toast({ title: "Status updated", description: "Outfit moved to next stage." });
     },
     onError: (error: Error) => {
@@ -132,18 +141,7 @@ export default function StitchingMaggamPage() {
     onSettled: () => { setPendingId(null); setPendingStatus(null); },
   });
 
-  // Scope by role — MASTER only sees their assigned outfits
-  const allOutfits = useMemo(() => {
-    const list = data || [];
-    if (role === "MASTER") {
-      return list.filter((o: any) => o.masterId === session?.id);
-    }
-    return list;
-  }, [data, role, session?.id]);
-
   // Tabs visible to this role
-  // MASTER: doesn't act on MAGGAM_REVIEW (designer's job), but needs MAGGAM_REVIEWED (their cue)
-  // DESIGNER: doesn't need MAGGAM_REVIEWED tab (they only act on MAGGAM_REVIEW)
   const visibleTabs = useMemo(() => {
     if (role === "MASTER") return ALL_TABS.filter((t) => t.key !== "MAGGAM_REVIEW");
     if (role === "DESIGNER") return ALL_TABS.filter((t) => t.key !== "MAGGAM_REVIEWED");
@@ -165,7 +163,7 @@ export default function StitchingMaggamPage() {
 
   const totalCount = allOutfits.filter(
     (o: any) => o.status !== "PRODUCTION_READY"
-  ).length; // active work (excluding queue)
+  ).length;
   const queueCount = counts["PRODUCTION_READY"] || 0;
   const urgentCount = allOutfits.filter(
     (o: any) => o.deliveryDate && new Date(o.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
@@ -178,7 +176,6 @@ export default function StitchingMaggamPage() {
 
   const filteredOutfits = useMemo(() => {
     let items = allOutfits.filter((o: any) => o.status === resolvedTab);
-    // typeFilter is local-only (not an API param), so still filter client-side
     if (typeFilter !== "all") {
       items = items.filter((o: any) => o.type === typeFilter);
     }
@@ -334,8 +331,7 @@ export default function StitchingMaggamPage() {
               </thead>
               <tbody className="divide-y">
                 {filteredOutfits.map((outfit: any) => {
-                  const nextStatuses = getNextStatuses(outfit.status, outfit.maggamRequired, role ?? "");
-                  const isAssigned = role !== "MASTER" || outfit.masterId === session?.id;
+                  const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
                   const isUrgent =
                     outfit.deliveryDate &&
                     new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -394,29 +390,35 @@ export default function StitchingMaggamPage() {
                         {outfit.masterName || outfit.designerName || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {isAssigned && nextStatuses.length > 0 ? (
+                        {transitions.length > 0 ? (
                           <div className="flex flex-wrap justify-end gap-1">
-                            {nextStatuses.map((t) => (
-                              <LoadingButton
-                                key={t.status}
-                                size="sm"
-                                variant={t.variant === "outline" ? "outline" : "default"}
-                                loading={pendingId === outfit.id && pendingStatus === t.status}
-                                disabled={transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status)}
-                                onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
-                                className="whitespace-nowrap text-xs"
-                              >
-                                {t.variant === "outline"
-                                  ? <RotateCcw className="h-3 w-3 mr-1" />
-                                  : <ArrowRight className="h-3 w-3 mr-1" />}
-                                {t.label}
-                              </LoadingButton>
-                            ))}
+                            <TooltipProvider delayDuration={200}>
+                              {transitions.map((t) => (
+                                <Tooltip key={t.status}>
+                                  <TooltipTrigger asChild>
+                                    <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                                      <LoadingButton
+                                        size="sm"
+                                        variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
+                                        className={`whitespace-nowrap text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
+                                        loading={!t.blocked && pendingId === outfit.id && pendingStatus === t.status}
+                                        disabled={t.blocked || (transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status))}
+                                        onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
+                                      >
+                                        {t.status === "MAGGAM_WORK"
+                                          ? <><RotateCcw className="h-3 w-3 mr-1" />{t.label}</>
+                                          : <><ArrowRight className="h-3 w-3 mr-1" />{t.label}</>
+                                        }
+                                      </LoadingButton>
+                                    </span>
+                                  </TooltipTrigger>
+                                  {t.blocked && t.reason && (
+                                    <TooltipContent side="left">{t.reason}</TooltipContent>
+                                  )}
+                                </Tooltip>
+                              ))}
+                            </TooltipProvider>
                           </div>
-                        ) : nextStatuses.length > 0 ? (
-                          <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">
-                            Not assigned
-                          </Badge>
                         ) : null}
                       </td>
                     </tr>
@@ -429,8 +431,7 @@ export default function StitchingMaggamPage() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {filteredOutfits.map((outfit: any) => {
-              const nextStatuses = getNextStatuses(outfit.status, outfit.maggamRequired, role ?? "");
-              const isAssigned = role !== "MASTER" || outfit.masterId === session?.id;
+              const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
               const isUrgent =
                 outfit.deliveryDate &&
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -496,30 +497,36 @@ export default function StitchingMaggamPage() {
                     </div>
 
                     {/* Action buttons */}
-                    {isAssigned && nextStatuses.length > 0 ? (
+                    {transitions.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        {nextStatuses.map((t) => (
-                          <LoadingButton
-                            key={t.status}
-                            size="sm"
-                            variant={t.variant === "outline" ? "outline" : "default"}
-                            className="w-full text-xs"
-                            loading={pendingId === outfit.id && pendingStatus === t.status}
-                            disabled={transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status)}
-                            onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
-                          >
-                            {t.variant === "outline"
-                              ? <RotateCcw className="h-3 w-3 mr-1 shrink-0" />
-                              : <ArrowRight className="h-3 w-3 mr-1 shrink-0" />}
-                            <span className="truncate">{t.label}</span>
-                          </LoadingButton>
-                        ))}
+                        <TooltipProvider delayDuration={200}>
+                          {transitions.map((t) => (
+                            <Tooltip key={t.status}>
+                              <TooltipTrigger asChild>
+                                <span className={t.blocked ? "cursor-not-allowed w-full" : "w-full"}>
+                                  <LoadingButton
+                                    size="sm"
+                                    variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
+                                    className={`w-full text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
+                                    loading={!t.blocked && pendingId === outfit.id && pendingStatus === t.status}
+                                    disabled={t.blocked || (transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status))}
+                                    onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
+                                  >
+                                    {t.status === "MAGGAM_WORK"
+                                      ? <><RotateCcw className="h-3 w-3 mr-1 shrink-0" /><span className="truncate">{t.label}</span></>
+                                      : <><ArrowRight className="h-3 w-3 mr-1 shrink-0" /><span className="truncate">{t.label}</span></>
+                                    }
+                                  </LoadingButton>
+                                </span>
+                              </TooltipTrigger>
+                              {t.blocked && t.reason && (
+                                <TooltipContent side="top">{t.reason}</TooltipContent>
+                              )}
+                            </Tooltip>
+                          ))}
+                        </TooltipProvider>
                       </div>
-                    ) : nextStatuses.length > 0 ? (
-                      <Badge variant="outline" className="w-full justify-center text-xs text-muted-foreground">
-                        Not assigned to you
-                      </Badge>
-                    ) : null}
+                    )}
                   </CardContent>
                 </Card>
               );

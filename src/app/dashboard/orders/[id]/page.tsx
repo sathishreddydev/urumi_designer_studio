@@ -40,6 +40,12 @@ import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
 import { compressImage } from "@/lib/compress-image";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   OutfitFormFields,
   OutfitFormValue,
   emptyOutfitFormValue,
@@ -97,7 +103,7 @@ function OutfitStatusUpdater({
     },
   });
 
-  const available: { status: string; label: string }[] =
+  const available: { status: string; label: string; blocked: boolean; reason?: string }[] =
     transitions?.availableTransitions ?? [];
 
   if (disabled || available.length === 0) return null;
@@ -108,22 +114,34 @@ function OutfitStatusUpdater({
         Move to
       </span>
       <div className="flex flex-wrap justify-end gap-1.5">
-        {available.map((t) => (
-          <LoadingButton
-            key={t.status}
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 px-2.5 text-xs bg-background"
-            loading={
-              transitionMutation.isPending &&
-              transitionMutation.variables === t.status
-            }
-            onClick={() => transitionMutation.mutate(t.status)}
-          >
-            <ArrowRight className="h-3 w-3" />
-            {t.label}
-          </LoadingButton>
-        ))}
+        <TooltipProvider delayDuration={200}>
+          {available.map((t) => (
+            <Tooltip key={t.status}>
+              <TooltipTrigger asChild>
+                <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                  <LoadingButton
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1 px-2.5 text-xs bg-background"
+                    loading={
+                      !t.blocked &&
+                      transitionMutation.isPending &&
+                      transitionMutation.variables === t.status
+                    }
+                    disabled={t.blocked}
+                    onClick={() => !t.blocked && transitionMutation.mutate(t.status)}
+                  >
+                    <ArrowRight className="h-3 w-3" />
+                    {t.label}
+                  </LoadingButton>
+                </span>
+              </TooltipTrigger>
+              {t.blocked && t.reason && (
+                <TooltipContent side="bottom">{t.reason}</TooltipContent>
+              )}
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </div>
     </div>
   );

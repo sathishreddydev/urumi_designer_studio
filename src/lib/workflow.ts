@@ -223,44 +223,55 @@ export async function getAvailableTransitions(
   currentStatus: OutfitStatus,
   role: Role,
   userId?: string
-): Promise<{ status: OutfitStatus; label: string }[]> {
+): Promise<{ status: OutfitStatus; label: string; blocked: boolean; reason?: string }[]> {
   const possibleRules = TRANSITION_RULES.filter(
     (r) => r.from === currentStatus && r.allowedRoles.includes(role)
   );
 
-  const available: { status: OutfitStatus; label: string }[] = [];
+  const preconditionMessages: Record<PreconditionType, string> = {
+    references_locked: "Pattern references must be locked before proceeding",
+    no_pending_dependencies: "All dependencies must be resolved first",
+    maggam_required: "This outfit requires Maggam work",
+    maggam_not_required: "This outfit does not require Maggam work",
+    completion_photo_required: "Upload at least one completion photo before delivering",
+  };
+
+  const results: { status: OutfitStatus; label: string; blocked: boolean; reason?: string }[] = [];
 
   for (const rule of possibleRules) {
+    let blockedReason: string | undefined;
+
     // Check preconditions
-    let valid = true;
     if (rule.preconditions) {
       for (const pre of rule.preconditions) {
         const ok = await evaluatePrecondition(outfitId, pre);
         if (!ok) {
-          valid = false;
+          blockedReason = preconditionMessages[pre.type];
           break;
         }
       }
     }
 
     // Check master assignment
-    if (role === "MASTER" && userId) {
+    if (!blockedReason && role === "MASTER" && userId) {
       const [outfit] = await db
         .select({ masterId: outfits.masterId })
         .from(outfits)
         .where(eq(outfits.id, outfitId));
-      if (outfit?.masterId !== userId) valid = false;
+      if (outfit?.masterId !== userId) {
+        blockedReason = "You are not assigned to this outfit";
+      }
     }
 
-    if (valid) {
-      available.push({
-        status: rule.to,
-        label: formatStatusLabel(rule.to),
-      });
-    }
+    results.push({
+      status: rule.to,
+      label: formatStatusLabel(rule.to),
+      blocked: !!blockedReason,
+      reason: blockedReason,
+    });
   }
 
-  return available;
+  return results;
 }
 
 // ─── EXECUTE TRANSITION ─────────────────────────────────────────────────────

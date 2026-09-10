@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -15,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Shirt, Calendar, AlertTriangle, ArrowRight, Search, ImageOff } from "lucide-react";
+import { Shirt, Calendar, AlertTriangle, ArrowRight, Search, ImageOff, RotateCcw } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { ImageViewer } from "@/components/image-viewer";
 
@@ -30,6 +36,8 @@ const PRODUCTION_STATUSES = [
   "STITCHING",
   "PRODUCTION_COMPLETED",
 ];
+
+type Transition = { status: string; label: string; blocked: boolean; reason?: string };
 
 export default function ProductionPage() {
   const queryClient = useQueryClient();
@@ -57,6 +65,24 @@ export default function ProductionPage() {
     },
   });
 
+  // Bulk-fetch transitions for all visible outfits in one request
+  const outfitIds: string[] = (data || []).map((o: any) => o.id);
+  const { data: bulkTransitions } = useQuery({
+    queryKey: ["bulk-transitions-production", outfitIds],
+    queryFn: async () => {
+      if (outfitIds.length === 0) return {};
+      const res = await fetch("/api/outfits/transitions/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outfitIds }),
+      });
+      if (!res.ok) return {};
+      const d = await res.json();
+      return d.transitions as Record<string, Transition[]>;
+    },
+    enabled: outfitIds.length > 0,
+  });
+
   const transitionMutation = useMutation({
     mutationFn: async ({ id, newStatus, _key }: { id: string; newStatus: string; _key?: string }) => {
       setPendingId(_key ?? id);
@@ -73,6 +99,7 @@ export default function ProductionPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
+      queryClient.invalidateQueries({ queryKey: ["bulk-transitions-production"] });
     },
     onError: (err: Error) => {
       import("@/hooks/use-toast").then(({ toast }) =>
@@ -156,9 +183,8 @@ export default function ProductionPage() {
               </thead>
               <tbody className="divide-y">
                 {outfits.map((outfit: any) => {
-                  const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
+                  const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
                   const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-                  const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
@@ -215,49 +241,45 @@ export default function ProductionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "STORE_MANAGER" || role === "DESIGNER") ? (
-                          <div className="flex gap-1.5 justify-end">
-                            <LoadingButton
-                              size="sm"
-                              loading={pendingId === outfit.id + "_rework"}
-                              disabled={transitionMutation.isPending}
-                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_WORK", _key: outfit.id + "_rework" })}
-                              variant="outline"
-                              className="whitespace-nowrap text-xs text-amber-600 border-amber-400 hover:bg-amber-50"
-                            >
-                              Rework
-                            </LoadingButton>
-                            <LoadingButton
-                              size="sm"
-                              loading={pendingId === outfit.id + "_approve"}
-                              disabled={transitionMutation.isPending}
-                              onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_REVIEWED", _key: outfit.id + "_approve" })}
-                              className="whitespace-nowrap text-xs"
-                            >
-                              Approve <ArrowRight className="h-3 w-3 ml-1" />
-                            </LoadingButton>
-                          </div>
-                        ) : next && isAssigned ? (
-                          <LoadingButton
-                            size="sm"
-                            loading={pendingId === outfit.id}
-                            disabled={transitionMutation.isPending && pendingId !== outfit.id}
-                            onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
-                            className="whitespace-nowrap text-xs"
-                          >
-                            {formatStatus(next)} <ArrowRight className="h-3 w-3 ml-1" />
-                          </LoadingButton>
-                        ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
+                        {outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
                           <Link href={`/dashboard/outfits/${outfit.id}?from=production`}>
                             <LoadingButton size="sm" variant="destructive" className="text-xs whitespace-nowrap">
                               <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                             </LoadingButton>
                           </Link>
-                        ) : next && !isAssigned ? (
-                          <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Not assigned</Badge>
+                        ) : transitions.length > 0 ? (
+                          <div className="flex gap-1.5 justify-end">
+                            <TooltipProvider delayDuration={200}>
+                              {transitions.map((t) => (
+                                <Tooltip key={t.status}>
+                                  <TooltipTrigger asChild>
+                                    <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                                      <LoadingButton
+                                        size="sm"
+                                        variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
+                                        className={`whitespace-nowrap text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
+                                        loading={!t.blocked && (pendingId === outfit.id || pendingId === outfit.id + "_" + t.status)}
+                                        disabled={t.blocked || (transitionMutation.isPending && pendingId !== outfit.id && pendingId !== outfit.id + "_" + t.status)}
+                                        onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status, _key: outfit.id + "_" + t.status })}
+                                      >
+                                        {t.status === "MAGGAM_WORK"
+                                          ? <><RotateCcw className="h-3 w-3 mr-1" />{t.label}</>
+                                          : <>{t.label} <ArrowRight className="h-3 w-3 ml-1" /></>
+                                        }
+                                      </LoadingButton>
+                                    </span>
+                                  </TooltipTrigger>
+                                  {t.blocked && t.reason && (
+                                    <TooltipContent side="left">{t.reason}</TooltipContent>
+                                  )}
+                                </Tooltip>
+                              ))}
+                            </TooltipProvider>
+                          </div>
                         ) : outfit.status === "MAGGAM_REVIEW" && role === "MASTER" ? (
                           <Badge variant="outline" className="text-xs text-muted-foreground whitespace-nowrap">Awaiting designer review</Badge>
-                        ) : null}                      </td>
+                        ) : null}
+                      </td>
                     </tr>
                   );
                 })}
@@ -268,9 +290,8 @@ export default function ProductionPage() {
           {/* Mobile Cards */}
           <div className="md:hidden flex flex-col gap-3">
             {outfits.map((outfit: any) => {
-              const next = getNextStatus(outfit.status, outfit.maggamRequired, role);
+              const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
               const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-              const isAssigned = role !== "MASTER" || !outfit.masterId || outfit.masterId === session?.id;
 
               return (
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 space-y-3">
@@ -333,47 +354,41 @@ export default function ProductionPage() {
                   )}
 
                   {/* Action */}
-                  {outfit.status === "MAGGAM_REVIEW" && (role === "ADMIN" || role === "STORE_MANAGER" || role === "DESIGNER") ? (
-                    <div className="flex gap-2">
-                      <LoadingButton
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-xs text-amber-600 border-amber-400 hover:bg-amber-50"
-                        loading={pendingId === outfit.id + "_rework"}
-                        disabled={transitionMutation.isPending}
-                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_WORK", _key: outfit.id + "_rework" })}
-                      >
-                        Rework
-                      </LoadingButton>
-                      <LoadingButton
-                        size="sm"
-                        className="flex-1 text-xs"
-                        loading={pendingId === outfit.id + "_approve"}
-                        disabled={transitionMutation.isPending}
-                        onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: "MAGGAM_REVIEWED", _key: outfit.id + "_approve" })}
-                      >
-                        Approve <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
-                      </LoadingButton>
-                    </div>
-                  ) : next && isAssigned ? (
-                    <LoadingButton
-                      size="sm"
-                      className="w-full text-xs"
-                      loading={pendingId === outfit.id}
-                      disabled={transitionMutation.isPending && pendingId !== outfit.id}
-                      onClick={() => transitionMutation.mutate({ id: outfit.id, newStatus: next })}
-                    >
-                      <span className="truncate">Move to {formatStatus(next)}</span>
-                      <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
-                    </LoadingButton>
-                  ) : outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
+                  {outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
                     <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="block">
                       <LoadingButton size="sm" variant="destructive" className="w-full text-xs">
                         <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                       </LoadingButton>
                     </Link>
-                  ) : next && !isAssigned ? (
-                    <p className="text-xs text-muted-foreground ml-5">Not assigned to you</p>
+                  ) : transitions.length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <TooltipProvider delayDuration={200}>
+                        {transitions.map((t) => (
+                          <Tooltip key={t.status}>
+                            <TooltipTrigger asChild>
+                              <span className={t.blocked ? "cursor-not-allowed w-full" : "w-full"}>
+                                <LoadingButton
+                                  size="sm"
+                                  variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
+                                  className={`w-full text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
+                                  loading={!t.blocked && (pendingId === outfit.id || pendingId === outfit.id + "_" + t.status)}
+                                  disabled={t.blocked || (transitionMutation.isPending && pendingId !== outfit.id && pendingId !== outfit.id + "_" + t.status)}
+                                  onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status, _key: outfit.id + "_" + t.status })}
+                                >
+                                  {t.status === "MAGGAM_WORK"
+                                    ? <><RotateCcw className="h-3 w-3 mr-1 shrink-0" /><span className="truncate">{t.label}</span></>
+                                    : <><span className="truncate">Move to {t.label}</span><ArrowRight className="h-3 w-3 ml-1 shrink-0" /></>
+                                  }
+                                </LoadingButton>
+                              </span>
+                            </TooltipTrigger>
+                            {t.blocked && t.reason && (
+                              <TooltipContent side="top">{t.reason}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
+                    </div>
                   ) : outfit.status === "MAGGAM_REVIEW" && role === "MASTER" ? (
                     <p className="text-xs text-muted-foreground ml-5 italic">Awaiting designer review</p>
                   ) : null}
@@ -392,22 +407,4 @@ export default function ProductionPage() {
       />
     </div>
   );
-}
-
-function getNextStatus(current: string, maggamRequired: boolean, role: string): string | null {
-  if (role === "MASTER" || role === "ADMIN" || role === "STORE_MANAGER") {
-    const masterTransitions: Record<string, string> = {
-      PRODUCTION_READY: "PATTERN_DRAFTING",
-      PATTERN_DRAFTING: maggamRequired ? "MAGGAM_WORK" : "FABRIC_CUTTING",
-      MAGGAM_WORK: "MAGGAM_REVIEW",
-      MAGGAM_REVIEWED: "FABRIC_CUTTING",
-      FABRIC_CUTTING: "STITCHING",
-      STITCHING: "PRODUCTION_COMPLETED",
-    };
-    if (masterTransitions[current]) return masterTransitions[current];
-  }
-  if (role === "DESIGNER" || role === "ADMIN" || role === "STORE_MANAGER") {
-    if (current === "MAGGAM_REVIEW") return "MAGGAM_REVIEWED"; // approve — handled separately with two buttons
-  }
-  return null;
 }
