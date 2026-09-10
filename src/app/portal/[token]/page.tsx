@@ -312,11 +312,11 @@ export default function CustomerPortalPage() {
             ====================================================== */}
             {data.measurements && (
               <Card className="shadow-sm">
-                {/* Mobile Header */}
+                {/* Mobile / Tablet Header (accordion toggle — below lg breakpoint) */}
                 <button
                   type="button"
                   onClick={() => setProfileMeasurementsOpen((value) => !value)}
-                  className="md:hidden w-full flex items-center justify-between p-4 text-left"
+                  className="lg:hidden w-full flex items-center justify-between p-4 text-left"
                 >
                   <span className="text-sm font-semibold flex items-center gap-2">
                     <Ruler className="h-4 w-4 text-primary" />
@@ -330,20 +330,20 @@ export default function CustomerPortalPage() {
                   />
                 </button>
 
-                {/* Desktop Header */}
-                <CardHeader className="hidden md:block pb-3 border-b">
+                {/* Desktop Header (always visible at lg+) */}
+                <CardHeader className="hidden lg:block pb-3 border-b">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <Ruler className="h-4 w-4 text-primary" />
                     Profile Measurements
                   </CardTitle>
                 </CardHeader>
 
-                {/* Mobile + Desktop Content */}
+                {/* Content: accordion on mobile/tablet, always open on desktop */}
                 <CardContent
                   className={`
                     pt-4
                     ${profileMeasurementsOpen ? "block" : "hidden"}
-                    md:block
+                    lg:block
                   `}
                 >
                   <div className="space-y-2">
