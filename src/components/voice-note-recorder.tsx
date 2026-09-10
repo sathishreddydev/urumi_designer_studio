@@ -85,8 +85,8 @@ export function VoiceNoteRecorder({
 
     const source = audioCtx.createMediaStreamSource(stream);
     const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.75;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
     analyserRef.current = analyser;
 
@@ -101,51 +101,53 @@ export function VoiceNoteRecorder({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const bufferLength = analyser.frequencyBinCount; // 128
+    const bufferLength = analyser.frequencyBinCount; // 256
     const dataArray = new Uint8Array(bufferLength);
 
     const loop = () => {
       animFrameRef.current = requestAnimationFrame(loop);
 
-      const { width, height } = canvas;
-      ctx.clearRect(0, 0, width, height);
+      // Sync canvas internal resolution to its CSS display size
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const W = Math.floor(rect.width * dpr);
+      const H = Math.floor(rect.height * dpr);
+      if (canvas.width !== W || canvas.height !== H) {
+        canvas.width = W;
+        canvas.height = H;
+      }
+
+      ctx.clearRect(0, 0, W, H);
 
       if (pausedRef.current) {
-        // Draw a flat idle line when paused
-        ctx.strokeStyle = "rgba(148,163,184,0.5)";
-        ctx.lineWidth = 1.5;
+        // flat dashed line when paused
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(148,163,184,0.6)";
+        ctx.lineWidth = 1.5 * dpr;
         ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
+        ctx.moveTo(0, H / 2);
+        ctx.lineTo(W, H / 2);
         ctx.stroke();
+        ctx.setLineDash([]);
         return;
       }
 
       analyser.getByteFrequencyData(dataArray);
 
-      const barCount = 48;
-      const step = Math.floor(bufferLength / barCount);
-      const barW = (width - barCount * 2) / barCount;
+      const barCount = 50;
+      const gap = 3 * dpr;
+      const barW = (W - gap * (barCount - 1)) / barCount;
 
       for (let i = 0; i < barCount; i++) {
-        // Average a small bucket of frequency bins for this bar
-        let sum = 0;
-        for (let j = 0; j < step; j++) sum += dataArray[i * step + j];
-        const avg = sum / step;
+        // sample evenly across the frequency bins (focus on lower half — more voice-relevant)
+        const binIndex = Math.floor((i / barCount) * (bufferLength * 0.6));
+        const value = dataArray[binIndex];
+        const barH = Math.max(4 * dpr, (value / 255) * H * 0.85);
+        const x = i * (barW + gap);
+        const y = (H - barH) / 2;
 
-        const barH = Math.max(3, (avg / 255) * height);
-        const x = i * (barW + 2);
-        const y = (height - barH) / 2;
-
-        // Gradient: rose-400 → rose-600
-        const grad = ctx.createLinearGradient(0, y, 0, y + barH);
-        grad.addColorStop(0, "rgba(251,113,133,0.9)");  // rose-400
-        grad.addColorStop(1, "rgba(225,29,72,0.9)");    // rose-600
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(x, y, barW, barH, 2);
-        ctx.fill();
+        ctx.fillStyle = `rgba(225, 29, 72, ${0.5 + (value / 255) * 0.5})`;
+        ctx.fillRect(x, y, barW, barH);
       }
     };
 
@@ -314,10 +316,8 @@ export function VoiceNoteRecorder({
           {/* Waveform canvas */}
           <canvas
             ref={canvasRef}
-            width={320}
-            height={48}
             className="w-full rounded"
-            style={{ display: "block" }}
+            style={{ display: "block", height: "48px" }}
           />
         </div>
       )}
