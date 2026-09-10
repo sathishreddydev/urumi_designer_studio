@@ -310,18 +310,17 @@ export default function CustomerPortalPage() {
                 Mobile = Accordion / Closed by default
                 Desktop = Always visible
             ====================================================== */}
-            {data.measurements && (
-              <Card className="shadow-sm">
-                {/* Mobile / Tablet Header (accordion toggle — below lg breakpoint) */}
-                <button
-                  type="button"
-                  onClick={() => setProfileMeasurementsOpen((value) => !value)}
-                  className="lg:hidden w-full flex items-center justify-between p-4 text-left"
-                >
-                  <span className="text-sm font-semibold flex items-center gap-2">
-                    <Ruler className="h-4 w-4 text-primary" />
-                    Profile Measurements
-                  </span>
+            <Card className="shadow-sm">
+              {/* Mobile / Tablet Header (accordion toggle — below lg breakpoint) */}
+              <button
+                type="button"
+                onClick={() => setProfileMeasurementsOpen((value) => !value)}
+                className="lg:hidden w-full flex items-center justify-between p-4 text-left"
+              >
+                <span className="text-sm font-semibold flex items-center gap-2">
+                  <Ruler className="h-4 w-4 text-primary" />
+                  Profile Measurements
+                </span>
 
                   <ChevronDown
                     className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
@@ -346,27 +345,35 @@ export default function CustomerPortalPage() {
                     lg:block
                   `}
                 >
-                  <div className="space-y-2">
-                    {Object.entries(
-                      data.measurements as Record<string, string>,
-                    ).map(([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between text-xs py-1 border-b border-dashed border-border/60 last:border-0"
-                      >
-                        <span className="text-muted-foreground capitalize">
-                          {key.replace(/([A-Z])/g, " $1").trim()}
-                        </span>
+                  {data.measurements && Object.keys(data.measurements).length > 0 ? (
+                    <div className="space-y-2">
+                      {Object.entries(
+                        data.measurements as Record<string, string>,
+                      ).map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex items-center justify-between text-xs py-1 border-b border-dashed border-border/60 last:border-0"
+                        >
+                          <span className="text-muted-foreground capitalize">
+                            {key.replace(/([A-Z])/g, " $1").trim()}
+                          </span>
 
-                        <span className="font-medium font-mono text-foreground">
-                          {value || "—"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          <span className="font-medium font-mono text-foreground">
+                            {value || "—"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-4 text-center">
+                      <Ruler className="h-6 w-6 text-muted-foreground/40" />
+                      <p className="text-xs text-muted-foreground">
+                        Measurements will be recorded by the studio during your consultation.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
           </aside>
 
           {/* Right Content */}
@@ -581,11 +588,16 @@ export default function CustomerPortalPage() {
                                   string,
                                   string
                                 >,
-                              ).some(Boolean) && (
+                              ).some(Boolean) ? (
                                 <GarmentMeasurementsPanel
                                   measurements={outfit.garmentMeasurements}
                                   type={outfit.type}
                                 />
+                              ) : (
+                                <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                                  <Ruler className="h-3.5 w-3.5 shrink-0" />
+                                  Garment measurements will be added by the designer.
+                                </div>
                               )}
 
                             {/* Add-ons Display */}
