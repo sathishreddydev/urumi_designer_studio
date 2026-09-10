@@ -1629,7 +1629,7 @@ function ReferenceSection({
                           ? "Locked"
                           : "Draft"}
                     </span>
-                    {canUpload && !isLocked && !ref.isCustomerUpload && (
+                    {canUpload && !isLocked && (
                       <button
                         className="text-red-400 hover:text-red-300"
                         onClick={(e) => {
