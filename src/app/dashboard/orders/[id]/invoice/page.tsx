@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +31,15 @@ async function downloadInvoicePDF(data: InvoicePDFData) {
 
 export default function InvoicePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  const from = searchParams.get("from");
+  const customerId = searchParams.get("customerId");
+  const backHref =
+    from === "customer" && customerId
+      ? `/dashboard/customers/${customerId}`
+      : `/dashboard/orders/${params.id}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoice", params.id],
@@ -107,7 +115,7 @@ export default function InvoicePage() {
       {/* ── Toolbar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <Link href={`/dashboard/orders/${params.id}`}>
+          <Link href={backHref}>
             <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>

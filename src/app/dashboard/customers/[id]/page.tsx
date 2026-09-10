@@ -40,6 +40,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  FileText,
   History,
   Mail,
   MapPin,
@@ -362,17 +363,23 @@ export default function CustomerDetailPage({
     customer.orders?.reduce(
       (sum: number, o: any) =>
         sum +
-        (o.payments || []).reduce(
-          (s: number, p: any) => s + Number(p.amount),
-          0,
-        ),
+        (o.payments || [])
+          .filter((p: any) => p.status === "SETTLED" || !p.status)
+          .reduce((s: number, p: any) => s + Number(p.amount), 0),
       0,
     ) || 0;
   const totalEstimated =
-    customer.orders?.reduce(
-      (sum: number, o: any) => sum + (Number(o.estimatedAmount) || 0),
-      0,
-    ) || 0;
+    customer.orders?.reduce((sum: number, o: any) => {
+      const liveTotal = (o.outfits || []).reduce((s: number, outfit: any) => {
+        const outfitPrice = Number(outfit.price) || 0;
+        const addOnsTotal = (outfit.addOns || []).reduce(
+          (as: number, a: any) => as + (Number(a.price) || 0),
+          0,
+        );
+        return s + outfitPrice + addOnsTotal;
+      }, 0);
+      return sum + (liveTotal > 0 ? liveTotal : Number(o.estimatedAmount) || 0);
+    }, 0) || 0;
   const balance = totalEstimated - totalPaid;
 
   const handleAddField = () => {
@@ -503,12 +510,25 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order: any) => {
-                const orderPaid = (order.payments || []).reduce(
-                  (s: number, p: any) => s + Number(p.amount),
+                const orderPaid = (order.payments || [])
+                  .filter((p: any) => p.status === "SETTLED" || !p.status)
+                  .reduce((s: number, p: any) => s + Number(p.amount), 0);
+                const liveOrderTotal = (order.outfits || []).reduce(
+                  (s: number, outfit: any) => {
+                    const outfitPrice = Number(outfit.price) || 0;
+                    const addOnsTotal = (outfit.addOns || []).reduce(
+                      (as: number, a: any) => as + (Number(a.price) || 0),
+                      0,
+                    );
+                    return s + outfitPrice + addOnsTotal;
+                  },
                   0,
                 );
-                const orderBalance =
-                  (Number(order.estimatedAmount) || 0) - orderPaid;
+                const orderTotal =
+                  liveOrderTotal > 0
+                    ? liveOrderTotal
+                    : Number(order.estimatedAmount) || 0;
+                const orderBalance = orderTotal - orderPaid;
 
                 return (
                   <Link
@@ -623,6 +643,20 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                               ))}
                             </div>
                           )}
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                router.push(`/dashboard/orders/${order.id}/invoice?from=customer&customerId=${customerId}`);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline focus:outline-none"
+                            >
+                              <FileText className="h-3 w-3" />
+                              Invoice
+                            </button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

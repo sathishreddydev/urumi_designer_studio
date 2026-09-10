@@ -36,7 +36,7 @@ export const GET = withPermission(
     const ordersWithOutfits = await Promise.all(
       customerOrders.map(async (order) => {
         const [orderOutfits, orderPayments] = await Promise.all([
-          db.select({ id: outfits.id, name: outfits.name, type: outfits.type, status: outfits.status })
+          db.select({ id: outfits.id, name: outfits.name, type: outfits.type, status: outfits.status, price: outfits.price, addOns: outfits.addOns })
             .from(outfits).where(eq(outfits.orderId, order.id)),
           db.select().from(payments).where(eq(payments.orderId, order.id)),
         ]);
