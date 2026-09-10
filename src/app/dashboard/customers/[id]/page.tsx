@@ -613,9 +613,23 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                                 </span>
                               )}
                             </div>
-                            <span className="text-muted-foreground whitespace-nowrap">
-                              {formatDate(order.orderDate)}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  router.push(`/dashboard/orders/${order.id}/invoice?from=customer&customerId=${customerId}`);
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline focus:outline-none shrink-0"
+                              >
+                                <FileText className="h-3 w-3" />
+                                Invoice
+                              </button>
+                              <span className="text-muted-foreground whitespace-nowrap">
+                                {formatDate(order.orderDate)}
+                              </span>
+                            </div>
                           </div>
                           {(order.payments || []).length > 0 && (
                             <div className="flex flex-wrap gap-1.5">
@@ -626,20 +640,6 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                               ))}
                             </div>
                           )}
-                          <div className="pt-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                router.push(`/dashboard/orders/${order.id}/invoice?from=customer&customerId=${customerId}`);
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline focus:outline-none"
-                            >
-                              <FileText className="h-3 w-3" />
-                              Invoice
-                            </button>
-                          </div>
                         </div>
                       </CardContent>
                     </Card>
