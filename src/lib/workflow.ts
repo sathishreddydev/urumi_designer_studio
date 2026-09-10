@@ -28,7 +28,8 @@ type PreconditionType =
   | "references_locked"
   | "no_pending_dependencies"
   | "maggam_required"
-  | "maggam_not_required";
+  | "maggam_not_required"
+  | "completion_photo_required";
 
 interface TransitionRule {
   from: OutfitStatus;
@@ -95,8 +96,13 @@ const TRANSITION_RULES: TransitionRule[] = [
   { from: "ALTERATION", to: "QC", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
   { from: "QC", to: "READY_FOR_DELIVERY", allowedRoles: ["ADMIN", "STORE_MANAGER", "DESIGNER"] },
 
-  // Delivery — Reception/Admin
-  { from: "READY_FOR_DELIVERY", to: "DELIVERED", allowedRoles: ["ADMIN", "STORE_MANAGER", "RECEPTION"] },
+  // Delivery — Reception/Admin (completion photo required)
+  {
+    from: "READY_FOR_DELIVERY",
+    to: "DELIVERED",
+    allowedRoles: ["ADMIN", "STORE_MANAGER", "RECEPTION"],
+    preconditions: [{ type: "completion_photo_required" }],
+  },
 ];
 
 // ─── PRECONDITION EVALUATION ────────────────────────────────────────────────
@@ -140,6 +146,19 @@ async function evaluatePrecondition(
       return outfit?.maggamRequired === false;
     }
 
+    case "completion_photo_required": {
+      const workPhotos = await db
+        .select({ id: referenceImages.id })
+        .from(referenceImages)
+        .where(
+          and(
+            eq(referenceImages.outfitId, outfitId),
+            eq(referenceImages.isWorkPhoto, true)
+          )
+        );
+      return workPhotos.length > 0;
+    }
+
     default:
       return false;
   }
@@ -176,6 +195,7 @@ export async function validateTransition(
           no_pending_dependencies: "All dependencies must be resolved first",
           maggam_required: "This outfit requires Maggam work",
           maggam_not_required: "This outfit does not require Maggam work",
+          completion_photo_required: "At least one completion photo must be uploaded before marking as delivered",
         };
         return { success: false, error: messages[precondition.type] };
       }

@@ -565,6 +565,8 @@ export default function OutfitDetailPage() {
               loading={transitionMutation.isPending}
               onClick={() => transitionMutation.mutate({ newStatus: t.status })}
               className="text-xs h-8 px-2.5 whitespace-nowrap"
+              disabled={t.status === "DELIVERED" && completionRefs.length === 0}
+              title={t.status === "DELIVERED" && completionRefs.length === 0 ? "Upload at least one completion photo before delivering" : undefined}
             >
               <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
               <span className="hidden sm:inline">{t.label}</span>
@@ -584,6 +586,16 @@ export default function OutfitDetailPage() {
         </div>
       </div>
 
+      {/* Completion photo warning — shown when ready for delivery but no photos uploaded */}
+      {outfit.status === "READY_FOR_DELIVERY" && completionRefs.length === 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>
+            <strong>Completion photo required</strong> — upload at least one finished outfit photo before marking as delivered.
+          </span>
+        </div>
+      )}
+
       {/* Main Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Metadata & Measurements */}
@@ -593,7 +605,9 @@ export default function OutfitDetailPage() {
             defaultValue={
               role === "MASTER"
                 ? ["references", "dependencies"]
-                : ["references", "dependencies", "design"]
+                : outfit.status === "READY_FOR_DELIVERY" && completionRefs.length === 0
+                  ? ["references", "dependencies", "design", "completion"]
+                  : ["references", "dependencies", "design"]
             }
             className="w-full space-y-4"
           >
@@ -957,7 +971,7 @@ export default function OutfitDetailPage() {
             {(completionRefs.length > 0 || canUploadCompletion) && (
               <AccordionItem
                 value="completion"
-                className="border rounded-lg bg-card px-3 sm:px-4"
+                className={`border rounded-lg bg-card px-3 sm:px-4 ${outfit.status === "READY_FOR_DELIVERY" && completionRefs.length === 0 ? "border-amber-400" : ""}`}
               >
                 <AccordionTrigger className="hover:no-underline py-3">
                   <div className="flex items-center gap-2 text-sm font-semibold">
@@ -966,6 +980,11 @@ export default function OutfitDetailPage() {
                     <Badge variant="outline" className="ml-2 text-xs">
                       {completionRefs.length}
                     </Badge>
+                    {outfit.status === "READY_FOR_DELIVERY" && completionRefs.length === 0 && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-medium">
+                        Required
+                      </span>
+                    )}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 pb-4">
