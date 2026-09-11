@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 // Register the locale for country names
 countries.registerLocale(enLocale);
@@ -105,39 +106,45 @@ export function PhoneInput({
     .sort((a, b) => getCountryName(a).localeCompare(getCountryName(b)));
 
   return (
-    <div className={cn("flex gap-2", className)}>
-      <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={disabled}>
-        <SelectTrigger className="w-[140px]">
-          <SelectValue>
-            {selectedCountry} {getCountryCode(selectedCountry)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {/* Popular Countries */}
-          {popularCountries.map((country) => (
-            <SelectItem key={country} value={country}>
-              {country} {getCountryCode(country)} - {getCountryName(country)}
-            </SelectItem>
-          ))}
-          {popularCountries.length > 0 && otherCountries.length > 0 && (
-            <div className="border-t my-1" />
-          )}
-          {/* Other Countries */}
-          {otherCountries.map((country) => (
-            <SelectItem key={country} value={country}>
-              {country} {getCountryCode(country)} - {getCountryName(country)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className={cn("relative flex items-center", className)}>
+      {/* Country Selector - Positioned as prefix inside input */}
+      <div className="absolute left-0 inset-y-0 flex items-center">
+        <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={disabled}>
+          <SelectTrigger className="h-full border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0 pl-3 pr-1 gap-1">
+            <SelectValue>
+              <span className="flex items-center gap-1 text-sm">
+                {selectedCountry} {getCountryCode(selectedCountry)}
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {/* Popular Countries */}
+            {popularCountries.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country} {getCountryCode(country)} - {getCountryName(country)}
+              </SelectItem>
+            ))}
+            {popularCountries.length > 0 && otherCountries.length > 0 && (
+              <div className="border-t my-1" />
+            )}
+            {/* Other Countries */}
+            {otherCountries.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country} {getCountryCode(country)} - {getCountryName(country)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
+      {/* Phone Number Input - With left padding for the country selector */}
       <Input
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneChange}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1"
+        className="pl-[110px]"
       />
     </div>
   );

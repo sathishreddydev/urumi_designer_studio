@@ -109,7 +109,6 @@ export default function EditCustomerPage() {
                         onChange={(value) => field.onChange(value || "")}
                         placeholder="Enter phone number"
                         defaultCountry="IN"
-                        className="flex-1"
                       />
                     )}
                   />
