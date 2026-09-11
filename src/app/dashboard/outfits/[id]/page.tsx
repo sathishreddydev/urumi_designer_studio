@@ -75,6 +75,7 @@ import {
   OutfitMeasurements,
   GARMENT_FIELDS,
 } from "@/components/outfit-measurements";
+import { DependencyTypeSelect } from "@/components/dependency-type-select";
 
 const DEPENDENCY_TYPES = [
   "FABRIC",
@@ -84,7 +85,6 @@ const DEPENDENCY_TYPES = [
   "STONES",
   "CANVAS",
   "CUPS",
-  "CUSTOM",
 ];
 
 
@@ -131,10 +131,6 @@ export default function OutfitDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
-
-  // Dependency state for custom type
-  const [dependencyType, setDependencyType] = useState<string>("");
-  const [customDependencyType, setCustomDependencyType] = useState<string>("");
 
   // Garment-specific measurements (editable inline)
   const [garmentMeasurements, setGarmentMeasurements] = useState<
@@ -787,80 +783,31 @@ export default function OutfitDetailPage() {
                           onSubmit={(e) => {
                             e.preventDefault();
                             const form = new FormData(e.currentTarget);
-                            const selectedType = dependencyType === "CUSTOM" ? customDependencyType : dependencyType;
-                            
-                            if (!selectedType) {
-                              toast({
-                                variant: "destructive",
-                                title: "Type required",
-                                description: "Please select or enter a dependency type",
-                              });
-                              return;
-                            }
-
                             addDependencyMutation.mutate({
-                              type: selectedType,
+                              type: form.get("type"),
                               notes: form.get("notes"),
                             });
-                            
-                            // Reset form
-                            setDependencyType("");
-                            setCustomDependencyType("");
                             e.currentTarget.reset();
                           }}
-                          className="flex flex-col gap-3"
+                          className="flex flex-col gap-3 sm:flex-row sm:items-end"
                         >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1 space-y-1">
-                              <Label className="text-xs">Raise Dependency</Label>
-                              <Select 
-                                value={dependencyType} 
-                                onValueChange={setDependencyType}
-                              >
-                                <SelectTrigger className="h-8 rounded px-2 text-xs">
-                                  <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {DEPENDENCY_TYPES.map((t) => (
-                                    <SelectItem
-                                      className="text-xs"
-                                      key={t}
-                                      value={t}
-                                    >
-                                      {t}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Input
-                              name="notes"
-                              placeholder="Notes"
-                              className="h-9 flex-1 text-xs rounded px-2"
-                            />
-                            <LoadingButton
-                              size="sm"
-                              type="submit"
-                              loading={addDependencyMutation.isPending}
-                              loadingText="Raising..."
-                            >
-                              Raise
-                            </LoadingButton>
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Raise Dependency</Label>
+                            <DependencyTypeSelect name="type" required />
                           </div>
-
-                          {/* Custom input field - shown when CUSTOM is selected */}
-                          {dependencyType === "CUSTOM" && (
-                            <div className="space-y-1">
-                              <Label className="text-xs">Custom Dependency Type</Label>
-                              <Input
-                                value={customDependencyType}
-                                onChange={(e) => setCustomDependencyType(e.target.value)}
-                                placeholder="Enter custom dependency type..."
-                                className="h-9 text-xs rounded px-2"
-                                required
-                              />
-                            </div>
-                          )}
+                          <Input
+                            name="notes"
+                            placeholder="Notes"
+                            className="h-9 flex-1 text-xs rounded px-2"
+                          />
+                          <LoadingButton
+                            size="sm"
+                            type="submit"
+                            loading={addDependencyMutation.isPending}
+                            loadingText="Raising..."
+                          >
+                            Raise
+                          </LoadingButton>
                         </form>
                       </CardContent>
                     </Card>
