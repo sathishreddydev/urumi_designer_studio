@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -7,7 +8,20 @@ export const loginSchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().min(2, "Name is required"),
-  mobile: z.string().min(10, "Valid mobile number required"),
+  mobile: z
+    .string()
+    .min(1, "Mobile number is required")
+    .refine(
+      (val) => {
+        // Allow empty string for optional fields
+        if (!val) return true;
+        // Validate using libphonenumber-js for international format
+        return isValidPhoneNumber(val);
+      },
+      {
+        message: "Please enter a valid phone number with country code",
+      }
+    ),
   whatsapp: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
@@ -66,7 +80,40 @@ export const userSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["ADMIN", "STORE_MANAGER", "RECEPTION", "DESIGNER", "MASTER"]),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val || val === "") return true;
+        return isValidPhoneNumber(val);
+      },
+      {
+        message: "Please enter a valid phone number with country code",
+      }
+    ),
+});
+
+export const employeeSchema = z.object({
+  name: z.string().min(2, "Name is required"),
+  phone: z
+    .string()
+    .min(1, "Phone number is required")
+    .refine(
+      (val) => {
+        if (!val) return false;
+        return isValidPhoneNumber(val);
+      },
+      {
+        message: "Please enter a valid phone number with country code",
+      }
+    ),
+  jobRole: z.string().min(1, "Job role is required"),
+  payCycle: z.enum(["WEEKLY", "MONTHLY"]),
+  payAmount: z.number().positive("Pay amount must be positive"),
+  shiftStart: z.string().optional(),
+  shiftEnd: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -76,3 +123,4 @@ export type OutfitInput = z.infer<typeof outfitSchema>;
 export type MeasurementInput = z.infer<typeof measurementSchema>;
 export type PaymentInput = z.infer<typeof paymentSchema>;
 export type UserInput = z.infer<typeof userSchema>;
+export type EmployeeInput = z.infer<typeof employeeSchema>;

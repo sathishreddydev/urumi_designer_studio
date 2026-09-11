@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { ArrowLeft } from "lucide-react";
 import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
 import { ContactPickerButton } from "@/components/contact-picker-button";
+import { PhoneInput } from "@/components/phone-input";
+import "@/styles/phone-input.css";
 
 export default function EditCustomerPage() {
   const params = useParams();
@@ -35,6 +37,7 @@ export default function EditCustomerPage() {
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
@@ -98,7 +101,19 @@ export default function EditCustomerPage() {
               <div className="space-y-2">
                 <Label>Mobile *</Label>
                 <div className="flex gap-2">
-                  <Input {...register("mobile")} className="flex-1" />
+                  <Controller
+                    name="mobile"
+                    control={control}
+                    render={({ field }) => (
+                      <PhoneInput
+                        value={field.value}
+                        onChange={(value) => field.onChange(value || "")}
+                        placeholder="Enter phone number"
+                        defaultCountry="IN"
+                        className="flex-1"
+                      />
+                    )}
+                  />
                   <ContactPickerButton
                     onPick={({ name, tel }) => {
                       setValue("mobile", tel, { shouldValidate: true });

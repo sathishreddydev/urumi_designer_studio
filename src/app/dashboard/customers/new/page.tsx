@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { ArrowLeft } from "lucide-react";
 import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
 import { ContactPickerButton } from "@/components/contact-picker-button";
+import { PhoneInput } from "@/components/phone-input";
+import "@/styles/phone-input.css";
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -41,9 +43,13 @@ export default function NewCustomerPage() {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
+    defaultValues: {
+      mobile: "",
+    },
   });
 
   return (
@@ -72,7 +78,19 @@ export default function NewCustomerPage() {
               <div className="space-y-2">
                 <Label htmlFor="mobile">Mobile *</Label>
                 <div className="flex gap-2">
-                  <Input id="mobile" {...register("mobile")} placeholder="10-digit mobile" className="flex-1" />
+                  <Controller
+                    name="mobile"
+                    control={control}
+                    render={({ field }) => (
+                      <PhoneInput
+                        value={field.value}
+                        onChange={(value) => field.onChange(value || "")}
+                        placeholder="Enter phone number"
+                        defaultCountry="IN"
+                        className="flex-1"
+                      />
+                    )}
+                  />
                   <ContactPickerButton
                     onPick={({ name, tel }) => {
                       setValue("mobile", tel, { shouldValidate: true });
