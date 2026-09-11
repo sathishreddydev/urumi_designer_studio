@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -343,7 +343,17 @@ function AttendanceTab() {
   function getStatus(empId: string, date: string): StatusKey {
     const key = `${empId}|${date}`;
     if (optimistic[key] !== undefined) return optimistic[key] as StatusKey;
-    return (recMap[key]?.status ?? "") as StatusKey;
+    const existing = recMap[key]?.status;
+    
+    // Auto-mark Sundays as holiday if no status exists
+    if (!existing) {
+      const dateObj = new Date(date + "T00:00:00");
+      if (dateObj.getDay() === 0) { // Sunday = 0
+        return "HOLIDAY";
+      }
+    }
+    
+    return (existing ?? "") as StatusKey;
   }
 
   function handleSelect(empId: string, date: string, status: StatusKey) {
@@ -351,6 +361,41 @@ function AttendanceTab() {
     setOptimistic((prev) => ({ ...prev, [key]: status }));
     if (status) saveMutation.mutate([{ employeeId: empId, date, status }]);
   }
+
+  // Auto-save Sundays as holidays when they're displayed
+  React.useEffect(() => {
+    if (employees.length === 0 || isLoading) return;
+    
+    const sundaysToMark: { employeeId: string; date: string; status: string }[] = [];
+    const sundays = displayDates.filter((d) => d.getDay() === 0);
+    
+    for (const emp of employees) {
+      for (const sunday of sundays) {
+        const ymd = toYMD(sunday);
+        const key = `${emp.id}|${ymd}`;
+        const existing = recMap[key];
+        
+        // Only auto-mark if no record exists yet
+        if (!existing && !optimistic[key]) {
+          sundaysToMark.push({ employeeId: emp.id, date: ymd, status: "HOLIDAY" });
+        }
+      }
+    }
+    
+    if (sundaysToMark.length > 0) {
+      // Mark optimistically first
+      const newOptimistic: Record<string, string> = {};
+      sundaysToMark.forEach(r => {
+        newOptimistic[`${r.employeeId}|${r.date}`] = "HOLIDAY";
+      });
+      setOptimistic((prev) => ({ ...prev, ...newOptimistic }));
+      
+      // Then save to database
+      saveMutation.mutate(sundaysToMark);
+    }
+  }, [displayDates, employees, recMap]);
+
+  const isLoading = empLoading || attLoading;
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0, HOLIDAY: 0, "": 0 };
@@ -362,8 +407,6 @@ function AttendanceTab() {
     }
     return counts;
   }, [recMap, optimistic, employees, displayDates]);
-
-  const isLoading = empLoading || attLoading;
 
   return (
     <div className="space-y-4">
@@ -465,9 +508,14 @@ function AttendanceTab() {
                   {displayDates.map((d) => {
                     const ymd = toYMD(d);
                     const isToday = ymd === todayYMD;
+                    const isSunday = d.getDay() === 0;
                     return (
                       <th key={ymd}
-                        className={`py-2 text-center font-medium ${isToday ? "text-primary bg-primary/5" : "text-muted-foreground"}`}
+                        className={`py-2 text-center font-medium ${
+                          isToday ? "text-primary bg-primary/5" : 
+                          isSunday ? "text-blue-600 bg-blue-50/50" : 
+                          "text-muted-foreground"
+                        }`}
                         style={{ minWidth: mode === "week" ? "7rem" : "2.2rem", padding: mode === "week" ? "0.5rem 0.25rem" : "0.5rem 0.1rem" }}
                       >
                         {mode === "week" ? (
@@ -501,9 +549,14 @@ function AttendanceTab() {
                       const ymd = toYMD(d);
                       const status = getStatus(emp.id, ymd);
                       const isToday = ymd === todayYMD;
+                      const isSunday = d.getDay() === 0;
                       return (
                         <td key={ymd}
-                          className={`text-center ${isToday ? "bg-primary/5" : ""}`}
+                          className={`text-center ${
+                            isToday ? "bg-primary/5" : 
+                            isSunday ? "bg-blue-50/30" : 
+                            ""
+                          }`}
                           style={{ padding: mode === "week" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
                         >
                           <StatusPills
@@ -671,7 +724,7 @@ function SalaryTab() {
       <div className="flex items-center gap-2 flex-wrap">
         {/* Mode toggle */}
         <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
-          {(["monthly", "weekly"] as const).map((m) => (
+          {(["weekly","monthly"] as const).map((m) => (
             <button key={m} onClick={() => setViewMode(m)}
               className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${
                 viewMode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
