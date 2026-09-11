@@ -524,7 +524,10 @@ function AttendanceTab() {
                             <div className={`text-xs ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
                           </>
                         ) : (
-                          <div className={`text-[10px] ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
+                          <>
+                            <div className="text-[10px]">{d.toLocaleDateString("en-IN", { weekday: "short" })}</div>
+                            <div className={`text-[10px] ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
+                          </>
                         )}
                       </th>
                     );
