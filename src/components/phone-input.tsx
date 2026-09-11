@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { parsePhoneNumber, getCountries, getCountryCallingCode } from "libphonenumber-js";
+import { 
+  parsePhoneNumber, 
+  getCountries, 
+  getCountryCallingCode,
+  getExampleNumber,
+  AsYouType
+} from "libphonenumber-js";
+import examples from "libphonenumber-js/mobile/examples";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import { Input } from "@/components/ui/input";
@@ -65,8 +72,49 @@ export function PhoneInput({
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value.replace(/[^\d]/g, ""); // Only allow digits
-    setPhoneNumber(input);
-    updatePhoneValue(selectedCountry, input);
+    
+    // Get the maximum length for the selected country from library
+    const maxLength = getMaxLengthForCountry(selectedCountry);
+    
+    // Restrict to max length if we can determine it
+    const restrictedInput = maxLength ? input.slice(0, maxLength) : input;
+    
+    setPhoneNumber(restrictedInput);
+    updatePhoneValue(selectedCountry, restrictedInput);
+  };
+
+  const getMaxLengthForCountry = (country: string): number | null => {
+    try {
+      // Get example mobile number for the country from the library
+      const exampleNumber = getExampleNumber(country as any, examples);
+      
+      if (exampleNumber) {
+        // Get the national number length
+        const nationalNumber = exampleNumber.nationalNumber;
+        return nationalNumber.length;
+      }
+      
+      return null;
+    } catch {
+      // If we can't get example, return null (no restriction)
+      return null;
+    }
+  };
+
+  const getPlaceholderForCountry = (country: string): string => {
+    try {
+      // Get example mobile number for the country from the library
+      const exampleNumber = getExampleNumber(country as any, examples);
+      
+      if (exampleNumber) {
+        // Return the national number as placeholder
+        return exampleNumber.nationalNumber;
+      }
+      
+      return placeholder;
+    } catch {
+      return placeholder;
+    }
   };
 
   const updatePhoneValue = (country: string, number: string) => {
@@ -142,7 +190,7 @@ export function PhoneInput({
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneChange}
-        placeholder={placeholder}
+        placeholder={getPlaceholderForCountry(selectedCountry)}
         disabled={disabled}
         className="pl-[110px]"
       />
