@@ -14,7 +14,6 @@ import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
 import { ContactPickerButton } from "@/components/contact-picker-button";
 import { PhoneInput } from "@/components/phone-input";
-import "@/styles/phone-input.css";
 
 export default function NewCustomerPage() {
   const router = useRouter();
