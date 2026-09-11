@@ -649,7 +649,7 @@ function SalaryTab() {
   const queryClient = useQueryClient();
 
   // Unified period mode — monthly uses YYYY-MM, weekly uses YYYY-MM-DD (monday)
-  const [viewMode, setViewMode] = useState<"monthly" | "weekly">("monthly");
+  const [viewMode, setViewMode] = useState<"monthly" | "weekly">("weekly");
   const [monthPeriod, setMonthPeriod] = useState(currentYearMonth());
   const [weekPeriod, setWeekPeriod]   = useState(currentWeekMonday());
 
