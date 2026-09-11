@@ -28,7 +28,7 @@ interface EmployeeForm {
   notes: string;
 }
 
-const JOB_ROLES = ["Tailor", "Embroidery", "Helper", "Designer", "Cutter", "Finisher", "Other"];
+const JOB_ROLES = ["Stitching", "Embroidery", "Helper", "Designer", "Master", "Finisher", "Other"];
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -92,7 +92,35 @@ export default function NewEmployeePage() {
               {/* Phone */}
               <div className="space-y-2">
                 <Label>Phone *</Label>
-                <Input {...register("phone", { required: "Phone is required" })} placeholder="Mobile number" />
+                <Input 
+                  {...register("phone", { 
+                    required: "Phone is required",
+                    pattern: {
+                      value: /^[0-9+\-\s()]*$/,
+                      message: "Phone number can only contain numbers and +, -, (, ), spaces"
+                    }
+                  })} 
+                  placeholder="Mobile number"
+                  onKeyDown={(e) => {
+                    // Allow: backspace, delete, tab, escape, enter, +, -, (, ), space
+                    if ([8, 9, 27, 13, 46, 107, 109, 187, 189, 32].includes(e.keyCode) ||
+                        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true) ||
+                        // Allow: home, end, left, right
+                        (e.keyCode >= 35 && e.keyCode <= 39)) {
+                      return;
+                    }
+                    // Ensure that it is a number or allowed symbols
+                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
+                        (e.keyCode < 96 || e.keyCode > 105) &&
+                        ![187, 189, 57, 48].includes(e.keyCode)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
                 {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
               </div>
 
