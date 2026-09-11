@@ -132,6 +132,10 @@ export default function OutfitDetailPage() {
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
 
+  // Dependency state for custom type
+  const [dependencyType, setDependencyType] = useState<string>("");
+  const [customDependencyType, setCustomDependencyType] = useState<string>("");
+
   // Garment-specific measurements (editable inline)
   const [garmentMeasurements, setGarmentMeasurements] = useState<
     Record<string, string>
