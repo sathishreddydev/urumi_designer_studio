@@ -931,7 +931,6 @@ function PortalReferenceCard({
     }
   }
 
-  const isCustomerUpload = reference.isCustomerUpload;
 
   return (
     <div className="group relative rounded-lg overflow-hidden border bg-background shadow-2xs flex flex-col">
@@ -978,20 +977,6 @@ function PortalReferenceCard({
           </div>
         )}
 
-        {/* Delete button for customer-uploaded images */}
-        {isCustomerUpload && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            disabled={deleting}
-            className="absolute top-1.5 left-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Delete this image"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        )}
       </div>
 
       {reference.type !== "FABRIC" && canApprove && !feedback && (
