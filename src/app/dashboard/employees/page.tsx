@@ -946,6 +946,11 @@ function SalaryTab() {
                     {calculation.outstandingAdvances > 0 && (
                       <span className="text-orange-600 font-medium">
                         advance −₹{calculation.outstandingAdvances.toLocaleString("en-IN")}
+                        {calculation.totalAdvances > calculation.outstandingAdvances && (
+                          <span className="text-green-600 ml-1">
+                            (₹{(calculation.totalAdvances - calculation.outstandingAdvances).toLocaleString("en-IN")} recovered)
+                          </span>
+                        )}
                       </span>
                     )}
                     {/* Breakdown toggle */}

@@ -93,10 +93,15 @@ export const GET = withPermission(
         rows.filter((r) => r.status !== "RECOVERED")
       );
 
-    const advanceMap = new Map<string, number>();
+    const advanceMap = new Map<string, { outstanding: number; total: number }>();
     for (const a of allAdvances) {
       const outstanding = Number(a.amount) - Number(a.recoveredAmount);
-      advanceMap.set(a.employeeId, (advanceMap.get(a.employeeId) ?? 0) + outstanding);
+      const total = Number(a.amount);
+      const existing = advanceMap.get(a.employeeId) ?? { outstanding: 0, total: 0 };
+      advanceMap.set(a.employeeId, {
+        outstanding: existing.outstanding + outstanding,
+        total: existing.total + total,
+      });
     }
 
     // Build per-employee payroll summary
@@ -117,7 +122,9 @@ export const GET = withPermission(
       const effectiveDays = present + halfDay * 0.5;
       const grossEarned = Math.round(effectiveDays * perDay * 100) / 100;
 
-      const outstandingAdvances = advanceMap.get(emp.id) ?? 0;
+      const advanceInfo = advanceMap.get(emp.id) ?? { outstanding: 0, total: 0 };
+      const outstandingAdvances = advanceInfo.outstanding;
+      const totalAdvances = advanceInfo.total;
       // Don't deduct advances here - that happens in the payment dialog
       // netPayable at this stage is just the gross earned amount
       const netPayable = grossEarned;
@@ -136,7 +143,7 @@ export const GET = withPermission(
         employee: emp,
         period: { start: periodStart, end: periodEnd, workingDays: divisor },
         attendance: { present, halfDay, absent, holiday, effectiveDays, unmarkedWorkingDays },
-        calculation: { perDay: Math.round(perDay * 100) / 100, grossEarned, outstandingAdvances, netPayable },
+        calculation: { perDay: Math.round(perDay * 100) / 100, grossEarned, outstandingAdvances, totalAdvances, netPayable },
         paidThisPeriod: paidRecord,
         latestPayment,
       };
