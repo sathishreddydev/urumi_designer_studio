@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingDown, ChevronLeft, ChevronRight, ShieldAlert } from "lucide-react";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -97,12 +98,66 @@ const emptyForm = (): ExpenditureForm => ({
 
 export default function ExpendituresPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [month, setMonth]         = useState(currentMonth());
   const [filterCat, setFilterCat] = useState("ALL");
   const [showForm, setShowForm]   = useState(false);
   const [editId, setEditId]       = useState<string | null>(null);
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [form, setForm]           = useState<ExpenditureForm>(emptyForm());
+
+  // Check authorization
+  const { data: authData, isLoading: authLoading } = useQuery({
+    queryKey: ["auth"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) throw new Error("Unauthorized");
+      return res.json();
+    },
+  });
+
+  // Redirect store managers
+  useEffect(() => {
+    if (!authLoading && authData?.role === "STORE_MANAGER") {
+      router.replace("/dashboard");
+    }
+  }, [authData, authLoading, router]);
+
+  // Show access denied for store managers
+  if (authLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authData?.role === "STORE_MANAGER") {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <ShieldAlert className="h-6 w-6 text-destructive" />
+              </div>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Access Denied</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                You don't have permission to access this page.
+              </p>
+            </div>
+            <Button onClick={() => router.push("/dashboard")} className="mt-4">
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // ── data ────────────────────────────────────────────────────────────────────
   const queryKey = ["expenditures", month, filterCat];
