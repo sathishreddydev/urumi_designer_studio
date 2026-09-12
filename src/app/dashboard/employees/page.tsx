@@ -1030,11 +1030,38 @@ function SalaryTab() {
 
                   {/* ── Already paid stamp ── */}
                   {isPaid && (
-                    <p className="text-xs text-green-600">
-                      Paid ₹{Number(paidThisPeriod.netAmount).toLocaleString("en-IN")} on{" "}
-                      {new Date(paidThisPeriod.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                      {" "}· {paidThisPeriod.method}
-                    </p>
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600 font-medium">
+                          ✓ Paid ₹{Number(paidThisPeriod.netAmount).toLocaleString("en-IN")} on{" "}
+                          {new Date(paidThisPeriod.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          {" "}· {paidThisPeriod.method}
+                        </span>
+                      </div>
+                      {/* Payment breakdown if deductions were made */}
+                      {Number(paidThisPeriod.deductions) > 0 && (
+                        <div className="rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
+                          <div className="flex justify-between">
+                            <span>Gross earned:</span>
+                            <span className="font-medium text-foreground">
+                              ₹{Number(paidThisPeriod.grossAmount).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-orange-600">
+                            <span>Advance recovered:</span>
+                            <span className="font-medium">
+                              −₹{Number(paidThisPeriod.deductions).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t pt-0.5 mt-0.5">
+                            <span className="font-medium">Net paid:</span>
+                            <span className="font-semibold text-foreground">
+                              ₹{Number(paidThisPeriod.netAmount).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                 </CardContent>
