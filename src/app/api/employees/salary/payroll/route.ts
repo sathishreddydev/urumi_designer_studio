@@ -118,7 +118,9 @@ export const GET = withPermission(
       const grossEarned = Math.round(effectiveDays * perDay * 100) / 100;
 
       const outstandingAdvances = advanceMap.get(emp.id) ?? 0;
-      const netPayable = Math.max(0, grossEarned - outstandingAdvances);
+      // Don't deduct advances here - that happens in the payment dialog
+      // netPayable at this stage is just the gross earned amount
+      const netPayable = grossEarned;
 
       // How many working days have no attendance record yet
       const markedDates = new Set(empAttendance.map((a) => a.date));
