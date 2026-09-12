@@ -45,7 +45,8 @@ export const POST = withPermission(
     }
 
     // If advances are being recovered, update them in a transaction
-    if (parsed.data.advancesToRecover && parsed.data.advancesToRecover.length > 0) {
+    const advancesToRecover = parsed.data.advancesToRecover ?? [];
+    if (advancesToRecover.length > 0) {
       await db.transaction(async (tx) => {
         // Create salary payment record
         await tx
@@ -63,7 +64,7 @@ export const POST = withPermission(
           });
 
         // Update each advance
-        for (const adv of parsed.data.advancesToRecover) {
+        for (const adv of advancesToRecover) {
           const [advance] = await tx
             .select()
             .from(employeeAdvances)
