@@ -76,7 +76,7 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
     dependency: ["create", "read", "update"],
     payment: ["create", "read", "delete"],
     portal: ["create", "read"],
-    user: [],
+    user: ["read"],
     employee: ["create", "read", "update", "delete"],
     expenditure: ["create", "read", "update", "delete"],
   },
