@@ -50,35 +50,23 @@ export const GET = withPermission(
       ? allReferences.filter((r) => r.status === "LOCKED" || r.type === "FABRIC")
       : allReferences;
 
-    // Fetch measurements: prefer the snapshot taken at outfit-creation time,
-    // fall back to the customer's latest version for older outfits without a snapshot.
+    // Fetch measurements: Always show the LATEST version for accuracy.
+    // All versions are available for reference in version history.
     let latestCustomerMeasurement = null;
-    let measurementIsSnapshot = false;
+    let allMeasurementVersions: any[] = [];
+    
     if (order) {
       try {
-        if (outfit.measurementSnapshotId) {
-          // Load the exact version that was active when this outfit was created
-          const [snapshotMeasurement] = await db
-            .select()
-            .from(customerMeasurements)
-            .where(eq(customerMeasurements.id, outfit.measurementSnapshotId))
-            .limit(1);
-          if (snapshotMeasurement) {
-            latestCustomerMeasurement = snapshotMeasurement;
-            measurementIsSnapshot = true;
-          }
-        }
-
-        // No snapshot (old outfit) — fall back to latest version
-        if (!latestCustomerMeasurement) {
-          const [cm] = await db
-            .select()
-            .from(customerMeasurements)
-            .where(eq(customerMeasurements.customerId, order.customerId))
-            .orderBy(desc(customerMeasurements.version))
-            .limit(1);
-          latestCustomerMeasurement = cm || null;
-          measurementIsSnapshot = false;
+        // Fetch all measurement versions for this customer (for version history)
+        allMeasurementVersions = await db
+          .select()
+          .from(customerMeasurements)
+          .where(eq(customerMeasurements.customerId, order.customerId))
+          .orderBy(desc(customerMeasurements.version));
+        
+        // Always use the latest version
+        if (allMeasurementVersions.length > 0) {
+          latestCustomerMeasurement = allMeasurementVersions[0];
         }
       } catch {
         // Table may not exist yet
@@ -93,7 +81,7 @@ export const GET = withPermission(
       designer: designerUser,
       master: masterUser,
       customerMeasurements: latestCustomerMeasurement,
-      measurementIsSnapshot,
+      allMeasurementVersions, // Include all versions for version history
       references: outfitReferences,
       dependencies: outfitDependencies,
       productionLogs: logs,

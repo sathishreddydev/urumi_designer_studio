@@ -19,16 +19,15 @@ interface MeasurementZoomModalProps {
     name: string;
     id?: string;
   };
-  /** Body measurement snapshot (or latest) for this outfit */
+  /** Body measurement (latest) for this outfit */
   customerMeasurements: CustomerMeasurement | null | undefined;
-  measurementIsSnapshot?: boolean;
-  measurementSnapshotId?: string | null;
   /** Garment-specific measurements (read-only in this modal) */
   garmentMeasurements: Record<string, string>;
   onGarmentMeasurementsChange: (updated: Record<string, string>) => void;
   onGarmentMeasurementsDirty?: () => void;
   outfitType?: string;
   role?: string;
+  allMeasurementVersions?: CustomerMeasurement[];
 }
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
@@ -38,13 +37,12 @@ export function MeasurementZoomModal({
   onClose,
   customer,
   customerMeasurements,
-  measurementIsSnapshot,
-  measurementSnapshotId,
   garmentMeasurements,
   onGarmentMeasurementsChange,
   onGarmentMeasurementsDirty,
   outfitType,
   role,
+  allMeasurementVersions = [],
 }: MeasurementZoomModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -63,14 +61,13 @@ export function MeasurementZoomModal({
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
             <OutfitMeasurements
               customerMeasurements={customerMeasurements}
-              measurementIsSnapshot={measurementIsSnapshot}
-              measurementSnapshotId={measurementSnapshotId}
               customer={customer}
               outfitType={outfitType}
               garmentMeasurements={garmentMeasurements}
               onGarmentMeasurementsChange={onGarmentMeasurementsChange}
               onGarmentMeasurementsDirty={onGarmentMeasurementsDirty}
               role={role}
+              allMeasurementVersions={allMeasurementVersions}
             />
           </div>
 

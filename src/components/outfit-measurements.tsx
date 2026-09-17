@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { AlertTriangle, Plus, X, History, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ─── Body sections ────────────────────────────────────────────────────────────
 
@@ -116,8 +123,6 @@ export interface CustomerMeasurement {
 
 export interface OutfitMeasurementsProps {
   customerMeasurements: CustomerMeasurement | null | undefined;
-  measurementIsSnapshot?: boolean;
-  measurementSnapshotId?: string | null;
   customer?: { id?: string; name?: string } | null;
   outfitType?: string;
 
@@ -134,14 +139,17 @@ export interface OutfitMeasurementsProps {
    * Default: false (editable, used on the detail page).
    */
   readOnly?: boolean;
+
+  /**
+   * All measurement versions for this customer (for version history)
+   */
+  allMeasurementVersions?: CustomerMeasurement[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function OutfitMeasurements({
   customerMeasurements,
-  measurementIsSnapshot,
-  measurementSnapshotId,
   customer,
   outfitType,
   garmentMeasurements,
@@ -149,16 +157,29 @@ export function OutfitMeasurements({
   onGarmentMeasurementsDirty,
   role,
   readOnly = false,
+  allMeasurementVersions = [],
 }: OutfitMeasurementsProps) {
   const [newGarmentField, setNewGarmentField] = useState("");
   // field name editing: key = current field name, value = draft name being edited
   const [editingFieldName, setEditingFieldName] = useState<string | null>(null);
   const [draftFieldName, setDraftFieldName] = useState("");
+  
+  // State for viewing different measurement versions
+  const [viewingVersion, setViewingVersion] = useState<CustomerMeasurement | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   const isReception = role === "RECEPTION";
   const isMaster = role === "MASTER";
   // In readOnly mode treat all garment fields as display-only (no inputs, no add/remove)
   const garmentEditable = !readOnly && !isReception;
+
+  // Determine which measurement to display
+  const displayedMeasurement = viewingVersion || customerMeasurements;
+  
+  // Check if user is viewing an older version
+  const isViewingOlderVersion = viewingVersion && 
+    customerMeasurements && 
+    viewingVersion.version < customerMeasurements.version;
 
   // Template fields for the garment type
   const typeKey =
@@ -211,7 +232,7 @@ export function OutfitMeasurements({
   // ── Body ─────────────────────────────────────────────────────────────────
 
   const bodyContent = (() => {
-    if (!customerMeasurements) {
+    if (!displayedMeasurement) {
       return (
         <p className="text-xs text-muted-foreground italic py-1">
           No body measurements.{" "}
@@ -227,22 +248,10 @@ export function OutfitMeasurements({
       );
     }
 
-    const vals = customerMeasurements.values as Record<string, string>;
+    const vals = displayedMeasurement.values as Record<string, string>;
 
     return (
       <div className="space-y-1.5">
-        {/* Stale-snapshot warning — only in edit mode */}
-        {!readOnly &&
-          !measurementIsSnapshot &&
-          measurementSnapshotId === null &&
-          customer?.id &&
-          !isMaster && (
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
-              <AlertTriangle className="h-3 w-3 shrink-0" />
-              Showing latest — created before snapshots were tracked.
-            </p>
-          )}
-
         {BODY_SECTIONS.map((section) => {
           const entries = (section.fields as unknown as string[])
             .map((f) => [f, vals[f]] as [string, string])
@@ -461,19 +470,19 @@ export function OutfitMeasurements({
               inches
             </span>
           </p>
-          {customerMeasurements && (
+          {displayedMeasurement && (
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground">
-                v{customerMeasurements.version}
+                v{displayedMeasurement.version}
               </span>
-              {measurementIsSnapshot ? (
+              {viewingVersion ? (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  at order time
+                  viewing history
                 </Badge>
               ) : (
                 <Badge
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 bg-amber-50"
+                  variant="default"
+                  className="text-[10px] px-1.5 py-0"
                 >
                   latest
                 </Badge>
@@ -481,6 +490,87 @@ export function OutfitMeasurements({
             </div>
           )}
         </div>
+        
+        {/* Version history - show for everyone when there are multiple versions */}
+        {!readOnly && allMeasurementVersions.length > 1 && (
+          <div className="space-y-2">
+            {isViewingOlderVersion && (
+              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span>You are viewing an older version. Latest is v{customerMeasurements?.version}.</span>
+              </div>
+            )}
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] w-full"
+              onClick={() => setShowVersionHistory(!showVersionHistory)}
+            >
+              <History className="h-3 w-3 mr-1.5" />
+              {showVersionHistory ? "Hide" : "Show"} Version History ({allMeasurementVersions.length} versions)
+              {showVersionHistory ? (
+                <ChevronUp className="h-3 w-3 ml-auto" />
+              ) : (
+                <ChevronDown className="h-3 w-3 ml-auto" />
+              )}
+            </Button>
+            
+            {showVersionHistory && (
+              <div className="space-y-1.5 border rounded p-2 bg-muted/30">
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">
+                  Select a version to compare:
+                </p>
+                {allMeasurementVersions.map((version) => {
+                  const isViewing = version.id === displayedMeasurement?.id;
+                  const isLatest = version.version === allMeasurementVersions[0].version;
+                  
+                  return (
+                    <Button
+                      key={version.id}
+                      type="button"
+                      variant={isViewing ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 text-[11px] w-full justify-start"
+                      onClick={() => {
+                        if (isViewing && viewingVersion) {
+                          setViewingVersion(null);
+                        } else {
+                          setViewingVersion(version);
+                        }
+                      }}
+                    >
+                      <span className="font-medium">Version {version.version}</span>
+                      <span className="mx-1.5">·</span>
+                      <span className="text-[10px]">
+                        {version.createdAt ? new Date(version.createdAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                      {isLatest && (
+                        <Badge variant="outline" className="ml-auto text-[9px] px-1 py-0 text-green-600 border-green-300">
+                          latest
+                        </Badge>
+                      )}
+                    </Button>
+                  );
+                })}
+                
+                {viewingVersion && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] w-full mt-1"
+                    onClick={() => setViewingVersion(null)}
+                  >
+                    Back to latest version
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         {bodyContent}
       </div>
 

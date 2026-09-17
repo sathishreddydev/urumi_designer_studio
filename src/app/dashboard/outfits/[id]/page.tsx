@@ -1169,8 +1169,6 @@ export default function OutfitDetailPage() {
 
             <OutfitMeasurements
               customerMeasurements={outfit.customerMeasurements}
-              measurementIsSnapshot={outfit.measurementIsSnapshot}
-              measurementSnapshotId={outfit.measurementSnapshotId}
               customer={outfit.customer}
               outfitType={outfit.type}
               garmentMeasurements={garmentMeasurements}
@@ -1178,6 +1176,7 @@ export default function OutfitDetailPage() {
               onGarmentMeasurementsDirty={() => setGarmentMeasurementsDirty(true)}
               role={role}
               readOnly={isLocked}
+              allMeasurementVersions={outfit.allMeasurementVersions || []}
             />
           </div>
 
@@ -1280,13 +1279,12 @@ export default function OutfitDetailPage() {
           name: outfit.customer?.name || "Customer",
         }}
         customerMeasurements={outfit.customerMeasurements}
-        measurementIsSnapshot={outfit.measurementIsSnapshot}
-        measurementSnapshotId={outfit.measurementSnapshotId}
         garmentMeasurements={garmentMeasurements}
         onGarmentMeasurementsChange={setGarmentMeasurements}
         onGarmentMeasurementsDirty={() => setGarmentMeasurementsDirty(true)}
         outfitType={outfit.type}
         role={role}
+        allMeasurementVersions={outfit.allMeasurementVersions || []}
       />
     </div>
   );
