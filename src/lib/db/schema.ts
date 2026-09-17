@@ -148,8 +148,8 @@ export const outfits = pgTable("outfits", {
   maggamRequired: boolean("maggam_required").notNull().default(false),
   designerId: varchar("designer_id", { length: 20 }).references(() => users.id),
   masterId: varchar("master_id", { length: 20 }).references(() => users.id),
-  // Snapshot of the customer's body measurements at outfit-creation time.
-  // NULL means "no snapshot yet" — falls back to the customer's latest version.
+  // Reference: Which measurement version existed when this outfit was created.
+  // (Stored for historical reference only - app always displays latest measurements)
   measurementSnapshotId: varchar("measurement_snapshot_id", { length: 20 }),
   // Garment-specific measurements stored directly on the outfit
   // (e.g. Front Length, Neck Front, Sleeve Round — fields that vary by garment type).

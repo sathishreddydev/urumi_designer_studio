@@ -219,7 +219,8 @@ export const POST = withPermission(
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
-    // Snapshot the customer's current body measurements at outfit-creation time
+    // Reference: Save which measurement version existed at outfit-creation time
+    // (Kept for historical reference, but app always shows latest measurements)
     let measurementSnapshotId: string | null = null;
     try {
       const [order] = await db
