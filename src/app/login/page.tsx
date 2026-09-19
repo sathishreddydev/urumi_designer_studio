@@ -63,7 +63,7 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="admin@studio.com"
+                placeholder="Enter your email address"
                 required
               />
             </div>
