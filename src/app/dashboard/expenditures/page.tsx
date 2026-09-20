@@ -106,7 +106,7 @@ export default function ExpendituresPage() {
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [form, setForm]           = useState<ExpenditureForm>(emptyForm());
 
-  // Check authorization
+  // Check authorization - ADMIN only
   const { data: authData, isLoading: authLoading } = useQuery({
     queryKey: ["auth"],
     queryFn: async () => {
@@ -116,14 +116,14 @@ export default function ExpendituresPage() {
     },
   });
 
-  // Redirect store managers
+  // Redirect non-admin users
   useEffect(() => {
-    if (!authLoading && authData?.role === "STORE_MANAGER") {
+    if (!authLoading && authData?.role && authData.role !== "ADMIN") {
       router.replace("/dashboard");
     }
   }, [authData, authLoading, router]);
 
-  // Show access denied for store managers
+  // Show loading state
   if (authLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -134,7 +134,8 @@ export default function ExpendituresPage() {
     );
   }
 
-  if (authData?.role === "STORE_MANAGER") {
+  // Show access denied for non-admin users
+  if (authData?.role !== "ADMIN") {
     return (
       <div className="flex h-96 items-center justify-center">
         <Card className="w-full max-w-md">
@@ -147,7 +148,7 @@ export default function ExpendituresPage() {
             <div>
               <h3 className="font-semibold text-lg">Access Denied</h3>
               <p className="text-sm text-muted-foreground mt-2">
-                You don't have permission to access this page.
+                Only administrators can access expenditure management.
               </p>
             </div>
             <Button onClick={() => router.push("/dashboard")} className="mt-4">
@@ -162,15 +163,19 @@ export default function ExpendituresPage() {
   // ── data ────────────────────────────────────────────────────────────────────
   const queryKey = ["expenditures", month, filterCat];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({ month, limit: "200" });
       if (filterCat !== "ALL") params.set("category", filterCat);
       const res = await fetch(`/api/expenditures?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to fetch: ${errorText}`);
+      }
       return res.json();
     },
+    enabled: !authLoading && authData?.role === "ADMIN", // Only fetch if user is admin
   });
 
   const expenditures: any[] = data?.expenditures ?? [];
@@ -473,7 +478,14 @@ export default function ExpendituresPage() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {error ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-destructive font-medium mb-2">Error loading expenditures</p>
+            <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : "Unknown error"}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse"><CardContent className="h-16 pt-4" /></Card>

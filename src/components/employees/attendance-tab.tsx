@@ -13,6 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -336,21 +344,21 @@ export function AttendanceTab() {
       ) : (
         <Card>
           <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b bg-muted/40">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
                   {/* Sticky name column */}
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground sticky left-0 bg-muted/40 z-10 border-r"
+                  <TableHead className="text-left px-3 py-2 font-medium text-muted-foreground sticky left-0 bg-muted/40 z-10 border-r"
                     style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
                     Employee
-                  </th>
+                  </TableHead>
                   {displayDates.map((d) => {
                     const ymd = toYMD(d);
                     const isToday = ymd === todayYMD;
                     const isSunday = d.getDay() === 0;
                     return (
-                      <th key={ymd}
-                        className={`py-2 text-center font-medium ${
+                      <TableHead key={ymd}
+                        className={`py-2 text-center font-medium border-r ${
                           isToday ? "text-primary bg-primary/5" : 
                           isSunday ? "text-blue-600 bg-blue-50/50" : 
                           "text-muted-foreground"
@@ -368,15 +376,15 @@ export function AttendanceTab() {
                             <div className={`text-[10px] ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
                           </>
                         )}
-                      </th>
+                      </TableHead>
                     );
                   })}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {employees.map((emp: any, idx: number) => (
-                  <tr key={emp.id} className={`border-b last:border-b-0 ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
-                    <td className="px-3 py-2 sticky left-0 bg-inherit z-10 border-r"
+                  <TableRow key={emp.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    <TableCell className="px-3 py-2 sticky left-0 bg-inherit z-10 border-r"
                       style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
                       <Link href={`/dashboard/employees/${emp.id}`}
                         className="font-medium hover:text-primary transition-colors block truncate"
@@ -386,15 +394,15 @@ export function AttendanceTab() {
                       {mode === "week" && (
                         <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{emp.jobRole}</p>
                       )}
-                    </td>
+                    </TableCell>
                     {displayDates.map((d) => {
                       const ymd = toYMD(d);
                       const status = getStatus(emp.id, ymd);
                       const isToday = ymd === todayYMD;
                       const isSunday = d.getDay() === 0;
                       return (
-                        <td key={ymd}
-                          className={`text-center ${
+                        <TableCell key={ymd}
+                          className={`text-center border-r ${
                             isToday ? "bg-primary/5" : 
                             isSunday ? "bg-blue-50/30" : 
                             ""
@@ -406,13 +414,13 @@ export function AttendanceTab() {
                             onSelect={(s) => handleSelect(emp.id, ymd, s)}
                             compact={mode === "month"}
                           />
-                        </td>
+                        </TableCell>
                       );
                     })}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
