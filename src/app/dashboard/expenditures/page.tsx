@@ -99,12 +99,6 @@ const emptyForm = (): ExpenditureForm => ({
 export default function ExpendituresPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [month, setMonth]         = useState(currentMonth());
-  const [filterCat, setFilterCat] = useState("ALL");
-  const [showForm, setShowForm]   = useState(false);
-  const [editId, setEditId]       = useState<string | null>(null);
-  const [deleteId, setDeleteId]   = useState<string | null>(null);
-  const [form, setForm]           = useState<ExpenditureForm>(emptyForm());
 
   // Check authorization - ADMIN only
   const { data: authData, isLoading: authLoading } = useQuery({
@@ -160,6 +154,22 @@ export default function ExpendituresPage() {
     );
   }
 
+  // User is admin - render main content
+  return <ExpendituresContent />;
+}
+
+// ─── main content ────────────────────────────────────────────────────────────
+
+function ExpendituresContent() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [month, setMonth]         = useState(currentMonth());
+  const [filterCat, setFilterCat] = useState("ALL");
+  const [showForm, setShowForm]   = useState(false);
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [deleteId, setDeleteId]   = useState<string | null>(null);
+  const [form, setForm]           = useState<ExpenditureForm>(emptyForm());
+
   // ── data ────────────────────────────────────────────────────────────────────
   const queryKey = ["expenditures", month, filterCat];
 
@@ -175,7 +185,6 @@ export default function ExpendituresPage() {
       }
       return res.json();
     },
-    enabled: !authLoading && authData?.role === "ADMIN", // Only fetch if user is admin
   });
 
   const expenditures: any[] = data?.expenditures ?? [];
