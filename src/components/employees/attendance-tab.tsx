@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarIcon
+  CalendarIcon,
+  LockIcon,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
@@ -24,15 +25,31 @@ function StatusPills({
   status,
   onSelect,
   compact,
+  locked,
 }: {
   status: StatusKey;
   onSelect: (s: StatusKey) => void;
   compact?: boolean; // month mode — show only active + minimal inactive dots
+  locked?: boolean;  // salary already paid — read-only
 }) {
-  if (compact) {
-    // Month view: single compact chip showing current status, click to cycle
-    // Full picker on long-press handled via right-click context
+  // Locked: show a small lock badge instead of interactive pills
+  if (locked) {
     const active = PRIMARY_STATUSES.find((s) => s.key === status);
+    return (
+      <div className="flex flex-col items-center gap-0.5" title="Salary paid — attendance locked">
+        {active ? (
+          <span className={`h-5 w-5 rounded text-[9px] font-bold border flex items-center justify-center opacity-60 ${active.active}`}>
+            {active.label}
+          </span>
+        ) : (
+          <span className="h-5 w-5 rounded text-[9px] flex items-center justify-center text-muted-foreground/40">—</span>
+        )}
+        <LockIcon className="h-2.5 w-2.5 text-muted-foreground/50" />
+      </div>
+    );
+  }
+
+  if (compact) {
     return (
       <div className="flex gap-0.5 justify-center">
         {PRIMARY_STATUSES.map((s) => (
@@ -106,6 +123,51 @@ export function AttendanceTab() {
     [displayDates]
   );
 
+  // Fetch all salary payments so we can lock paid-period cells
+  const { data: salaryPayments = [] } = useQuery({
+    queryKey: ["salary-payments-all"],
+    queryFn: async () => {
+      // Get payments for all employees by fetching the payroll summary which includes paidThisPeriod
+      // We need raw payments — use the payroll endpoint for a wide enough range instead,
+      // or simply hit each employee's salary history. Easier: call the payroll API for a
+      // very early period (just to get the payment list) isn't reliable, so we fetch each
+      // active employee's salary history.
+      if (employees.length === 0) return [];
+      const results = await Promise.all(
+        employees.map((emp: any) =>
+          fetch(`/api/employees/${emp.id}/salary`).then((r) => r.ok ? r.json() : [])
+        )
+      );
+      // Each result is an array of payment records; flatten and tag with employeeId
+      return results.flatMap((rows: any[], i: number) =>
+        rows.map((row: any) => ({ ...row, employeeId: employees[i].id }))
+      );
+    },
+    enabled: employees.length > 0,
+  });
+
+  // Build a set "employeeId|YYYY-MM-DD" for every date inside a paid period
+  const paidDateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const payment of salaryPayments as any[]) {
+      const start = payment.periodStart as string;
+      const end   = payment.periodEnd   as string;
+      const empId = payment.employeeId  as string;
+      // iterate each date in the paid range
+      const cur = new Date(start + "T00:00:00");
+      const last = new Date(end   + "T00:00:00");
+      while (cur <= last) {
+        keys.add(`${empId}|${cur.toISOString().slice(0, 10)}`);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return keys;
+  }, [salaryPayments]);
+
+  function isLocked(empId: string, ymd: string): boolean {
+    return paidDateKeys.has(`${empId}|${ymd}`);
+  }
+
   const { data: attendanceData = [], isLoading: attLoading } = useQuery({
     queryKey: ["attendance-range", months.join(","), employees.map((e: any) => e.id).join(",")],
     enabled: employees.length > 0,
@@ -165,6 +227,7 @@ export function AttendanceTab() {
   }
 
   function handleSelect(empId: string, date: string, status: StatusKey) {
+    if (isLocked(empId, date)) return; // salary paid — no edits
     const key = `${empId}|${date}`;
     setOptimistic((prev) => ({ ...prev, [key]: status }));
     if (status) saveMutation.mutate([{ employeeId: empId, date, status }]);
@@ -183,8 +246,8 @@ export function AttendanceTab() {
         const key = `${emp.id}|${ymd}`;
         const existing = recMap[key];
         
-        // Only auto-mark if no record exists yet
-        if (!existing && !optimistic[key]) {
+        // Only auto-mark if no record exists yet and not in a paid period
+        if (!existing && !optimistic[key] && !isLocked(emp.id, ymd)) {
           sundaysToMark.push({ employeeId: emp.id, date: ymd, status: "HOLIDAY" });
         }
       }
@@ -361,11 +424,13 @@ export function AttendanceTab() {
                       const status = getStatus(emp.id, ymd);
                       const isToday = ymd === todayYMD;
                       const isSunday = d.getDay() === 0;
+                      const locked = isLocked(emp.id, ymd);
                       return (
                         <td key={ymd}
                           className={`text-center border-r ${
-                            isToday ? "bg-primary/5" : 
-                            isSunday ? "bg-blue-50/30" : 
+                            locked   ? "bg-muted/60" :
+                            isToday  ? "bg-primary/5" :
+                            isSunday ? "bg-blue-50/30" :
                             ""
                           }`}
                           style={{ padding: mode === "week" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
@@ -374,6 +439,7 @@ export function AttendanceTab() {
                             status={status}
                             onSelect={(s) => handleSelect(emp.id, ymd, s)}
                             compact={mode === "month"}
+                            locked={locked}
                           />
                         </td>
                       );
@@ -400,6 +466,10 @@ export function AttendanceTab() {
           </span>
         ))}
         <span className="text-muted-foreground italic">tap again to clear</span>
+        <span className="flex items-center gap-1 border-l pl-3">
+          <LockIcon className="h-3 w-3" />
+          Salary paid — locked
+        </span>
       </div>
     </div>
   );
