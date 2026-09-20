@@ -1,54 +1,23 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Plus,
-  Search,
-  Briefcase,
-  Phone,
-  Clock,
-  CalendarIcon,
-  AlertCircle,
-  CheckCircle2,
-  DollarSign,
-  TrendingDown,
-  ShieldAlert,
+  CalendarIcon
 } from "lucide-react";
+import Link from "next/link";
+import React, { useMemo, useState } from "react";
 import {
-  toYMD,
-  getWeekDates,
   getMonthDates,
-  rangeLabel,
-  PRIMARY_STATUSES,
+  getWeekDates,
   PILL_COLORS,
+  PRIMARY_STATUSES,
+  rangeLabel,
   StatusKey,
+  toYMD,
 } from "./utils";
 
 function StatusPills({

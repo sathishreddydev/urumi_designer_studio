@@ -1,25 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import {
     Select,
     SelectContent,
@@ -27,29 +11,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-    Plus,
-    Search,
-    Briefcase,
-    Phone,
-    Clock,
-    CalendarIcon,
     AlertCircle,
-    CheckCircle2,
-    DollarSign,
-    TrendingDown,
-    ShieldAlert,
+    CheckCircle2
 } from "lucide-react";
+import Link from "next/link";
+import React, { useState } from "react";
+import { PaymentConfirmDialog } from "./advances-tab";
 import {
-    toYMD,
     currentWeekMonday,
     currentYearMonth,
-    prevPeriod,
     nextPeriod,
     periodLabel,
+    prevPeriod
 } from "./utils";
-import { PaymentConfirmDialog } from "./advances-tab";
 
 export function SalaryTab() {
     const queryClient = useQueryClient();
