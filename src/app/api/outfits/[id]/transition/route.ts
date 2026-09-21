@@ -109,7 +109,12 @@ export const POST = withAuth(async (request, { params, session }) => {
     await db.update(outfits).set({ trialedAt: new Date() }).where(eq(outfits.id, id));
   }
   if (newStatus === "DELIVERED") {
-    await db.update(outfits).set({ deliveredAt: new Date() }).where(eq(outfits.id, id));
+    await db.update(outfits).set({ deliveredAt: new Date(), priority: 0 }).where(eq(outfits.id, id));
+  }
+  // Master's work is done at PRODUCTION_COMPLETED — clear priority so it no longer
+  // shows as urgent in the master's production list or the outfit list
+  if (newStatus === "PRODUCTION_COMPLETED") {
+    await db.update(outfits).set({ priority: 0 }).where(eq(outfits.id, id));
   }
 
   // Return updated available transitions
