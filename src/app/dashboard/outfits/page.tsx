@@ -26,6 +26,7 @@ import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
+import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
 import {
   Tooltip,
   TooltipContent,
@@ -162,6 +163,7 @@ export default function OutfitsPage() {
   const [status, setStatus] = useState(searchParams.get("status") || "");
   const [search, setSearch] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -177,7 +179,7 @@ export default function OutfitsPage() {
     setViewerOpen(true);
   }
 
-  const queryKey = ["outfits", status, search, deadline, customDate?.toISOString(), page];
+  const queryKey = ["outfits", status, search, deadline, priorityFilter, customDate?.toISOString(), page];
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -185,6 +187,7 @@ export default function OutfitsPage() {
       const params = new URLSearchParams();
       if (status && status !== "all") params.set("status", status);
       if (search) params.set("search", search);
+      if (priorityFilter) params.set("priority", priorityFilter);
       if (deadline) {
         params.set("deadline", deadline);
       } else if (customDate) {
@@ -201,10 +204,10 @@ export default function OutfitsPage() {
 
   const outfits = data?.outfits || [];
   const total = data?.total || 0;
-  const hasFilters = status || search || deadline || customDate;
+  const hasFilters = status || search || deadline || customDate || priorityFilter;
 
   function clearAll() {
-    setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPage(1);
+    setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPriorityFilter(""); setPage(1);
   }
 
   const DEADLINE_PILLS = [
@@ -213,6 +216,13 @@ export default function OutfitsPage() {
     { value: "tomorrow", label: "Tomorrow",  icon: <CalendarIcon className="h-3 w-3" />,  className: "text-blue-600 border-blue-300 bg-blue-50 hover:bg-blue-100 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600" },
     { value: "week",     label: "This Week", icon: <CalendarIcon className="h-3 w-3" />,  className: "text-violet-600 border-violet-300 bg-violet-50 hover:bg-violet-100 data-[active=true]:bg-violet-600 data-[active=true]:text-white data-[active=true]:border-violet-600" },
   ];
+
+  // Priority filter pills — only "Next" and "Today" are meaningful to filter by
+  const PRIORITY_PILLS = PRIORITY_OPTIONS.filter((o) => o.value > 0).map((o) => ({
+    value: String(o.value),
+    label: o.label,
+    className: o.className + " hover:opacity-90 data-[active=true]:ring-1 data-[active=true]:ring-current",
+  }));
 
   return (
     <div className="space-y-4">
@@ -243,9 +253,9 @@ export default function OutfitsPage() {
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
-          {(deadline || customDate || status) && (
+          {(deadline || customDate || status || priorityFilter) && (
             <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
-              {[deadline, customDate, status && status !== "all" ? status : ""].filter(Boolean).length}
+              {[deadline, customDate, status && status !== "all" ? status : "", priorityFilter].filter(Boolean).length}
             </span>
           )}
           <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
@@ -271,10 +281,30 @@ export default function OutfitsPage() {
             </Select>
           </div>
 
+          {/* Priority pills */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Priority</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRIORITY_PILLS.map((pill) => {
+                const isActive = priorityFilter === pill.value;
+                return (
+                  <button
+                    key={pill.value}
+                    data-active={isActive}
+                    onClick={() => { setPriorityFilter(isActive ? "" : pill.value); setPage(1); }}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
+                  >
+                    {pill.label}
+                    {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Deadline pills */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Deadline</p>
-            <div className="flex flex-wrap gap-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Deadline</p>            <div className="flex flex-wrap gap-1.5">
               {DEADLINE_PILLS.map((pill) => {
                 const isActive = deadline === pill.value;
                 return (
@@ -327,6 +357,25 @@ export default function OutfitsPage() {
       <div className="hidden sm:flex flex-col gap-2">
         {/* Pills row */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Priority pills */}
+          {PRIORITY_PILLS.map((pill) => {
+            const isActive = priorityFilter === pill.value;
+            return (
+              <button
+                key={pill.value}
+                data-active={isActive}
+                onClick={() => { setPriorityFilter(isActive ? "" : pill.value); setPage(1); }}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${pill.className}`}
+              >
+                {pill.label}
+                {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
+              </button>
+            );
+          })}
+
+          {/* Separator dot */}
+          <span className="text-muted-foreground/40 text-sm select-none">·</span>
+
           {DEADLINE_PILLS.map((pill) => {
             const isActive = deadline === pill.value;
             return (
@@ -436,9 +485,19 @@ export default function OutfitsPage() {
                     >
                       <td className="px-4 py-3 max-w-[180px]">
                         <p className="font-medium truncate">{outfit.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {outfit.type}{outfit.maggamRequired && " · M"}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground">
+                            {outfit.type}{outfit.maggamRequired && " · M"}
+                          </p>
+                          {outfit.priority > 0 && (() => {
+                            const opt = getPriorityOption(outfit.priority);
+                            return (
+                              <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 ${opt.className}`}>
+                                {opt.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground max-w-[130px] truncate">
                         {outfit.customerName || "—"}
@@ -528,6 +587,14 @@ export default function OutfitsPage() {
                         <div className="flex items-center gap-1.5">
                           <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
                           <p className="font-semibold text-sm truncate">{outfit.name}</p>
+                          {outfit.priority > 0 && (() => {
+                            const opt = getPriorityOption(outfit.priority);
+                            return (
+                              <span className={`shrink-0 inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 ${opt.className}`}>
+                                {opt.label}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <p className="text-xs text-muted-foreground ml-5 truncate">
                           {outfit.customerName && `${outfit.customerName} · `}

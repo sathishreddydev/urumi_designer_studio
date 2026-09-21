@@ -76,6 +76,7 @@ import {
   GARMENT_FIELDS,
 } from "@/components/outfit-measurements";
 import { DependencyTypeSelect } from "@/components/dependency-type-select";
+import { PRIORITY_OPTIONS, getPriorityOption } from "@/components/outfit-form-fields";
 
 const DEPENDENCY_TYPES = [
   "FABRIC",
@@ -1075,6 +1076,36 @@ export default function OutfitDetailPage() {
                     </span>
                   )}
                 </div>
+              </div>
+              <Separator />
+
+              {/* Priority */}
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> Priority
+                </span>
+                {can("update", "outfit") && role !== "MASTER" ? (
+                  <div className="flex gap-1">
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => updateMutation.mutate({ priority: opt.value })}
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors
+                          ${outfit.priority === opt.value
+                            ? opt.className + " ring-1 ring-current ring-offset-1"
+                            : "border-border text-muted-foreground bg-background hover:bg-muted"
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getPriorityOption(outfit.priority ?? 0).className}`}>
+                    {getPriorityOption(outfit.priority ?? 0).label}
+                  </span>
+                )}
               </div>
             </div>
           </div>

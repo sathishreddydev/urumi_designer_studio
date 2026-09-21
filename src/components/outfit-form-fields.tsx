@@ -32,6 +32,8 @@ export interface OutfitFormValue {
   type: string;
   occasion: string;
   price: string;
+  /** 0 = Normal, 1 = Next, 2 = Today */
+  priority: number;
   maggamRequired: boolean;
   designerId: string;
   masterId: string;
@@ -51,6 +53,7 @@ export function emptyOutfitFormValue(): OutfitFormValue {
     type: "",
     occasion: "",
     price: "",
+    priority: 0,
     maggamRequired: false,
     designerId: "",
     masterId: "",
@@ -58,6 +61,18 @@ export function emptyOutfitFormValue(): OutfitFormValue {
     fabricImages: [],
     existingFabricRefs: [],
   };
+}
+
+// ─── Priority helpers ─────────────────────────────────────────────────────────
+
+export const PRIORITY_OPTIONS = [
+  { value: 0, label: "Normal",   className: "border-border text-muted-foreground bg-background" },
+  { value: 1, label: "Next",     className: "border-blue-400 text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-950/40" },
+  { value: 2, label: "Today",    className: "border-amber-400 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40" },
+] as const;
+
+export function getPriorityOption(priority: number) {
+  return PRIORITY_OPTIONS.find((o) => o.value === priority) ?? PRIORITY_OPTIONS[0];
 }
 
 // ─── Staff option type ────────────────────────────────────────────────────────
@@ -270,6 +285,30 @@ export function OutfitFormFields({
             </Select>
           </div>
         )}
+      </div>
+
+      <Separator />
+
+      {/* Priority toggle */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Priority</Label>
+        <div className="flex gap-2">
+          {PRIORITY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={coreFieldsLocked}
+              onClick={() => set("priority", opt.value)}
+              className={`flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                ${value.priority === opt.value
+                  ? opt.className + " ring-2 ring-offset-1 ring-current"
+                  : "border-border text-muted-foreground bg-background hover:bg-muted"
+                }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Separator />

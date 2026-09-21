@@ -21,9 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { Shirt, Calendar, AlertTriangle, ArrowRight, Search, ImageOff, RotateCcw } from "lucide-react";
+import { Shirt, Calendar, AlertTriangle, ArrowRight, Search, ImageOff, RotateCcw, X } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { ImageViewer } from "@/components/image-viewer";
+import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
 
 const PRODUCTION_STATUSES = [
   "WAITING_FOR_DEPENDENCIES",
@@ -45,6 +46,7 @@ export default function ProductionPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
 
   // Image viewer
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -52,12 +54,13 @@ export default function ProductionPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["production-outfits", search, statusFilter],
+    queryKey: ["production-outfits", search, statusFilter, priorityFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set("status", "production");
       params.set("limit", "200");
       if (search) params.set("search", search);
+      if (priorityFilter) params.set("priority", priorityFilter);
       const res = await fetch(`/api/outfits?${params}`);
       if (!res.ok) return [];
       const d = await res.json();
@@ -139,27 +142,47 @@ export default function ProductionPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by outfit, customer or order..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by outfit, customer or order..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="All Stages" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Stages</SelectItem>
+              {PRODUCTION_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="All Stages" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Stages</SelectItem>
-            {PRODUCTION_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Priority pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Priority:</span>
+          {PRIORITY_OPTIONS.filter((o) => o.value > 0).map((opt) => {
+            const isActive = priorityFilter === String(opt.value);
+            return (
+              <button
+                key={opt.value}
+                data-active={isActive}
+                onClick={() => setPriorityFilter(isActive ? "" : String(opt.value))}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${opt.className} hover:opacity-90 ${isActive ? "ring-1 ring-current ring-offset-1" : ""}`}
+              >
+                {opt.label}
+                {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {outfits.length === 0 ? (
@@ -195,6 +218,14 @@ export default function ProductionPage() {
                         <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="font-medium hover:underline truncate block">
                           {outfit.name}
                         </Link>
+                        {outfit.priority > 0 && (() => {
+                          const opt = getPriorityOption(outfit.priority);
+                          return (
+                            <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 mt-0.5 ${opt.className}`}>
+                              {opt.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {outfit.customerName || "—"}
@@ -304,6 +335,14 @@ export default function ProductionPage() {
                       <div className="flex items-center gap-1.5">
                         <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
                         <p className="font-medium text-sm truncate">{outfit.name}</p>
+                        {outfit.priority > 0 && (() => {
+                          const opt = getPriorityOption(outfit.priority);
+                          return (
+                            <span className={`shrink-0 inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 ${opt.className}`}>
+                              {opt.label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <p className="text-xs text-muted-foreground ml-5">
                         {outfit.type}{outfit.maggamRequired && " · Maggam"}

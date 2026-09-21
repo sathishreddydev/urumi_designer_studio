@@ -14,6 +14,7 @@ export const GET = withPermission(
     const status = searchParams.get("status") || "";
     const search = searchParams.get("search") || "";
     const deadline = searchParams.get("deadline") || ""; // "overdue" | "today" | "tomorrow" | "week"
+    const priorityFilter = searchParams.get("priority") || ""; // "1" = Next, "2" = Today
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
@@ -61,6 +62,11 @@ export const GET = withPermission(
           ilike(customers.name, `%${search}%`)
         )
       );
+    }
+
+    // Priority filter
+    if (priorityFilter) {
+      conditions.push(eq(outfits.priority, parseInt(priorityFilter)));
     }
 
     // Deadline filter — applied on deliveryDate
