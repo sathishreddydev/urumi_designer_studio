@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "@/hooks/use-toast";
 
 interface EmployeeForm {
   name: string;
@@ -57,7 +58,13 @@ export default function NewEmployeePage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: { deactivatedPrevious?: { id: string; name: string } | null }) => {
+      if (data.deactivatedPrevious) {
+        toast({
+          title: "Previous employee deactivated",
+          description: `${data.deactivatedPrevious.name} had the same phone number and has been marked inactive.`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       router.push("/dashboard/employees");
     },

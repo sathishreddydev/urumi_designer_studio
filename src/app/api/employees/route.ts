@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ilike, or, desc, count } from "drizzle-orm";
+import { ilike, or, desc, count, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
@@ -57,27 +57,36 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    try {
-      const [emp] = await db
-        .insert(employees)
-        .values({
-          name: parsed.data.name,
-          phone: parsed.data.phone,
-          jobRole: parsed.data.jobRole,
-          payCycle: parsed.data.payCycle,
-          salaryAmount: String(parsed.data.salaryAmount),
-          shiftStart: parsed.data.shiftStart ?? null,
-          shiftEnd: parsed.data.shiftEnd ?? null,
-          active: parsed.data.active,
-          notes: parsed.data.notes ?? null,
-        })
-        .returning();
-      return NextResponse.json(emp, { status: 201 });
-    } catch (error: any) {
-      if (error.code === "23505") {
-        return NextResponse.json({ error: "Phone number already exists" }, { status: 409 });
-      }
-      throw error;
+    // If an employee with the same phone already exists, mark them inactive first
+    const [existing] = await db
+      .select({ id: employees.id, name: employees.name })
+      .from(employees)
+      .where(eq(employees.phone, parsed.data.phone))
+      .limit(1);
+
+    let deactivatedPrevious: { id: string; name: string } | null = null;
+    if (existing) {
+      await db
+        .update(employees)
+        .set({ active: false, updatedAt: new Date() })
+        .where(eq(employees.id, existing.id));
+      deactivatedPrevious = { id: existing.id, name: existing.name };
     }
+
+    const [emp] = await db
+      .insert(employees)
+      .values({
+        name: parsed.data.name,
+        phone: parsed.data.phone,
+        jobRole: parsed.data.jobRole,
+        payCycle: parsed.data.payCycle,
+        salaryAmount: String(parsed.data.salaryAmount),
+        shiftStart: parsed.data.shiftStart ?? null,
+        shiftEnd: parsed.data.shiftEnd ?? null,
+        active: parsed.data.active,
+        notes: parsed.data.notes ?? null,
+      })
+      .returning();
+    return NextResponse.json({ ...emp, deactivatedPrevious }, { status: 201 });
   }
 );
