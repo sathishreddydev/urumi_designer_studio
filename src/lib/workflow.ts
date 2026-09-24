@@ -193,8 +193,8 @@ export async function validateTransition(
         const messages: Record<PreconditionType, string> = {
           references_locked: "Pattern references must be locked before proceeding",
           no_pending_dependencies: "All dependencies must be resolved first",
-          maggam_required: "This outfit requires Maggam work",
-          maggam_not_required: "This outfit does not require Maggam work",
+          maggam_required: "No maggam work — outfit goes straight to Fabric Cutting",
+          maggam_not_required: "This outfit requires Maggam work first",
           completion_photo_required: "At least one completion photo must be uploaded before marking as delivered",
         };
         return { success: false, error: messages[precondition.type] };
@@ -231,8 +231,8 @@ export async function getAvailableTransitions(
   const preconditionMessages: Record<PreconditionType, string> = {
     references_locked: "Pattern references must be locked before proceeding",
     no_pending_dependencies: "All dependencies must be resolved first",
-    maggam_required: "This outfit requires Maggam work",
-    maggam_not_required: "This outfit does not require Maggam work",
+    maggam_required: "No maggam work — outfit goes straight to Fabric Cutting",
+    maggam_not_required: "This outfit requires Maggam work first",
     completion_photo_required: "Upload at least one completion photo before delivering",
   };
 
