@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo, useId } from "react";
 import { Camera, ImagePlus, Plus, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +98,8 @@ interface OutfitFormFieldsProps {
   coreFieldsLocked?: boolean;
   /** Hides delete affordance etc — used in "new outfit" context */
   isEditMode?: boolean;
+  /** Unique id suffix so multiple instances don't share the same input id */
+  inputId?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -110,8 +112,14 @@ export function OutfitFormFields({
   masters = [],
   coreFieldsLocked = false,
   isEditMode = false,
+  inputId,
 }: OutfitFormFieldsProps) {
   const [cameraOpen, setCameraOpen] = useState(false);
+
+  // Each OutfitFormFields instance needs a unique file-input id so that
+  // clicking the label on item N doesn't accidentally open item 1's picker.
+  const autoId = useId();
+  const fabricUploadId = `outfit-fabric-upload-${inputId ?? autoId}`;
 
   // Stable blob URL management
   const blobUrlsRef = useRef<string[]>([]);
@@ -456,7 +464,7 @@ export function OutfitFormFields({
         {/* Upload + camera */}
         <div className="flex flex-wrap items-center gap-2">
           <label
-            htmlFor="outfit-fabric-upload"
+            htmlFor={fabricUploadId}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md cursor-pointer hover:bg-muted transition-colors"
           >
             <ImagePlus className="h-3.5 w-3.5" />
@@ -466,7 +474,7 @@ export function OutfitFormFields({
               : "Upload Material Photos"}
           </label>
           <input
-            id="outfit-fabric-upload"
+            id={fabricUploadId}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             multiple

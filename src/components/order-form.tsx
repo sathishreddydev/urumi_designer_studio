@@ -606,6 +606,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       masters={masters}
                       coreFieldsLocked={isEditMode && !isEditable}
                       isEditMode={isEditMode}
+                      inputId={outfit.id ?? `new-${index}`}
                     />
                   </CardContent>
                 </Card>
