@@ -236,9 +236,13 @@ export function SalaryTab() {
                                         {/* Net pay — prominent */}
                                         <div className="text-right shrink-0">
                                             <p className="text-lg font-bold leading-none">
-                                                ₹{calculation.netPayable.toLocaleString("en-IN")}
+                                                ₹{isPaid
+                                                    ? Number(paidThisPeriod.netAmount).toLocaleString("en-IN")
+                                                    : calculation.netPayable.toLocaleString("en-IN")}
                                             </p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">net payable</p>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                {isPaid ? "paid" : "net payable"}
+                                            </p>
                                         </div>
                                     </div>
 

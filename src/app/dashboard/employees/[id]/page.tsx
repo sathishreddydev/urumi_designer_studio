@@ -430,7 +430,7 @@ function SalaryTab({
   const [showForm, setShowForm] = useState(false);
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd]     = useState("");
-  const [gross, setGross]             = useState(String(salaryAmount));
+  const [gross, setGross]             = useState("");
   const [deductions, setDeductions]   = useState("0");
   const [method, setMethod]           = useState("CASH");
   const [notes, setNotes]             = useState("");
@@ -466,6 +466,10 @@ function SalaryTab({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["salary", employeeId] });
       setShowForm(false);
+      setGross("");
+      setPeriodStart("");
+      setPeriodEnd("");
+      setDeductions("0");
       setNotes("");
     },
   });
@@ -500,7 +504,7 @@ function SalaryTab({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Gross Amount (₹)</Label>
-                <Input type="number" min={0} value={gross} onChange={(e) => setGross(e.target.value)} className="h-8 text-xs" />
+                <Input type="number" min={0} value={gross} onChange={(e) => setGross(e.target.value)} className="h-8 text-xs" placeholder={`e.g. ${salaryAmount.toLocaleString()}`} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Deductions (₹)</Label>
