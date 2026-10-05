@@ -105,7 +105,11 @@ export const GET = withPermission(
     }
 
     // Build per-employee payroll summary
-    const payroll = allEmployees.map((emp) => {
+    const payroll = allEmployees
+      // In monthly view, only show monthly-cycle employees.
+      // Weekly employees are paid week-by-week and should only appear in weekly view.
+      .filter((emp) => isWeek || emp.payCycle === "MONTHLY")
+      .map((emp) => {
       const empAttendance = allAttendance.filter((a) => a.employeeId === emp.id);
 
       const present  = empAttendance.filter((a) => a.status === "PRESENT").length;

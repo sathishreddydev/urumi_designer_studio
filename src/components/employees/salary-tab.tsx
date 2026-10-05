@@ -191,6 +191,11 @@ export function SalaryTab() {
                     <span><span className="font-semibold">{unpaidCount} employee{unpaidCount > 1 ? "s" : ""}</span> unpaid for this period</span>
                 </div>
             )}
+            {!isLoading && !isWeek && (
+                <p className="text-xs text-muted-foreground">
+                    Monthly view shows only monthly-cycle employees. Weekly employees are paid via the Weekly view.
+                </p>
+            )}
 
             {/* ── Payroll cards ── */}
             {isLoading ? (
