@@ -375,7 +375,7 @@ export default function CustomerPortalPage() {
 
             {/* Orders List */}
             {filteredOrders.map((order: any) => (
-              <div key={order.id} className="space-y-4 border rounded-lg p-2">
+              <div key={order.id} className="space-y-4 border rounded-lg p-4">
                 {/* Order Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="space-y-0.5">
