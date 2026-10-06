@@ -590,23 +590,7 @@ export default function CustomerPortalPage() {
                               </Badge>
                             </div>
 
-                            {/* Detailed Progress Bar */}
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Status:
-                                  <strong className="text-foreground">
-                                    {formatStatus(outfit.status)}
-                                  </strong>
-                                </span>
 
-                                <span className="font-semibold font-mono">
-                                  {progress}%
-                                </span>
-                              </div>
-
-                            </div>
 
 
 
