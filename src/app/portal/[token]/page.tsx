@@ -179,7 +179,10 @@ export default function CustomerPortalPage() {
 
         return { ...order, outfits };
       })
-      .filter((order: any) => order.outfits.length > 0);
+      .filter((order: any) => order.outfits.length > 0)
+      .sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
   }, [data, searchQuery, statusFilter]);
 
   const allOutfitStatuses = useMemo(() => {
@@ -372,7 +375,7 @@ export default function CustomerPortalPage() {
 
             {/* Orders List */}
             {filteredOrders.map((order: any) => (
-              <div key={order.id} className="space-y-4">
+              <div key={order.id} className="space-y-4 border rounded-lg p-2">
                 {/* Order Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="space-y-0.5">
