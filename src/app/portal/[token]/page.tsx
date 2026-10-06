@@ -986,7 +986,7 @@ function PortalReferenceCard({
             onClick={() => handleFeedback("approved")}
             disabled={loading}
           >
-            <ThumbsUp className="h-3 w-3" />
+            {/* <ThumbsUp className="h-3 w-3" /> */}
             Approve
           </button>
 
@@ -995,7 +995,7 @@ function PortalReferenceCard({
             onClick={() => handleFeedback("rejected")}
             disabled={loading}
           >
-            <ThumbsDown className="h-3 w-3" />
+            {/* <ThumbsDown className="h-3 w-3" /> */}
             Reject
           </button>
         </div>
