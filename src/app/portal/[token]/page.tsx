@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -414,8 +414,8 @@ export default function CustomerPortalPage() {
 
             {/* Empty State */}
             {filteredOrders.length === 0 && (
-              <Card className="shadow-sm">
-                <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
+              <div className="rounded-lg">
+                <div className="py-12 text-center text-sm text-muted-foreground space-y-2">
                   <Shirt className="h-8 w-8 mx-auto text-muted-foreground/40" />
 
                   <p className="font-medium">No matching outfits found</p>
@@ -424,8 +424,8 @@ export default function CustomerPortalPage() {
                     Try clearing search terms or selecting a different status
                     filter.
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Orders List */}
@@ -435,13 +435,13 @@ export default function CustomerPortalPage() {
                 : 0;
 
               return (
-                <Card key={order.id} className="shadow-sm border">
-                  <CardHeader className="bg-card border-b pb-3">
+                <div key={order.id} className="rounded-lg">
+                  <div className="pb-3 px-4 pt-4 rounded-t-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="space-y-0.5">
-                        <CardTitle className="text-base font-bold">
+                        <p className="text-base font-bold">
                           Order #{order.orderNumber}
-                        </CardTitle>
+                        </p>
 
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {order.trialDate && (
@@ -473,9 +473,9 @@ export default function CustomerPortalPage() {
                         {formatStatus(order.status)}
                       </Badge>
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent className="pt-4 space-y-6">
+                  <div className="pt-4 space-y-6">
                     {/* Outfits Grid */}
                     <div className="space-y-4">
                       {order.outfits.map((outfit: any) => {
@@ -779,8 +779,8 @@ export default function CustomerPortalPage() {
                         )}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
