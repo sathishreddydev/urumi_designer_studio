@@ -35,6 +35,7 @@ import {
   Camera,
   ChevronDown,
   X,
+  Filter,
 } from "lucide-react";
 
 const STATUS_ORDER = [
@@ -380,7 +381,7 @@ export default function CustomerPortalPage() {
           <div className="space-y-5">
             {/* Search & Filter Controls */}
             {totalOutfits > 1 && (
-              <div className="flex flex-col sm:flex-row gap-2.5">
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
@@ -393,21 +394,41 @@ export default function CustomerPortalPage() {
                 </div>
 
                 {allOutfitStatuses.length > 1 && (
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
-                      <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
+                  <>
+                    {/* Mobile: filter icon that opens a select */}
+                    <div className="sm:hidden">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-9 w-9 p-0 flex items-center justify-center bg-card border">
+                          <Filter className={`h-4 w-4 ${statusFilter !== "all" ? "text-primary" : "text-muted-foreground"}`} />
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          {allOutfitStatuses.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {formatStatus(status)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-
-                      {allOutfitStatuses.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {formatStatus(status)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {/* Desktop: full select */}
+                    <div className="hidden sm:block">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
+                          <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          {allOutfitStatuses.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {formatStatus(status)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -585,27 +606,9 @@ export default function CustomerPortalPage() {
                                 </span>
                               </div>
 
-                              <Progress value={progress} className="h-2" />
                             </div>
 
-                            {/* Garment Measurements */}
-                            {outfit.garmentMeasurements &&
-                              Object.values(
-                                outfit.garmentMeasurements as Record<
-                                  string,
-                                  string
-                                >,
-                              ).some(Boolean) ? (
-                              <GarmentMeasurementsPanel
-                                measurements={outfit.garmentMeasurements}
-                                type={outfit.type}
-                              />
-                            ) : (
-                              <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                                <Ruler className="h-3.5 w-3.5 shrink-0" />
-                                Garment measurements will be added by the designer.
-                              </div>
-                            )}
+
 
                             {/* Add-ons Display */}
                             {outfit.addOns && outfit.addOns.length > 0 && (
@@ -948,10 +951,10 @@ function PortalReferenceCard({
         {reference.type !== "COMPLETION" && (
           <span
             className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${reference.type === "FABRIC"
-                ? "bg-indigo-600 text-white"
-                : reference.type === "MAGGAM"
-                  ? "bg-amber-600 text-white"
-                  : "bg-slate-700 text-white"
+              ? "bg-indigo-600 text-white"
+              : reference.type === "MAGGAM"
+                ? "bg-amber-600 text-white"
+                : "bg-slate-700 text-white"
               }`}
           >
             {reference.type === "FABRIC"
@@ -1275,8 +1278,8 @@ function PortalUpload({
             type="button"
             onClick={() => setSelectedType(t.value)}
             className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${selectedType === t.value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border text-muted-foreground hover:bg-muted"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:bg-muted"
               }`}
           >
             <span>{t.icon}</span>
