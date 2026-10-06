@@ -231,83 +231,80 @@ export default function CustomerPortalPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 dark:bg-background">
-      {/* Header */}
+      {/* Header — always static */}
       <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-20">
         <div className="container mx-auto flex items-center justify-between px-3 py-3 max-w-2xl gap-2">
-          {view === "measurements" ? (
-            <button
-              type="button"
-              onClick={() => setView("orders")}
-              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back to Orders
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-primary/10 p-1.5 rounded-md shrink-0">
-                <Scissors className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
-              </div>
-              <span className="font-semibold text-sm sm:text-base tracking-tight truncate">
-                urumi by mounika
-              </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="bg-primary/10 p-1.5 rounded-md shrink-0">
+              <Scissors className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
-          )}
-
-          {view === "measurements" ? (
-            <span className="text-sm font-semibold">Measurements</span>
-          ) : (
-            <Badge variant="outline" className="text-xs font-normal shrink-0">
-              Customer Dashboard
-            </Badge>
-          )}
+            <span className="font-semibold text-sm sm:text-base tracking-tight truncate">
+              urumi by mounika
+            </span>
+          </div>
+          <Badge variant="outline" className="text-xs font-normal shrink-0">
+            Customer Dashboard
+          </Badge>
         </div>
       </header>
 
       <main className="container mx-auto max-w-2xl p-4 md:p-6 space-y-6">
-        {view === "measurements" ? (
-          /* ── MEASUREMENTS VIEW ── */
-          <ProfileMeasurements measurements={data.measurements} />
-        ) : (
-          /* ── ORDERS VIEW ── */
-          <>
-            {/* Greeting & Overview Banner */}
-            <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-5 border border-primary/10">
-              <div className="flex flex-col gap-3">
+        {/* Greeting & Overview Banner — always visible */}
+        <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-5 border border-primary/10">
+          <div className="flex flex-col gap-3">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Welcome back, {data.customer.name}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
+                Real-time status of your tailored outfits and reference approvals.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-3 py-2 rounded-lg border text-xs">
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-                    Welcome back, {data.customer.name}
-                  </h1>
-                  <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
-                    Real-time status of your tailored outfits and reference approvals.
-                  </p>
+                  <span className="text-muted-foreground block">Active Orders</span>
+                  <span className="font-semibold text-sm">{data.orders.length}</span>
                 </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-4 bg-card/80 backdrop-blur px-3 py-2 rounded-lg border text-xs">
-                    <div>
-                      <span className="text-muted-foreground block">Active Orders</span>
-                      <span className="font-semibold text-sm">{data.orders.length}</span>
-                    </div>
-                    <div className="h-8 w-px bg-border" />
-                    <div>
-                      <span className="text-muted-foreground block">Total Outfits</span>
-                      <span className="font-semibold text-sm">{totalOutfits}</span>
-                    </div>
-                  </div>
-
-                  {/* Measurements link */}
-                  <button
-                    type="button"
-                    onClick={() => setView("measurements")}
-                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2 transition-colors"
-                  >
-                    <Ruler className="h-3.5 w-3.5" />
-                    My Measurements
-                  </button>
+                <div className="h-8 w-px bg-border" />
+                <div>
+                  <span className="text-muted-foreground block">Total Outfits</span>
+                  <span className="font-semibold text-sm">{totalOutfits}</span>
                 </div>
               </div>
+
+              {/* Measurements toggle link */}
+              {view === "orders" ? (
+                <button
+                  type="button"
+                  onClick={() => setView("measurements")}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2 transition-colors"
+                >
+                  <Ruler className="h-3.5 w-3.5" />
+                  My Measurements
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setView("orders")}
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Back to Orders
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* ── MEASUREMENTS VIEW ── */}
+        {view === "measurements" && (
+          <ProfileMeasurements measurements={data.measurements} />
+        )}
+
+        {/* ── ORDERS VIEW ── */}
+        {view === "orders" && (<>
 
             {/* Search & Filter Controls */}
             {totalOutfits > 1 && (
@@ -475,32 +472,6 @@ export default function CustomerPortalPage() {
                           </Badge>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Status:
-                              <strong className="text-foreground">{formatStatus(outfit.status)}</strong>
-                            </span>
-                            <span className="font-semibold font-mono">{progress}%</span>
-                          </div>
-                          <Progress value={progress} className="h-2" />
-                        </div>
-
-                        {/* Garment Measurements */}
-                        {outfit.garmentMeasurements &&
-                          Object.values(outfit.garmentMeasurements as Record<string, string>).some(Boolean) ? (
-                          <GarmentMeasurementsPanel
-                            measurements={outfit.garmentMeasurements}
-                            type={outfit.type}
-                          />
-                        ) : (
-                          <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                            <Ruler className="h-3.5 w-3.5 shrink-0" />
-                            Garment measurements will be added by the designer.
-                          </div>
-                        )}
 
                         {/* Add-ons */}
                         {outfit.addOns && outfit.addOns.length > 0 && (
