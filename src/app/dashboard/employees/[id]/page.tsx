@@ -741,6 +741,7 @@ function AdvanceCard({
   statusColors: Record<string, string>;
   onRecover: (data: { recoveredAmount: number; status: string }) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [recovered, setRecovered] = useState(String(advance.recoveredAmount));
 
@@ -754,54 +755,90 @@ function AdvanceCard({
     const r = Math.min(parseFloat(recovered || "0"), Number(advance.amount));
     onRecover({ recoveredAmount: r, status: computeStatus(r) });
     setEditing(false);
+    setOpen(false);
   }
 
   const balance = Number(advance.amount) - Number(advance.recoveredAmount);
 
   return (
     <Card>
-      <CardContent className="pt-3 pb-3 space-y-2">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">₹{Number(advance.amount).toLocaleString()}</span>
-              <Badge className={`text-xs ${statusColors[advance.status]}`}>{advance.status.replace("_", " ")}</Badge>
-            </div>
-            {advance.reason && <p className="text-xs text-muted-foreground">{advance.reason}</p>}
-            <p className="text-xs text-muted-foreground">
-              Issued: {new Date(advance.issuedAt).toLocaleDateString("en-IN")}
-              {Number(advance.recoveredAmount) > 0 && (
-                <> · Recovered: ₹{Number(advance.recoveredAmount).toLocaleString()} · Balance: ₹{balance.toLocaleString()}</>
-              )}
-            </p>
-          </div>
-          {advance.status !== "RECOVERED" && (
-            <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditing(!editing)}>
-              <TrendingDown className="h-3 w-3" /> Recover
-            </Button>
+      {/* Accordion header — always visible */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-semibold">₹{Number(advance.amount).toLocaleString()}</span>
+          <Badge className={`text-xs ${statusColors[advance.status]}`}>
+            {advance.status.replace(/_/g, " ")}
+          </Badge>
+          {advance.reason && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              · {advance.reason}
+            </span>
           )}
         </div>
+        <span className="text-xs text-muted-foreground shrink-0">
+          {new Date(advance.issuedAt).toLocaleDateString("en-IN")}
+          <span className={`ml-2 transition-transform duration-200 inline-block ${open ? "rotate-180" : ""}`}>
+            ▾
+          </span>
+        </span>
+      </button>
 
-        {editing && (
-          <div className="flex items-center gap-2 pt-1 border-t">
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs">Total Recovered (₹)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={Number(advance.amount)}
-                value={recovered}
-                onChange={(e) => setRecovered(e.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="flex gap-1 self-end">
-              <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-              <Button size="sm" onClick={save}>Save</Button>
-            </div>
+      {/* Accordion body */}
+      {open && (
+        <CardContent className="pt-0 pb-3 space-y-3 border-t">
+          <div className="pt-3 space-y-1 text-sm">
+            {advance.reason && (
+              <p className="text-xs text-muted-foreground">Reason: {advance.reason}</p>
+            )}
+            {advance.notes && (
+              <p className="text-xs text-muted-foreground">Notes: {advance.notes}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Issued: {new Date(advance.issuedAt).toLocaleDateString("en-IN")}
+            </p>
+            {Number(advance.recoveredAmount) > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Recovered: ₹{Number(advance.recoveredAmount).toLocaleString()}
+                {" · "}Balance: ₹{balance.toLocaleString()}
+              </p>
+            )}
           </div>
-        )}
-      </CardContent>
+
+          {advance.status !== "RECOVERED" && !editing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
+              <TrendingDown className="h-3 w-3 mr-1" /> Record Recovery
+            </Button>
+          )}
+
+          {editing && (
+            <div className="flex items-end gap-2 border-t pt-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs">Total Recovered (₹)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={Number(advance.amount)}
+                  value={recovered}
+                  onChange={(e) => setRecovered(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+                <Button size="sm" onClick={save}>Save</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
