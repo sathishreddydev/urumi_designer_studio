@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/pagination";
-import { Plus, Search, Phone, Mail } from "lucide-react";
+import { Plus, Search, Phone, Mail, Link2 } from "lucide-react";
 import Link from "next/link";
 
 const LIMIT = 20;
@@ -75,33 +75,50 @@ export default function CustomersPage() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {data?.customers?.map((customer: any) => (
-              <Link key={customer.id} href={`/dashboard/customers/${customer.id}`}>
-                <Card className="cursor-pointer transition-shadow hover:shadow-md h-full">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base">{customer.name}</CardTitle>
-                      {customer.orders?.length > 0 && (
-                        <Badge variant="secondary">{customer.orders.length}</Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3" /> {customer.mobile}
-                    </div>
-                    {customer.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3" /> {customer.email}
+            {data?.customers?.map((customer: any) => {
+              const hasPhone = customer.mobile && !customer.mobile.startsWith("no-phone_");
+              return (
+                <Link key={customer.id} href={`/dashboard/customers/${customer.id}`}>
+                  <Card className="cursor-pointer transition-shadow hover:shadow-md h-full">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base leading-tight">{customer.name}</CardTitle>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {customer.linkedCustomer && (
+                            <span
+                              title={`Linked to ${customer.linkedCustomer.name}`}
+                              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5"
+                            >
+                              <Link2 className="h-2.5 w-2.5" />
+                              {customer.linkedCustomer.name.split(" ")[0]}
+                            </span>
+                          )}
+                          {customer.orders?.length > 0 && (
+                            <Badge variant="secondary">{customer.orders.length}</Badge>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {customer.occasion && (
-                      <Badge variant="outline" className="mt-2">{customer.occasion}</Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3 w-3 shrink-0" />
+                        {hasPhone ? customer.mobile : (
+                          <span className="italic">No phone</span>
+                        )}
+                      </div>
+                      {customer.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3 w-3 shrink-0" /> {customer.email}
+                        </div>
+                      )}
+                      {customer.occasion && (
+                        <Badge variant="outline" className="mt-2">{customer.occasion}</Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
 
           <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={setPage} />

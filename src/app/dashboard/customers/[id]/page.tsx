@@ -42,6 +42,7 @@ import {
   ChevronUp,
   FileText,
   History,
+  Link2,
   Mail,
   MapPin,
   MessageCircle,
@@ -400,7 +401,9 @@ export default function CustomerDetailPage({
     });
   };
 
-const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
+const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_"))
+    ? customer.mobile.replace(/\D/g, "")
+    : "";
   const cleanWhatsapp = customer.whatsapp
     ? customer.whatsapp.replace(/\D/g, "")
     : cleanMobile;
@@ -692,7 +695,9 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2 text-muted-foreground min-w-0">
                     <Phone className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{customer.mobile}</span>
+                    <span className="truncate">
+                      {cleanMobile ? customer.mobile : "No phone"}
+                    </span>
                   </span>
                   {cleanMobile && (
                     <a href={`tel:${cleanMobile}`} className="shrink-0">
@@ -733,6 +738,27 @@ const cleanMobile = customer.mobile ? customer.mobile.replace(/\D/g, "") : "";
                   <div className="flex items-start gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>{customer.address}</span>
+                  </div>
+                )}
+
+                {/* Linked family member */}
+                {customer.linkedCustomer && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                      <Link2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        Linked to{" "}
+                        <Link
+                          href={`/dashboard/customers/${customer.linkedCustomer.id}`}
+                          className="font-medium text-foreground hover:underline"
+                        >
+                          {customer.linkedCustomer.name}
+                        </Link>
+                        {customer.linkedCustomer.mobile && !customer.linkedCustomer.mobile.startsWith("no-phone_") && (
+                          <span className="text-xs ml-1">({customer.linkedCustomer.mobile})</span>
+                        )}
+                      </span>
+                    </span>
                   </div>
                 )}
               </div>

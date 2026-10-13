@@ -6,28 +6,40 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export const customerSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  mobile: z
-    .string()
-    .min(1, "Mobile number is required")
-    .refine(
-      (val) => {
-        // Allow empty string for optional fields
-        if (!val) return true;
-        // Validate using libphonenumber-js for international format
-        return isValidPhoneNumber(val);
-      },
-      {
-        message: "Please enter a valid phone number with country code",
-      }
-    ),
-  whatsapp: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().optional(),
-  occasion: z.string().optional(),
-  notes: z.string().optional(),
-});
+export const customerSchema = z
+  .object({
+    name: z.string().min(2, "Name is required"),
+    // mobile is optional at the object level — family members without their own phone can be
+    // added without one. When provided it must be a valid E.164 number (libphonenumber-js).
+    // The superRefine below enforces it as required when no linkedCustomerId is provided.
+    mobile: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // blank passes the field-level check
+          return isValidPhoneNumber(val);
+        },
+        { message: "Please enter a valid phone number with country code" }
+      ),
+    whatsapp: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    address: z.string().optional(),
+    occasion: z.string().optional(),
+    notes: z.string().optional(),
+    // ID of the primary customer this record is linked to (e.g. mother's profile)
+    linkedCustomerId: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Mobile is required unless a linked (family) customer is selected
+    if (!data.linkedCustomerId && !data.mobile?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mobile"],
+        message: "Mobile is required unless this customer is linked to a family member",
+      });
+    }
+  });
 
 export const orderSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),

@@ -104,13 +104,17 @@ export const sessions = pgTable("sessions", {
 export const customers = pgTable("customers", {
   id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("cst")),
   name: text("name").notNull(),
-  mobile: text("mobile").notNull().unique(),
+  // mobile is optional — family members (e.g. daughter) may not have their own number.
+  // When blank the API stores a unique internal placeholder so the UNIQUE constraint holds.
+  mobile: text("mobile").unique(),
   whatsapp: text("whatsapp"),
   email: text("email"),
   address: text("address"),
   occasion: text("occasion"),
   notes: text("notes"),
   portalToken: text("portal_token").unique(),
+  // Self-referencing FK: links a secondary customer (e.g. daughter) to a primary one (e.g. mother)
+  linkedCustomerId: varchar("linked_customer_id", { length: 20 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

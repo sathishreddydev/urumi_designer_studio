@@ -31,13 +31,24 @@ export const GET = withPermission(
       .limit(limit)
       .offset(offset);
 
+    // Enrich each customer: attach order stubs + linked customer name
     const customersWithOrders = await Promise.all(
       allCustomers.map(async (customer) => {
-        const customerOrders = await db
-          .select({ id: orders.id, orderNumber: orders.orderNumber, status: orders.status })
-          .from(orders)
-          .where(eq(orders.customerId, customer.id));
-        return { ...customer, orders: customerOrders };
+        const [customerOrders, linkedCustomer] = await Promise.all([
+          db
+            .select({ id: orders.id, orderNumber: orders.orderNumber, status: orders.status })
+            .from(orders)
+            .where(eq(orders.customerId, customer.id)),
+          customer.linkedCustomerId
+            ? db
+                .select({ id: customers.id, name: customers.name, mobile: customers.mobile })
+                .from(customers)
+                .where(eq(customers.id, customer.linkedCustomerId))
+                .limit(1)
+                .then((r) => r[0] ?? null)
+            : Promise.resolve(null),
+        ]);
+        return { ...customer, orders: customerOrders, linkedCustomer };
       })
     );
 
@@ -57,11 +68,33 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
+    // If linkedCustomerId is provided, verify it exists
+    if (parsed.data.linkedCustomerId) {
+      const [linked] = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, parsed.data.linkedCustomerId))
+        .limit(1);
+      if (!linked) {
+        return NextResponse.json({ error: "Linked customer not found" }, { status: 400 });
+      }
+    }
+
+    // mobile is optional — when blank, generate a unique internal placeholder so the
+    // UNIQUE constraint is satisfied. The placeholder is never shown in the UI.
+    const mobile = parsed.data.mobile?.trim()
+      ? parsed.data.mobile.trim()
+      : `no-phone_${generateId()}`;
+
     try {
-      const [customer] = await db.insert(customers).values({
-        ...parsed.data,
-        portalToken: generatePortalToken(),
-      }).returning();
+      const [customer] = await db
+        .insert(customers)
+        .values({
+          ...parsed.data,
+          mobile,
+          portalToken: generatePortalToken(),
+        })
+        .returning();
 
       // Emit event for real-time updates
       const { eventBus } = await import("@/lib/events");

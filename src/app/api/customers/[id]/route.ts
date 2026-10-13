@@ -54,7 +54,17 @@ export const GET = withPermission(
       })
     );
 
-    return NextResponse.json({ ...customer, orders: ordersWithOutfits, measurements: allMeasurements });
+    // Resolve linked customer name (if any)
+    const linkedCustomer = customer.linkedCustomerId
+      ? await db
+          .select({ id: customers.id, name: customers.name, mobile: customers.mobile })
+          .from(customers)
+          .where(eq(customers.id, customer.linkedCustomerId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
+      : null;
+
+    return NextResponse.json({ ...customer, orders: ordersWithOutfits, measurements: allMeasurements, linkedCustomer });
   }
 );
 
@@ -67,6 +77,23 @@ export const PATCH = withPermission(
 
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    // Prevent self-linking
+    if (parsed.data.linkedCustomerId && parsed.data.linkedCustomerId === id) {
+      return NextResponse.json({ error: "A customer cannot be linked to themselves" }, { status: 400 });
+    }
+
+    // Verify linked customer exists (if provided)
+    if (parsed.data.linkedCustomerId) {
+      const [linked] = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, parsed.data.linkedCustomerId))
+        .limit(1);
+      if (!linked) {
+        return NextResponse.json({ error: "Linked customer not found" }, { status: 400 });
+      }
     }
 
     const [customer] = await db
