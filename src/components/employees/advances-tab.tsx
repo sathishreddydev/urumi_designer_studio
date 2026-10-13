@@ -27,6 +27,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   DollarSign,
   Plus,
   TrendingDown
@@ -134,115 +135,15 @@ export function AdvancesTab() {
         <div className="space-y-3">
           {filteredStats.map((stat) => {
             const { employee: emp, advances, outstanding, totalIssued, totalRecovered } = stat;
-
             return (
-              <Card key={emp.id} className={outstanding > 0 ? "border-orange-200" : "opacity-70"}>
-                <CardContent className="pt-4 pb-4 space-y-3">
-                  {/* Employee header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100">
-                        <DollarSign className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <Link
-                          href={`/dashboard/employees/${emp.id}`}
-                          className="font-semibold hover:text-primary transition-colors"
-                        >
-                          {emp.name}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">{emp.jobRole}</p>
-                      </div>
-                    </div>
-
-                    {outstanding > 0 ? (
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-orange-600">
-                          ₹{outstanding.toLocaleString("en-IN")}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">outstanding</p>
-                      </div>
-                    ) : (
-                      <Badge className="bg-green-100 text-green-700">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        All Recovered
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Summary stats */}
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>Total Issued: ₹{totalIssued.toLocaleString("en-IN")}</span>
-                    <span>Recovered: ₹{totalRecovered.toLocaleString("en-IN")}</span>
-                    <span>{advances.length} advance{advances.length > 1 ? "s" : ""}</span>
-                  </div>
-
-                  {/* Advances list */}
-                  <div className="space-y-2">
-                    {advances.map((adv) => {
-                      const remaining = Number(adv.amount) - Number(adv.recoveredAmount);
-                      const isRecovered = adv.status === "RECOVERED";
-
-                      return (
-                        <div
-                          key={adv.id}
-                          className={`flex items-center justify-between rounded-md border px-3 py-2 text-xs ${
-                            isRecovered ? "bg-muted/30 opacity-60" : "bg-background"
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                ₹{Number(adv.amount).toLocaleString("en-IN")}
-                              </span>
-                              {adv.status === "OUTSTANDING" && (
-                                <Badge variant="outline" className="text-orange-600 border-orange-300">
-                                  Outstanding
-                                </Badge>
-                              )}
-                              {adv.status === "PARTIALLY_RECOVERED" && (
-                                <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                                  Partial
-                                </Badge>
-                              )}
-                              {adv.status === "RECOVERED" && (
-                                <Badge className="bg-green-100 text-green-700">Recovered</Badge>
-                              )}
-                            </div>
-                            {adv.reason && (
-                              <p className="text-muted-foreground mt-0.5">{adv.reason}</p>
-                            )}
-                            <p className="text-muted-foreground mt-0.5">
-                              Issued {new Date(adv.issuedAt).toLocaleDateString("en-IN", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </p>
-                          </div>
-
-                          <div className="text-right">
-                            {!isRecovered && (
-                              <>
-                                <p className="font-medium text-orange-600">
-                                  ₹{remaining.toLocaleString("en-IN")}
-                                </p>
-                                <p className="text-muted-foreground">remaining</p>
-                              </>
-                            )}
-                            {Number(adv.recoveredAmount) > 0 && (
-                              <p className="text-green-600 text-[10px]">
-                                <TrendingDown className="h-3 w-3 inline mr-0.5" />
-                                ₹{Number(adv.recoveredAmount).toLocaleString("en-IN")} recovered
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+              <EmployeeAdvanceAccordion
+                key={emp.id}
+                emp={emp}
+                advances={advances}
+                outstanding={outstanding}
+                totalIssued={totalIssued}
+                totalRecovered={totalRecovered}
+              />
             );
           })}
         </div>
@@ -260,6 +161,146 @@ export function AdvancesTab() {
         }}
       />
     </div>
+  );
+}
+
+// ─── Employee Advance Accordion ──────────────────────────────────────────────
+
+function EmployeeAdvanceAccordion({
+  emp,
+  advances,
+  outstanding,
+  totalIssued,
+  totalRecovered,
+}: {
+  emp: any;
+  advances: any[];
+  outstanding: number;
+  totalIssued: number;
+  totalRecovered: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Card className={outstanding > 0 ? "border-orange-200" : "opacity-70"}>
+      {/* Accordion header */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100">
+            <DollarSign className="h-4 w-4 text-orange-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm leading-tight">{emp.name}</p>
+            <p className="text-xs text-muted-foreground">{emp.jobRole}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          {outstanding > 0 ? (
+            <div className="text-right">
+              <p className="text-sm font-bold text-orange-600">
+                ₹{outstanding.toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-muted-foreground">outstanding</p>
+            </div>
+          ) : (
+            <Badge className="bg-green-100 text-green-700 text-xs">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Recovered
+            </Badge>
+          )}
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
+
+      {/* Accordion body */}
+      {open && (
+        <CardContent className="pt-0 pb-4 space-y-3 border-t">
+          {/* Stats row */}
+          <div className="flex gap-4 text-xs text-muted-foreground pt-3">
+            <span>Issued: ₹{totalIssued.toLocaleString("en-IN")}</span>
+            <span>Recovered: ₹{totalRecovered.toLocaleString("en-IN")}</span>
+            <span>{advances.length} advance{advances.length !== 1 ? "s" : ""}</span>
+            <Link
+              href={`/dashboard/employees/${emp.id}`}
+              className="ml-auto text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              View profile →
+            </Link>
+          </div>
+
+          {/* Advances list */}
+          <div className="space-y-2">
+            {advances.map((adv) => {
+              const remaining = Number(adv.amount) - Number(adv.recoveredAmount);
+              const isRecovered = adv.status === "RECOVERED";
+
+              return (
+                <div
+                  key={adv.id}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 text-xs ${
+                    isRecovered ? "bg-muted/30 opacity-60" : "bg-background"
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        ₹{Number(adv.amount).toLocaleString("en-IN")}
+                      </span>
+                      {adv.status === "OUTSTANDING" && (
+                        <Badge variant="outline" className="text-orange-600 border-orange-300">
+                          Outstanding
+                        </Badge>
+                      )}
+                      {adv.status === "PARTIALLY_RECOVERED" && (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                          Partial
+                        </Badge>
+                      )}
+                      {adv.status === "RECOVERED" && (
+                        <Badge className="bg-green-100 text-green-700">Recovered</Badge>
+                      )}
+                    </div>
+                    {adv.reason && (
+                      <p className="text-muted-foreground mt-0.5">{adv.reason}</p>
+                    )}
+                    <p className="text-muted-foreground mt-0.5">
+                      Issued {new Date(adv.issuedAt).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    {!isRecovered && (
+                      <>
+                        <p className="font-medium text-orange-600">
+                          ₹{remaining.toLocaleString("en-IN")}
+                        </p>
+                        <p className="text-muted-foreground">remaining</p>
+                      </>
+                    )}
+                    {Number(adv.recoveredAmount) > 0 && (
+                      <p className="text-green-600 text-[10px]">
+                        <TrendingDown className="h-3 w-3 inline mr-0.5" />
+                        ₹{Number(adv.recoveredAmount).toLocaleString("en-IN")} recovered
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
