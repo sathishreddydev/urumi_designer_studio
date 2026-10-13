@@ -77,6 +77,11 @@ export default function CustomersPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data?.customers?.map((customer: any) => {
               const hasPhone = customer.mobile && !customer.mobile.startsWith("no-phone_");
+              const linkedPhone = customer.linkedCustomer?.mobile &&
+                !customer.linkedCustomer.mobile.startsWith("no-phone_")
+                  ? customer.linkedCustomer.mobile
+                  : null;
+              const displayPhone = hasPhone ? customer.mobile : linkedPhone;
               return (
                 <Link key={customer.id} href={`/dashboard/customers/${customer.id}`}>
                   <Card className="cursor-pointer transition-shadow hover:shadow-md h-full">
@@ -102,7 +107,16 @@ export default function CustomersPage() {
                     <CardContent className="space-y-1 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Phone className="h-3 w-3 shrink-0" />
-                        {hasPhone ? customer.mobile : (
+                        {displayPhone ? (
+                          <span>
+                            {displayPhone}
+                            {!hasPhone && (
+                              <span className="text-[10px] ml-1 opacity-60">
+                                ({customer.linkedCustomer.name.split(" ")[0]})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
                           <span className="italic">No phone</span>
                         )}
                       </div>

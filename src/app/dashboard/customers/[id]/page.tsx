@@ -51,6 +51,7 @@ import {
   Plus,
   Ruler,
   Search,
+  Share2,
   Shirt,
   ShoppingBag,
   Trash2,
@@ -404,9 +405,16 @@ export default function CustomerDetailPage({
 const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_"))
     ? customer.mobile.replace(/\D/g, "")
     : "";
+  // If this customer has no phone but is linked, fall back to the linked customer's phone
+  const linkedPhone = !cleanMobile && customer.linkedCustomer?.mobile &&
+    !customer.linkedCustomer.mobile.startsWith("no-phone_")
+      ? customer.linkedCustomer.mobile
+      : null;
+  const displayPhone = cleanMobile ? customer.mobile : linkedPhone;
+  const cleanDisplayPhone = displayPhone ? displayPhone.replace(/\D/g, "") : "";
   const cleanWhatsapp = customer.whatsapp
     ? customer.whatsapp.replace(/\D/g, "")
-    : cleanMobile;
+    : cleanDisplayPhone;
 
   return (
     <div className="space-y-4">
@@ -445,7 +453,7 @@ const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_")
                       );
                     }}
                   >
-                    <MessageCircle className="h-3.5 w-3.5 sm:mr-1" />
+                    <Share2 className="h-3.5 w-3.5 sm:mr-1" />
                     <span className="hidden sm:inline">Share Portal</span>
                   </Button>
                 )}
@@ -695,12 +703,21 @@ const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_")
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2 text-muted-foreground min-w-0">
                     <Phone className="h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {cleanMobile ? customer.mobile : "No phone"}
-                    </span>
+                    {displayPhone ? (
+                      <span className="truncate">
+                        {displayPhone}
+                        {!cleanMobile && linkedPhone && (
+                          <span className="text-xs ml-1 opacity-60">
+                            (via {customer.linkedCustomer.name.split(" ")[0]})
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="italic">No phone</span>
+                    )}
                   </span>
-                  {cleanMobile && (
-                    <a href={`tel:${cleanMobile}`} className="shrink-0">
+                  {cleanDisplayPhone && (
+                    <a href={`tel:${cleanDisplayPhone}`} className="shrink-0">
                       <Button variant="outline" size="xs" className="h-7 text-xs">
                         Call
                       </Button>
