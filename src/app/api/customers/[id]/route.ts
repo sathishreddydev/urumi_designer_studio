@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { customers, orders, outfits, payments, customerMeasurements, referenceImages } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
-import { customerSchema } from "@/lib/validations";
+import { customerSchema, customerBaseSchema } from "@/lib/validations";
 
 export const GET = withPermission(
   { resource: "customer", action: "read" },
@@ -73,7 +73,7 @@ export const PATCH = withPermission(
   async (request, { params, session }) => {
     const { id } = await params;
     const body = await request.json();
-    const parsed = customerSchema.partial().safeParse(body);
+    const parsed = customerBaseSchema.partial().safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
