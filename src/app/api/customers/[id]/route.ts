@@ -96,6 +96,34 @@ export const PATCH = withPermission(
       }
     }
 
+    // Fetch existing record to compute resulting state after partial update
+    const [existing] = await db
+      .select({ mobile: customers.mobile, linkedCustomerId: customers.linkedCustomerId })
+      .from(customers)
+      .where(eq(customers.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    }
+
+    // Merge incoming changes over existing values
+    const resultingMobile =
+      "mobile" in parsed.data ? parsed.data.mobile : existing.mobile;
+    const resultingLinkedId =
+      "linkedCustomerId" in parsed.data ? parsed.data.linkedCustomerId : existing.linkedCustomerId;
+
+    const hasRealPhone =
+      resultingMobile && !resultingMobile.startsWith("no-phone_") && resultingMobile.trim() !== "";
+    const hasLink = !!resultingLinkedId;
+
+    if (!hasRealPhone && !hasLink) {
+      return NextResponse.json(
+        { error: "Customer must have either a mobile number or a linked family member" },
+        { status: 400 }
+      );
+    }
+
     const [customer] = await db
       .update(customers)
       .set({ ...parsed.data, updatedAt: new Date() })

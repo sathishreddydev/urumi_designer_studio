@@ -24,6 +24,7 @@ export default function EditCustomerPage() {
 
   const [useLinked, setUseLinked] = useState(false);
   const [linkedSearch, setLinkedSearch] = useState("");
+  const [linkedLabel, setLinkedLabel] = useState<{ name: string; phone: string } | null>(null);
   const [showLinkedDropdown, setShowLinkedDropdown] = useState(false);
 
   const { data: customer } = useQuery({
@@ -57,6 +58,8 @@ export default function EditCustomerPage() {
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
   });
 
   const linkedCustomerId = useWatch({ control, name: "linkedCustomerId" });
@@ -81,6 +84,10 @@ export default function EditCustomerPage() {
       if (hasLink || hasPlaceholder) {
         setUseLinked(true);
         if (customer.linkedCustomer) {
+          const phone = customer.linkedCustomer.mobile?.startsWith("no-phone_")
+            ? "No phone"
+            : (customer.linkedCustomer.mobile ?? "No phone");
+          setLinkedLabel({ name: customer.linkedCustomer.name, phone });
           setLinkedSearch(customer.linkedCustomer.name);
         }
       }
@@ -91,6 +98,8 @@ export default function EditCustomerPage() {
     if (c.id === params.id) return;
     setValue("linkedCustomerId", c.id, { shouldValidate: true });
     setValue("mobile", "", { shouldValidate: true });
+    const phone = c.mobile?.startsWith("no-phone_") ? "No phone" : (c.mobile ?? "No phone");
+    setLinkedLabel({ name: c.name, phone });
     setLinkedSearch(c.name);
     setShowLinkedDropdown(false);
   };
@@ -103,6 +112,7 @@ export default function EditCustomerPage() {
   const handleSwitchToMobile = () => {
     setUseLinked(false);
     setLinkedSearch("");
+    setLinkedLabel(null);
     setValue("linkedCustomerId", "", { shouldValidate: false });
     setValue("mobile", "", { shouldValidate: false });
   };
@@ -205,14 +215,20 @@ export default function EditCustomerPage() {
                     {linkedCustomerId ? (
                       <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
                         <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 truncate">{linkedSearch}</span>
+                        <span className="text-sm flex-1 min-w-0">
+                          <span className="font-medium">{linkedLabel?.name}</span>
+                          {linkedLabel?.phone && (
+                            <span className="text-muted-foreground"> — {linkedLabel.phone}</span>
+                          )}
+                        </span>
                         <button
                           type="button"
                           onClick={() => {
                             setValue("linkedCustomerId", "", { shouldValidate: true });
                             setLinkedSearch("");
+                            setLinkedLabel(null);
                           }}
-                          className="text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive shrink-0"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -235,19 +251,20 @@ export default function EditCustomerPage() {
                           <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
                             {linkedSearchResults.customers
                               .filter((c: any) => c.id !== params.id)
-                              .map((c: any) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onMouseDown={() => handleSelectLinked(c)}
-                                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent text-left"
-                                >
-                                  <span className="font-medium truncate">{c.name}</span>
-                                  <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                                    {c.mobile?.startsWith("no-phone_") ? "No phone" : c.mobile}
-                                  </span>
-                                </button>
-                              ))}
+                              .map((c: any) => {
+                                const phone = c.mobile?.startsWith("no-phone_") ? "No phone" : c.mobile;
+                                return (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onMouseDown={() => handleSelectLinked(c)}
+                                    className="w-full flex flex-col px-3 py-2 text-sm hover:bg-accent text-left"
+                                  >
+                                    <span className="font-medium">{c.name}</span>
+                                    <span className="text-xs text-muted-foreground">{phone}</span>
+                                  </button>
+                                );
+                              })}
                           </div>
                         )}
                       </div>
