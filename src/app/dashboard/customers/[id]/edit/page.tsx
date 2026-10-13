@@ -11,20 +11,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingButton } from "@/components/ui/loading-button";
-import { ArrowLeft, Search, X, Link2 } from "lucide-react";
+import { ArrowLeft, Search, X, Link2, Phone } from "lucide-react";
 import { customerSchema, type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
 import { ContactPickerButton } from "@/components/contact-picker-button";
 import { PhoneInput } from "@/components/phone-input";
-import { isValidPhoneNumber } from "libphonenumber-js";
 
 export default function EditCustomerPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const [useLinked, setUseLinked] = useState(false);
   const [linkedSearch, setLinkedSearch] = useState("");
-  const [showLinkedSearch, setShowLinkedSearch] = useState(false);
+  const [showLinkedDropdown, setShowLinkedDropdown] = useState(false);
 
   const { data: customer } = useQuery({
     queryKey: ["customer", params.id],
@@ -60,16 +60,12 @@ export default function EditCustomerPage() {
   });
 
   const linkedCustomerId = useWatch({ control, name: "linkedCustomerId" });
-  const mobileValue = useWatch({ control, name: "mobile" });
-  const mobileRequired = !linkedCustomerId;
-  const mobileValid = mobileValue && isValidPhoneNumber(mobileValue);
 
   useEffect(() => {
     if (customer) {
-      // Don't expose the internal no-phone placeholder in the UI
-      const displayMobile = customer.mobile?.startsWith("no-phone_")
-        ? ""
-        : (customer.mobile ?? "");
+      const hasPlaceholder = customer.mobile?.startsWith("no-phone_");
+      const displayMobile = hasPlaceholder ? "" : (customer.mobile ?? "");
+      const hasLink = !!customer.linkedCustomerId;
 
       reset({
         name: customer.name,
@@ -81,29 +77,38 @@ export default function EditCustomerPage() {
         linkedCustomerId: customer.linkedCustomerId || "",
       });
 
-      // Pre-fill linked search display label if a link exists
-      if (customer.linkedCustomer) {
-        setLinkedSearch(customer.linkedCustomer.name);
+      // Start in linked mode if the customer already has a link or no real phone
+      if (hasLink || hasPlaceholder) {
+        setUseLinked(true);
+        if (customer.linkedCustomer) {
+          setLinkedSearch(customer.linkedCustomer.name);
+        }
       }
     }
   }, [customer, reset]);
 
   const handleSelectLinked = (c: { id: string; name: string; mobile: string | null }) => {
-    // Prevent linking to self
     if (c.id === params.id) return;
     setValue("linkedCustomerId", c.id, { shouldValidate: true });
+    setValue("mobile", "", { shouldValidate: true });
     setLinkedSearch(c.name);
-    setShowLinkedSearch(false);
+    setShowLinkedDropdown(false);
   };
 
-  const handleClearLinked = () => {
-    setValue("linkedCustomerId", "", { shouldValidate: true });
+  const handleSwitchToLinked = () => {
+    setUseLinked(true);
+    setValue("mobile", "", { shouldValidate: false });
+  };
+
+  const handleSwitchToMobile = () => {
+    setUseLinked(false);
     setLinkedSearch("");
+    setValue("linkedCustomerId", "", { shouldValidate: false });
+    setValue("mobile", "", { shouldValidate: false });
   };
 
   const updateMutation = useMutation({
     mutationFn: async (data: CustomerInput) => {
-      // When mobile is blank (family member flow), send undefined so the API keeps placeholder
       const payload = {
         ...data,
         mobile: data.mobile?.trim() ? data.mobile.trim() : undefined,
@@ -154,94 +159,116 @@ export default function EditCustomerPage() {
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
               </div>
 
-              {/* Mobile */}
+              {/* Mobile OR Linked customer — toggled */}
               <div className="space-y-2">
-                <Label>
-                  Mobile{mobileRequired ? " *" : " (optional — linked customer)"}
-                </Label>
-                <div className="flex gap-2">
-                  <Controller
-                    name="mobile"
-                    control={control}
-                    render={({ field }) => (
-                      <PhoneInput
-                        value={field.value ?? ""}
-                        onChange={(value) => field.onChange(value || "")}
-                        placeholder="Enter phone number"
-                        defaultCountry="IN"
-                      />
-                    )}
-                  />
-                  <ContactPickerButton
-                    onPick={({ name, tel }) => {
-                      setValue("mobile", tel, { shouldValidate: true });
-                      if (name) setValue("name", name, { shouldValidate: true });
-                    }}
-                  />
-                </div>
-                {errors.mobile && (
-                  <p className="text-xs text-destructive">{errors.mobile.message}</p>
-                )}
-              </div>
-
-              {/* Linked Customer */}
-              <div className="space-y-2 sm:col-span-2">
-                <Label className="flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5" />
-                  Linked to (family member)
-                  <span className="text-xs text-muted-foreground font-normal ml-1">
-                    — select if this customer shares a family account
-                  </span>
-                </Label>
-
                 <input type="hidden" {...register("linkedCustomerId")} />
 
-                {linkedCustomerId ? (
-                  <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
-                    <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm flex-1 truncate">{linkedSearch}</span>
+                {!useLinked ? (
+                  <>
+                    <Label>Mobile *</Label>
+                    <div className="flex gap-2">
+                      <Controller
+                        name="mobile"
+                        control={control}
+                        render={({ field }) => (
+                          <PhoneInput
+                            value={field.value ?? ""}
+                            onChange={(value) => field.onChange(value || "")}
+                            placeholder="Enter phone number"
+                            defaultCountry="IN"
+                          />
+                        )}
+                      />
+                      <ContactPickerButton
+                        onPick={({ name, tel }) => {
+                          setValue("mobile", tel, { shouldValidate: true });
+                          if (name) setValue("name", name, { shouldValidate: true });
+                        }}
+                      />
+                    </div>
+                    {errors.mobile && (
+                      <p className="text-xs text-destructive">{errors.mobile.message}</p>
+                    )}
                     <button
                       type="button"
-                      onClick={handleClearLinked}
-                      className="text-muted-foreground hover:text-destructive"
+                      onClick={handleSwitchToLinked}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      <X className="h-4 w-4" />
+                      <Link2 className="h-3 w-3" />
+                      No phone? Link to a family member instead
                     </button>
-                  </div>
+                  </>
                 ) : (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      className="pl-9"
-                      placeholder="Search by name or phone..."
-                      value={linkedSearch}
-                      onChange={(e) => {
-                        setLinkedSearch(e.target.value);
-                        setShowLinkedSearch(true);
-                      }}
-                      onFocus={() => setShowLinkedSearch(true)}
-                      onBlur={() => setTimeout(() => setShowLinkedSearch(false), 150)}
-                    />
-                    {showLinkedSearch && linkedSearchResults?.customers?.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
-                        {linkedSearchResults.customers
-                          .filter((c: any) => c.id !== params.id) // exclude self
-                          .map((c: any) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onMouseDown={() => handleSelectLinked(c)}
-                              className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent text-left"
-                            >
-                              <span className="font-medium truncate">{c.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                                {c.mobile?.startsWith("no-phone_") ? "No phone" : c.mobile}
-                              </span>
-                            </button>
-                          ))}
+                  <>
+                    <Label>Linked to (family member) *</Label>
+
+                    {linkedCustomerId ? (
+                      <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
+                        <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate">{linkedSearch}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValue("linkedCustomerId", "", { shouldValidate: true });
+                            setLinkedSearch("");
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                          className="pl-9"
+                          placeholder="Search customer by name or phone..."
+                          value={linkedSearch}
+                          onChange={(e) => {
+                            setLinkedSearch(e.target.value);
+                            setShowLinkedDropdown(true);
+                          }}
+                          onFocus={() => setShowLinkedDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowLinkedDropdown(false), 150)}
+                        />
+                        {showLinkedDropdown && linkedSearchResults?.customers?.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
+                            {linkedSearchResults.customers
+                              .filter((c: any) => c.id !== params.id)
+                              .map((c: any) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onMouseDown={() => handleSelectLinked(c)}
+                                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent text-left"
+                                >
+                                  <span className="font-medium truncate">{c.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                                    {c.mobile?.startsWith("no-phone_") ? "No phone" : c.mobile}
+                                  </span>
+                                </button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+
+                    {errors.linkedCustomerId && (
+                      <p className="text-xs text-destructive">{errors.linkedCustomerId.message}</p>
+                    )}
+                    {errors.mobile && (
+                      <p className="text-xs text-destructive">{errors.mobile.message}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleSwitchToMobile}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Phone className="h-3 w-3" />
+                      Has their own phone? Enter mobile instead
+                    </button>
+                  </>
                 )}
               </div>
 
