@@ -2,23 +2,50 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatStatus, getStatusColor } from "@/lib/utils";
-import { IndianRupee, TrendingUp, Clock } from "lucide-react";
+import { IndianRupee, TrendingUp, Clock, CalendarRange } from "lucide-react";
+
+// Default: last 30 days
+function defaultRange(): DateRange {
+  return { from: subDays(new Date(), 29), to: new Date() };
+}
+
+function formatRangeLabel(range: DateRange): string {
+  if (!range.from) return "Select range";
+  if (!range.to) return format(range.from, "dd MMM yyyy");
+  return `${format(range.from, "dd MMM")} – ${format(range.to, "dd MMM yyyy")}`;
+}
 
 export function DashboardReports() {
-  const [days, setDays] = useState(30);
+  const [range, setRange] = useState<DateRange>(defaultRange);
+  const [open, setOpen] = useState(false);
+
+  const fromIso = range.from ? startOfDay(range.from).toISOString() : undefined;
+  const toIso   = range.to   ? endOfDay(range.to).toISOString()     : undefined;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["reports", days],
+    queryKey: ["reports", fromIso, toIso],
     queryFn: async () => {
-      const res = await fetch(`/api/reports?days=${days}`);
+      if (!fromIso || !toIso) return null;
+      const params = new URLSearchParams({ from: fromIso, to: toIso });
+      const res = await fetch(`/api/reports?${params}`);
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: !!fromIso && !!toIso,
   });
+
+  // Days span for the label in the Orders card
+  const spanDays = range.from && range.to
+    ? Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000) + 1
+    : 0;
 
   if (isLoading) {
     return (
@@ -37,22 +64,31 @@ export function DashboardReports() {
 
   return (
     <div className="space-y-4">
-      {/* Period selector */}
-      <div className="flex items-center justify-between">
+      {/* Header + date range picker */}
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Business Overview</h3>
-        <div className="flex gap-1">
-          {[7, 30, 90].map((d) => (
-            <Button
-              key={d}
-              size="sm"
-              variant={days === d ? "default" : "ghost"}
-              className="h-7 px-2 text-xs"
-              onClick={() => setDays(d)}
-            >
-              {d}d
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1.5">
+              <CalendarRange className="h-3.5 w-3.5 shrink-0" />
+              {formatRangeLabel(range)}
             </Button>
-          ))}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={range}
+              onSelect={(r) => {
+                if (r) setRange(r);
+                if (r?.from && r?.to) setOpen(false);
+              }}
+              toDate={new Date()}
+              fromYear={2020}
+              toYear={new Date().getFullYear()}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Revenue cards — 1 col on xs, 3 on sm+ */}
@@ -79,7 +115,7 @@ export function DashboardReports() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold">{summary.ordersInPeriod || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Orders ({days}d)</p>
+                <p className="text-[10px] text-muted-foreground">Orders ({spanDays}d)</p>
               </div>
             </div>
           </CardContent>

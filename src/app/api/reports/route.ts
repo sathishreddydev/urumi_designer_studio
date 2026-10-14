@@ -8,8 +8,14 @@ export const GET = withPermission(
   { resource: "customer", action: "read" }, // Admin can view reports
   async (request) => {
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get("days") || "30");
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // Prefer explicit from/to ISO params (calendar picker); fall back to legacy `days`
+    const fromParam = searchParams.get("from");
+    const toParam   = searchParams.get("to");
+    const days      = parseInt(searchParams.get("days") || "30");
+
+    const since = fromParam ? new Date(fromParam) : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = toParam   ? new Date(toParam)   : new Date();
 
     // Run all queries in parallel
     const [
@@ -36,10 +42,10 @@ export const GET = withPermission(
       // Total revenue in period (sum of payments within the date window)
       db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` })
         .from(payments)
-        .where(gte(payments.createdAt, since)),
+        .where(and(gte(payments.createdAt, since), lte(payments.createdAt, until))),
 
-      // Orders in last N days
-      db.select({ count: count() }).from(orders).where(gte(orders.createdAt, since)),
+      // Orders in the selected date range
+      db.select({ count: count() }).from(orders).where(and(gte(orders.createdAt, since), lte(orders.createdAt, until))),
 
       // Average production time (from PRODUCTION_READY to PRODUCTION_COMPLETED)
       db.execute(sql`
@@ -69,7 +75,7 @@ export const GET = withPermission(
         avgProductionDays: avgDays ? Number(avgDays) : null,
       },
       statusBreakdown,
-      period: days,
+      period: { from: since.toISOString(), to: until.toISOString() },
     });
   }
 );
