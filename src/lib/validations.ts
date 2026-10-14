@@ -27,7 +27,8 @@ export const customerBaseSchema = z.object({
   occasion: z.string().optional(),
   notes: z.string().optional(),
   // ID of the primary customer this record is linked to (e.g. mother's profile)
-  linkedCustomerId: z.string().optional(),
+  // Coerce empty string to undefined so a blank selection doesn't violate the FK constraint
+  linkedCustomerId: z.string().optional().transform((val) => val?.trim() || undefined),
 });
 
 // Full schema used for creation — mobile required unless a linkedCustomerId is provided

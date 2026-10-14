@@ -372,6 +372,8 @@ export default function OrderDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
+      // Invalidate outfit transitions so "Delivered" button unblocks if now fully paid
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions"] });
       setShowAddPayment(false);
       setPaymentFormKey((prev) => prev + 1);
       setPaymentAmountError("");
@@ -402,6 +404,8 @@ export default function OrderDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", params.id] });
+      // Invalidate outfit transitions so "Delivered" button re-checks payment status
+      queryClient.invalidateQueries({ queryKey: ["outfit-transitions"] });
       toast({ title: "Payment Voided" });
     },
   });
