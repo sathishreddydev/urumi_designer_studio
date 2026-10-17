@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { BodyMeasurementsEditDialog } from "./body-measurements-edit-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +144,12 @@ export interface OutfitMeasurementsProps {
    * All measurement versions for this customer (for version history)
    */
   allMeasurementVersions?: CustomerMeasurement[];
+
+  /**
+   * Called after body measurements are saved via the inline edit dialog.
+   * Parent should refresh its own data (e.g. invalidate the outfit query).
+   */
+  onBodyMeasurementsSaved?: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -158,6 +164,7 @@ export function OutfitMeasurements({
   role,
   readOnly = false,
   allMeasurementVersions = [],
+  onBodyMeasurementsSaved,
 }: OutfitMeasurementsProps) {
   const [newGarmentField, setNewGarmentField] = useState("");
   // field name editing: key = current field name, value = draft name being edited
@@ -237,12 +244,14 @@ export function OutfitMeasurements({
         <p className="text-xs text-muted-foreground italic py-1">
           No body measurements.{" "}
           {customer?.id && !isMaster && !readOnly && (
-            <Link
-              href={`/dashboard/customers/${customer.id}`}
-              className="text-primary hover:underline"
-            >
-              Add →
-            </Link>
+            <BodyMeasurementsEditDialog
+              customerId={customer.id}
+              customerName={customer.name}
+              currentValues={customerMeasurements?.values}
+              onSaved={onBodyMeasurementsSaved}
+              triggerLabel="Add →"
+              triggerClassName="text-primary hover:underline"
+            />
           )}
         </p>
       );
@@ -310,14 +319,14 @@ export function OutfitMeasurements({
           );
         })()}
 
-        {/* Edit link — detail page only */}
+        {/* Edit link — opens inline dialog (same flow as the customer page) */}
         {!readOnly && customer?.id && !isMaster && (
-          <Link
-            href={`/dashboard/customers/${customer.id}`}
-            className="text-[11px] text-primary hover:underline mt-1 inline-block"
-          >
-            Edit body measurements →
-          </Link>
+          <BodyMeasurementsEditDialog
+            customerId={customer.id}
+            customerName={customer.name}
+            currentValues={customerMeasurements?.values}
+            onSaved={onBodyMeasurementsSaved}
+          />
         )}
       </div>
     );

@@ -28,6 +28,8 @@ interface MeasurementZoomModalProps {
   outfitType?: string;
   role?: string;
   allMeasurementVersions?: CustomerMeasurement[];
+  /** Called after body measurements are saved via the inline edit dialog */
+  onBodyMeasurementsSaved?: () => void;
 }
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
@@ -43,6 +45,7 @@ export function MeasurementZoomModal({
   outfitType,
   role,
   allMeasurementVersions = [],
+  onBodyMeasurementsSaved,
 }: MeasurementZoomModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -68,6 +71,7 @@ export function MeasurementZoomModal({
               onGarmentMeasurementsDirty={onGarmentMeasurementsDirty}
               role={role}
               allMeasurementVersions={allMeasurementVersions}
+              onBodyMeasurementsSaved={onBodyMeasurementsSaved}
             />
           </div>
 

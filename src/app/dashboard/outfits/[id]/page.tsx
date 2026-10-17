@@ -1208,6 +1208,9 @@ export default function OutfitDetailPage() {
               role={role}
               readOnly={isLocked}
               allMeasurementVersions={outfit.allMeasurementVersions || []}
+              onBodyMeasurementsSaved={() =>
+                queryClient.invalidateQueries({ queryKey: ["outfit", params.id] })
+              }
             />
           </div>
 
@@ -1316,6 +1319,9 @@ export default function OutfitDetailPage() {
         outfitType={outfit.type}
         role={role}
         allMeasurementVersions={outfit.allMeasurementVersions || []}
+        onBodyMeasurementsSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["outfit", params.id] })
+        }
       />
     </div>
   );
