@@ -99,7 +99,7 @@ export function BodyMeasurementsEditDialog({
   // custom fields already stored, so the user sees the full form each time.
   useEffect(() => {
     if (!open) return;
-    const latest = currentValues || {};
+    const latest: Record<string, string> = currentValues || {};
     const prefilled: Record<string, string> = {};
     ALL_BODY_FIELDS.forEach((k) => {
       prefilled[k] = latest[k] || "";

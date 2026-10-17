@@ -182,6 +182,11 @@ export function OutfitMeasurements({
 
   // Determine which measurement to display
   const displayedMeasurement = viewingVersion || customerMeasurements;
+
+  // Latest body measurement values, captured here (outside the render IIFE)
+  // so it isn't narrowed by the `!displayedMeasurement` check below.
+  const latestMeasurementValues: Record<string, string> | null =
+    customerMeasurements?.values ?? null;
   
   // Check if user is viewing an older version
   const isViewingOlderVersion = viewingVersion && 
@@ -247,7 +252,7 @@ export function OutfitMeasurements({
             <BodyMeasurementsEditDialog
               customerId={customer.id}
               customerName={customer.name}
-              currentValues={customerMeasurements?.values}
+              currentValues={latestMeasurementValues}
               onSaved={onBodyMeasurementsSaved}
               triggerLabel="Add →"
               triggerClassName="text-primary hover:underline"
@@ -324,7 +329,7 @@ export function OutfitMeasurements({
           <BodyMeasurementsEditDialog
             customerId={customer.id}
             customerName={customer.name}
-            currentValues={customerMeasurements?.values}
+            currentValues={latestMeasurementValues}
             onSaved={onBodyMeasurementsSaved}
           />
         )}
