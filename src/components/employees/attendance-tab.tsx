@@ -44,7 +44,6 @@ function StatusPills({
         ) : (
           <span className="h-5 w-5 rounded text-[9px] flex items-center justify-center text-muted-foreground/40">—</span>
         )}
-        <LockIcon className="h-2.5 w-2.5 text-muted-foreground/50" />
       </div>
     );
   }
