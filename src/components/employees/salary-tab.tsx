@@ -209,13 +209,7 @@ export function SalaryTab() {
                 </div>
             )}
 
-            {/* ── Summary banner ── */}
-            {!isLoading && unpaidCount > 0 && (
-                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span><span className="font-semibold">{unpaidCount} employee{unpaidCount > 1 ? "s" : ""}</span> unpaid for this period</span>
-                </div>
-            )}
+
             {!isLoading && !isWeek && (
                 <p className="text-xs text-muted-foreground">
                     Monthly view shows only monthly-cycle employees. Weekly employees are paid via the Weekly view.
