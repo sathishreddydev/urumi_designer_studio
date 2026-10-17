@@ -145,6 +145,13 @@ export function SalaryTab() {
 
     const unpaidCount = payroll.filter((p: any) => !p.paidThisPeriod).length;
 
+    // Salary totals for the selected period
+    const totalToPay = payroll.reduce((sum: number, p: any) =>
+        sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : p.calculation.netPayable), 0);
+    const totalPaid = payroll.reduce((sum: number, p: any) =>
+        sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : 0), 0);
+    const totalPending = totalToPay - totalPaid;
+
     return (
         <div className="space-y-4">
 
@@ -183,6 +190,24 @@ export function SalaryTab() {
                     Today
                 </button>
             </div>
+
+            {/* ── Salary totals ── */}
+            {!isLoading && payroll.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg border bg-card px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Salary</p>
+                        <p className="text-base font-bold">₹{totalToPay.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-green-700">Paid</p>
+                        <p className="text-base font-bold text-green-700">₹{totalPaid.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-amber-700">Pending</p>
+                        <p className="text-base font-bold text-amber-700">₹{totalPending.toLocaleString("en-IN")}</p>
+                    </div>
+                </div>
+            )}
 
             {/* ── Summary banner ── */}
             {!isLoading && unpaidCount > 0 && (
