@@ -99,7 +99,7 @@ export function AttendanceTab() {
   const queryClient = useQueryClient();
   const todayYMD = toYMD(new Date());
 
-  const [mode, setMode]     = useState<"week" | "month">("week");
+  const [mode, setMode] = useState<"week" | "month">("week");
   const [anchor, setAnchor] = useState(new Date());
   const [calOpen, setCalOpen] = useState(false);
 
@@ -151,11 +151,11 @@ export function AttendanceTab() {
     const keys = new Set<string>();
     for (const payment of salaryPayments as any[]) {
       const start = payment.periodStart as string;
-      const end   = payment.periodEnd   as string;
-      const empId = payment.employeeId  as string;
+      const end = payment.periodEnd as string;
+      const empId = payment.employeeId as string;
       // iterate each date in the paid range
       const cur = new Date(start + "T00:00:00");
-      const last = new Date(end   + "T00:00:00");
+      const last = new Date(end + "T00:00:00");
       while (cur <= last) {
         keys.add(`${empId}|${cur.toISOString().slice(0, 10)}`);
         cur.setDate(cur.getDate() + 1);
@@ -214,7 +214,7 @@ export function AttendanceTab() {
     const key = `${empId}|${date}`;
     if (optimistic[key] !== undefined) return optimistic[key] as StatusKey;
     const existing = recMap[key]?.status;
-    
+
     // Auto-mark Sundays as holiday if no status exists
     if (!existing) {
       const dateObj = new Date(date + "T00:00:00");
@@ -222,7 +222,7 @@ export function AttendanceTab() {
         return "HOLIDAY";
       }
     }
-    
+
     return (existing ?? "") as StatusKey;
   }
 
@@ -236,23 +236,23 @@ export function AttendanceTab() {
   // Auto-save Sundays as holidays when they're displayed
   React.useEffect(() => {
     if (employees.length === 0 || isLoading) return;
-    
+
     const sundaysToMark: { employeeId: string; date: string; status: string }[] = [];
     const sundays = displayDates.filter((d) => d.getDay() === 0);
-    
+
     for (const emp of employees) {
       for (const sunday of sundays) {
         const ymd = toYMD(sunday);
         const key = `${emp.id}|${ymd}`;
         const existing = recMap[key];
-        
+
         // Only auto-mark if no record exists yet and not in a paid period
         if (!existing && !optimistic[key] && !isLocked(emp.id, ymd)) {
           sundaysToMark.push({ employeeId: emp.id, date: ymd, status: "HOLIDAY" });
         }
       }
     }
-    
+
     if (sundaysToMark.length > 0) {
       // Mark optimistically first
       const newOptimistic: Record<string, string> = {};
@@ -260,7 +260,7 @@ export function AttendanceTab() {
         newOptimistic[`${r.employeeId}|${r.date}`] = "HOLIDAY";
       });
       setOptimistic((prev) => ({ ...prev, ...newOptimistic }));
-      
+
       // Then save to database
       saveMutation.mutate(sundaysToMark);
     }
@@ -306,9 +306,8 @@ export function AttendanceTab() {
               <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
                 {(["week", "month"] as const).map((m) => (
                   <button key={m} onClick={() => setMode(m)}
-                    className={`flex-1 rounded py-1 text-xs font-medium transition-colors capitalize ${
-                      mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                    }`}
+                    className={`flex-1 rounded py-1 text-xs font-medium transition-colors capitalize ${mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                      }`}
                   >{m}</button>
                 ))}
               </div>
@@ -338,9 +337,8 @@ export function AttendanceTab() {
         <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
           {(["week", "month"] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)}
-              className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${
-                mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                }`}
             >{m}</button>
           ))}
         </div>
@@ -382,11 +380,10 @@ export function AttendanceTab() {
                     const isSunday = d.getDay() === 0;
                     return (
                       <th key={ymd}
-                        className={`py-2 text-center font-medium border-r ${
-                          isToday ? "text-primary bg-primary/5" : 
-                          isSunday ? "text-blue-600 bg-blue-50/50" : 
-                          "text-muted-foreground"
-                        }`}
+                        className={`py-2 text-center font-medium border-r ${isToday ? "text-primary bg-primary/5" :
+                            isSunday ? "text-blue-600 bg-blue-50/50" :
+                              "text-muted-foreground"
+                          }`}
                         style={{ minWidth: mode === "week" ? "7rem" : "2.2rem", padding: mode === "week" ? "0.5rem 0.25rem" : "0.5rem 0.1rem" }}
                       >
                         {mode === "week" ? (
@@ -415,9 +412,8 @@ export function AttendanceTab() {
                         style={{ maxWidth: mode === "week" ? "8rem" : "6.5rem" }}>
                         {emp.name}
                       </Link>
-                      {mode === "week" && (
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{emp.jobRole}</p>
-                      )}
+                      <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{emp.jobRole}</p>
+
                     </td>
                     {displayDates.map((d) => {
                       const ymd = toYMD(d);
@@ -427,12 +423,11 @@ export function AttendanceTab() {
                       const locked = isLocked(emp.id, ymd);
                       return (
                         <td key={ymd}
-                          className={`text-center border-r ${
-                            locked   ? "bg-muted/60" :
-                            isToday  ? "bg-primary/5" :
-                            isSunday ? "bg-blue-50/30" :
-                            ""
-                          }`}
+                          className={`text-center border-r ${locked ? "bg-muted/60" :
+                              isToday ? "bg-primary/5" :
+                                isSunday ? "bg-blue-50/30" :
+                                  ""
+                            }`}
                           style={{ padding: mode === "week" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
                         >
                           <StatusPills
