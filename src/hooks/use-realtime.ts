@@ -72,6 +72,10 @@ function handleEvent(data: AppEvent, queryClient: ReturnType<typeof useQueryClie
       queryClient.invalidateQueries({ queryKey: ["outfits"] });
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["order", data.orderId] });
+      if (data.customerId) {
+        queryClient.invalidateQueries({ queryKey: ["customer", data.customerId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       break;
 

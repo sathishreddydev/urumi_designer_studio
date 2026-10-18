@@ -145,6 +145,32 @@ export const POST = withAuth(async (request, { params, session }) => {
     }
   }
 
+  // Emit a realtime event so other tabs/pages refresh after a status change.
+  // Mirrors the PATCH route in api/outfits/[id]/route.ts.
+  const { eventBus } = await import("@/lib/events");
+  const [outfitRow] = await db
+    .select({ orderId: outfits.orderId })
+    .from(outfits)
+    .where(eq(outfits.id, id))
+    .limit(1);
+  let transitionCustomerId: string | undefined;
+  if (outfitRow?.orderId) {
+    const [ord] = await db
+      .select({ customerId: orders.customerId })
+      .from(orders)
+      .where(eq(orders.id, outfitRow.orderId))
+      .limit(1);
+    transitionCustomerId = ord?.customerId;
+  }
+  eventBus.emit({
+    type: "outfit_updated",
+    outfitId: id,
+    orderId: outfitRow?.orderId,
+    customerId: transitionCustomerId,
+    userId: session.id,
+    timestamp: Date.now(),
+  });
+
   return NextResponse.json({
     status: newStatus,
     availableTransitions: nextTransitions,

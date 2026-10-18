@@ -93,6 +93,11 @@ function OutfitStatusUpdater({
       queryClient.invalidateQueries({
         queryKey: ["outfit-transitions", outfitId],
       });
+      // Refresh the customer page so the updated outfit status shows on
+      // navigate-back instead of the stale cached data.
+      queryClient.invalidateQueries({ queryKey: ["customer"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Status updated" });
     },
     onError: (error: Error) => {

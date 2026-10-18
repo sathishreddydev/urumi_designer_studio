@@ -219,6 +219,18 @@ export default function OutfitDetailPage() {
       queryClient.invalidateQueries({
         queryKey: ["outfit-transitions", params.id],
       });
+      // Refresh related views so the updated status shows on navigate-back
+      const custId = outfit?.customer?.id;
+      const ordId = orderId || outfit?.order?.id;
+      if (custId) {
+        queryClient.invalidateQueries({ queryKey: ["customer", custId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      if (ordId) {
+        queryClient.invalidateQueries({ queryKey: ["order", ordId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Status updated",
         description: "Outfit transitioned successfully.",
