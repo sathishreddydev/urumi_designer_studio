@@ -84,25 +84,19 @@ export default function EditCustomerPage() {
           </Button>
         </Link>
         <h1 className="text-2xl font-bold">Edit Customer</h1>
+        <span>{customer.name}</span>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{customer.name}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CustomerForm
-            defaultValues={defaultValues}
-            editingCustomerId={params.id as string}
-            onSubmit={(data) => updateMutation.mutate(data)}
-            isPending={updateMutation.isPending}
-            error={updateMutation.error?.message}
-            submitLabel="Save Changes"
-            submitLoadingLabel="Saving..."
-            cancelHref={`/dashboard/customers/${params.id}`}
-          />
-        </CardContent>
-      </Card>
+      <CustomerForm
+        defaultValues={defaultValues}
+        editingCustomerId={params.id as string}
+        onSubmit={(data) => updateMutation.mutate(data)}
+        isPending={updateMutation.isPending}
+        error={updateMutation.error?.message}
+        submitLabel="Save Changes"
+        submitLoadingLabel="Saving..."
+        cancelHref={`/dashboard/customers/${params.id}`}
+      />
     </div>
   );
 }

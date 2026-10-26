@@ -43,21 +43,14 @@ export default function NewCustomerPage() {
         <h1 className="text-2xl font-bold">New Customer</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Customer Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CustomerForm
-            onSubmit={(data) => createMutation.mutate(data)}
-            isPending={createMutation.isPending}
-            error={createMutation.error?.message}
-            submitLabel="Create Customer"
-            submitLoadingLabel="Creating..."
-            cancelHref="/dashboard/customers"
-          />
-        </CardContent>
-      </Card>
+      <CustomerForm
+        onSubmit={(data) => createMutation.mutate(data)}
+        isPending={createMutation.isPending}
+        error={createMutation.error?.message}
+        submitLabel="Create Customer"
+        submitLoadingLabel="Creating..."
+        cancelHref="/dashboard/customers"
+      />
     </div>
   );
 }
