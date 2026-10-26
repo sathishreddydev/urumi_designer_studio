@@ -54,7 +54,7 @@ export default function CustomersPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="h-28 pt-6" />
@@ -74,7 +74,7 @@ export default function CustomersPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data?.customers?.map((customer: any) => {
               const hasPhone = customer.mobile && !customer.mobile.startsWith("no-phone_");
               const linkedPhone = customer.linkedCustomer?.mobile &&
