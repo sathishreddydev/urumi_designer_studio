@@ -54,7 +54,7 @@ export default function CustomersPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="h-28 pt-6" />
@@ -89,7 +89,7 @@ export default function CustomersPage() {
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-base leading-tight">{customer.name}</CardTitle>
                         <div className="flex items-center gap-1 shrink-0">
-                          {customer.linkedCustomer && (
+                          {/* {customer.linkedCustomer && (
                             <span
                               title={`Linked to ${customer.linkedCustomer.name}`}
                               className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5"
@@ -97,7 +97,7 @@ export default function CustomersPage() {
                               <Link2 className="h-2.5 w-2.5" />
                               {customer.linkedCustomer.name.split(" ")[0]}
                             </span>
-                          )}
+                          )} */}
                           {customer.orders?.length > 0 && (
                             <Badge variant="secondary">{customer.orders.length}</Badge>
                           )}
@@ -120,14 +120,14 @@ export default function CustomersPage() {
                           <span className="italic">No phone</span>
                         )}
                       </div>
-                      {customer.email && (
+                      {/* {customer.email && (
                         <div className="flex items-center gap-2">
                           <Mail className="h-3 w-3 shrink-0" /> {customer.email}
                         </div>
                       )}
                       {customer.occasion && (
                         <Badge variant="outline" className="mt-2">{customer.occasion}</Badge>
-                      )}
+                      )} */}
                     </CardContent>
                   </Card>
                 </Link>

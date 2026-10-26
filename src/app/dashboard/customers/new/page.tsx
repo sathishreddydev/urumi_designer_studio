@@ -259,16 +259,16 @@ export default function NewCustomerPage() {
               </div>
 
               {/* Occasion */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="occasion">Occasion</Label>
                 <Input id="occasion" {...register("occasion")} placeholder="e.g., Wedding, Reception" />
-              </div>
+              </div> */}
 
               {/* Notes */}
-              <div className="space-y-2 sm:col-span-2">
+              {/* <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea id="notes" {...register("notes")} rows={2} placeholder="Any additional notes" />
-              </div>
+              </div> */}
             </div>
 
             {createMutation.error && (
