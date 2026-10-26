@@ -302,16 +302,16 @@ export default function EditCustomerPage() {
               </div>
 
               {/* Occasion */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label>Occasion</Label>
                 <Input {...register("occasion")} />
-              </div>
+              </div> */}
 
               {/* Notes */}
-              <div className="space-y-2 sm:col-span-2">
+              {/* <div className="space-y-2 sm:col-span-2">
                 <Label>Notes</Label>
                 <Textarea {...register("notes")} rows={2} />
-              </div>
+              </div> */}
             </div>
 
             {updateMutation.error && (
