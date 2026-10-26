@@ -579,29 +579,51 @@ export default function OutfitDetailPage() {
         {/* Right side: action button(s) + delete — always stay on the right */}
         <div className="flex items-center gap-1.5 shrink-0">
           <TooltipProvider delayDuration={200}>
-            {availableTransitions.map((t: any) => (
-              <Tooltip key={t.status}>
-                <TooltipTrigger asChild>
-                  {/* span wrapper required so tooltip works on disabled buttons */}
-                  <span className={t.blocked ? "cursor-not-allowed" : undefined}>
-                    <LoadingButton
-                      size="sm"
-                      loading={!t.blocked && transitionMutation.isPending}
-                      onClick={() => !t.blocked && transitionMutation.mutate({ newStatus: t.status })}
-                      className="text-xs h-8 px-2.5 whitespace-nowrap"
-                      disabled={t.blocked}
-                    >
-                      <ArrowRight className="h-3 w-3 mr-1 shrink-0" />
-                      <span className="hidden sm:inline">{t.label}</span>
-                      <span className="sm:hidden">Next</span>
-                    </LoadingButton>
-                  </span>
-                </TooltipTrigger>
-                {t.blocked && t.reason && (
-                  <TooltipContent side="bottom">{t.reason}</TooltipContent>
-                )}
-              </Tooltip>
-            ))}
+            {availableTransitions.map((t: any) => {
+              // Short labels for mobile — single-word / abbreviation so they fit the header
+              const SHORT_LABELS: Record<string, string> = {
+                DESIGN_IN_PROGRESS: "Design",
+                WAITING_FOR_REFERENCES: "Refs",
+                WAITING_FOR_DEPENDENCIES: "Deps",
+                PRODUCTION_READY: "Prod",
+                PATTERN_DRAFTING: "Pattern",
+                MAGGAM_WORK: "Maggam",
+                MAGGAM_REVIEW: "Review",
+                MAGGAM_REVIEWED: "✓ Maggam",
+                FABRIC_CUTTING: "Cut",
+                STITCHING: "Stitch",
+                PRODUCTION_COMPLETED: "✓ Prod",
+                TRIAL: "Trial",
+                ALTERATION: "Alter",
+                QC: "QC",
+                READY_FOR_DELIVERY: "Ready",
+                DELIVERED: "✓ Done",
+              };
+              const shortLabel = SHORT_LABELS[t.status] ?? t.label;
+              return (
+                <Tooltip key={t.status}>
+                  <TooltipTrigger asChild>
+                    {/* span wrapper required so tooltip works on disabled buttons */}
+                    <span className={t.blocked ? "cursor-not-allowed" : undefined}>
+                      <LoadingButton
+                        size="sm"
+                        loading={!t.blocked && transitionMutation.isPending}
+                        onClick={() => !t.blocked && transitionMutation.mutate({ newStatus: t.status })}
+                        className="text-xs h-8 px-2 sm:px-2.5 whitespace-nowrap"
+                        disabled={t.blocked}
+                      >
+                        <ArrowRight className="h-3 w-3 shrink-0 sm:mr-1" />
+                        <span className="hidden sm:inline">{t.label}</span>
+                        <span className="sm:hidden ml-0.5">{shortLabel}</span>
+                      </LoadingButton>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t.blocked && t.reason ? t.reason : `Move to: ${t.label}`}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </TooltipProvider>
           {can("delete", "outfit") && (
             <Button
@@ -1550,10 +1572,11 @@ function ReferenceSection({
               />
             ) : (
               <>
-                <label>
+                <label title="Upload image">
                   <Button size="sm" variant="outline" asChild>
                     <span>
-                      <Plus className="h-3 w-3 mr-1" /> Upload Image
+                      <Plus className="h-3 w-3 sm:mr-1" />
+                      <span className="hidden sm:inline">Upload</span>
                     </span>
                   </Button>
                   <input
@@ -1572,12 +1595,11 @@ function ReferenceSection({
                 <Button
                   size="sm"
                   variant="outline"
+                  title="Take photo"
                   onClick={() => setCameraOpen(true)}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Camera className="h-3.5 w-3.5" />
-                    Take Photo
-                  </span>
+                  <Camera className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">Photo</span>
                 </Button>
                 <CameraCaptureModal
                   open={cameraOpen}
@@ -1819,10 +1841,11 @@ function CustomerMaterialSection({
               />
             ) : (
               <>
-                <label>
+                <label title="Upload image">
                   <Button size="sm" variant="outline" asChild>
                     <span>
-                      <Plus className="h-3 w-3 mr-1" /> Upload
+                      <Plus className="h-3 w-3 sm:mr-1" />
+                      <span className="hidden sm:inline">Upload</span>
                     </span>
                   </Button>
                   <input
@@ -1841,12 +1864,11 @@ function CustomerMaterialSection({
                 <Button
                   size="sm"
                   variant="outline"
+                  title="Take photo"
                   onClick={() => setCameraOpen(true)}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Camera className="h-3.5 w-3.5" />
-                    Take Photo
-                  </span>
+                  <Camera className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">Photo</span>
                 </Button>
                 <CameraCaptureModal
                   open={cameraOpen}
@@ -1981,7 +2003,7 @@ function CompletionPhotosSection({
             Completion Photos
           </h3>
           <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
-            Finished Work
+            Finished
           </span>
         </div>
 
@@ -1996,10 +2018,11 @@ function CompletionPhotosSection({
               />
             ) : (
               <>
-                <label>
+                <label title="Upload image">
                   <Button size="sm" variant="outline" asChild>
                     <span>
-                      <Plus className="h-3 w-3 mr-1" /> Upload
+                      <Plus className="h-3 w-3 sm:mr-1" />
+                      <span className="hidden sm:inline">Upload</span>
                     </span>
                   </Button>
                   <input
@@ -2018,12 +2041,11 @@ function CompletionPhotosSection({
                 <Button
                   size="sm"
                   variant="outline"
+                  title="Take photo"
                   onClick={() => setCameraOpen(true)}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Camera className="h-3.5 w-3.5" />
-                    Take Photo
-                  </span>
+                  <Camera className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">Photo</span>
                 </Button>
                 <CameraCaptureModal
                   open={cameraOpen}
