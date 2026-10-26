@@ -22,10 +22,8 @@ import { PaymentConfirmDialog } from "./advances-tab";
 import {
     currentWeekMonday,
     currentYearMonth,
-    nextPeriod,
-    periodLabel,
-    prevPeriod
 } from "./utils";
+import { PeriodNavigator } from "./period-navigator";
 
 export function SalaryTab() {
     const queryClient = useQueryClient();
@@ -156,40 +154,14 @@ export function SalaryTab() {
         <div className="space-y-4">
 
             {/* ── Period selector ── */}
-            <div className="flex items-center gap-2 flex-wrap">
-                {/* Mode toggle */}
-                <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
-                    {(["weekly", "monthly"] as const).map((m) => (
-                        <button key={m} onClick={() => setViewMode(m)}
-                            className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${viewMode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                                }`}
-                        >{m}</button>
-                    ))}
-                </div>
-
-                {/* Period navigator */}
-                <div className="flex items-center gap-1 rounded-md border px-1 py-0.5">
-                    <button
-                        onClick={() => isWeek ? setWeekPeriod(prevPeriod(period, true)) : setMonthPeriod(prevPeriod(period, false))}
-                        className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"
-                    >‹</button>
-                    <span className="text-sm font-medium px-2 min-w-[10rem] text-center">
-                        {periodLabel(period, isWeek)}
-                    </span>
-                    <button
-                        onClick={() => isWeek ? setWeekPeriod(nextPeriod(period, true)) : setMonthPeriod(nextPeriod(period, false))}
-                        className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"
-                    >›</button>
-                </div>
-
-                {/* Jump to current */}
-                <button
-                    onClick={() => { setMonthPeriod(currentYearMonth()); setWeekPeriod(currentWeekMonday()); }}
-                    className="text-xs text-primary hover:underline"
-                >
-                    Today
-                </button>
-            </div>
+            <PeriodNavigator
+                mode={viewMode}
+                weekPeriod={weekPeriod}
+                monthPeriod={monthPeriod}
+                onModeChange={setViewMode}
+                onWeekChange={setWeekPeriod}
+                onMonthChange={setMonthPeriod}
+            />
 
             {/* ── Salary totals ── */}
             {!isLoading && payroll.length > 0 && (

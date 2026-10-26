@@ -1,25 +1,23 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarIcon,
   LockIcon,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import {
+  currentWeekMonday,
+  currentYearMonth,
   getMonthDates,
   getWeekDates,
   PILL_COLORS,
   PRIMARY_STATUSES,
-  rangeLabel,
   StatusKey,
   toYMD,
 } from "./utils";
+import { PeriodNavigator } from "./period-navigator";
 
 function StatusPills({
   status,
@@ -98,14 +96,22 @@ export function AttendanceTab() {
   const queryClient = useQueryClient();
   const todayYMD = toYMD(new Date());
 
-  const [mode, setMode] = useState<"week" | "month">("week");
-  const [anchor, setAnchor] = useState(new Date());
-  const [calOpen, setCalOpen] = useState(false);
+  const [mode, setMode] = useState<"weekly" | "monthly">("weekly");
+  const [weekPeriod, setWeekPeriod] = useState(currentWeekMonday());
+  const [monthPeriod, setMonthPeriod] = useState(currentYearMonth());
 
-  const displayDates = useMemo(
-    () => mode === "week" ? getWeekDates(anchor) : getMonthDates(anchor),
-    [mode, anchor]
-  );
+  const isWeek = mode === "weekly";
+  const period = isWeek ? weekPeriod : monthPeriod;
+
+  const displayDates = useMemo(() => {
+    if (isWeek) {
+      const anchor = new Date(weekPeriod + "T00:00:00");
+      return getWeekDates(anchor);
+    } else {
+      const [y, m] = monthPeriod.split("-").map(Number);
+      return getMonthDates(new Date(y, m - 1, 1));
+    }
+  }, [isWeek, weekPeriod, monthPeriod]);
 
   const { data: empData, isLoading: empLoading } = useQuery({
     queryKey: ["employees", ""],
@@ -282,66 +288,14 @@ export function AttendanceTab() {
     <div className="space-y-4">
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Popover open={calOpen} onOpenChange={setCalOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 font-medium">
-              <CalendarIcon className="h-4 w-4" />
-              {rangeLabel(displayDates, mode)}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto p-0">
-            <div className="p-3 border-b space-y-2">
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1 text-xs"
-                  onClick={() => { setMode("week"); setAnchor(new Date()); setCalOpen(false); }}>
-                  This Week
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 text-xs"
-                  onClick={() => { setMode("month"); setAnchor(new Date()); setCalOpen(false); }}>
-                  This Month
-                </Button>
-              </div>
-              <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
-                {(["week", "month"] as const).map((m) => (
-                  <button key={m} onClick={() => setMode(m)}
-                    className={`flex-1 rounded py-1 text-xs font-medium transition-colors capitalize ${mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                      }`}
-                  >{m}</button>
-                ))}
-              </div>
-            </div>
-            {mode === "week" ? (
-              <Calendar
-                mode="single"
-                selected={anchor}
-                onSelect={(d) => { if (d) { setAnchor(d); setCalOpen(false); } }}
-                fromYear={2020}
-                toYear={new Date().getFullYear() + 1}
-                modifiers={{ weekSelected: (day: Date) => { const w = getWeekDates(anchor); return day >= w[0] && day <= w[6]; } }}
-                modifiersClassNames={{ weekSelected: "bg-primary/10 text-primary rounded-none" }}
-              />
-            ) : (
-              <Calendar
-                mode="single"
-                selected={new Date(anchor.getFullYear(), anchor.getMonth(), 1)}
-                onSelect={(d) => { if (d) { setAnchor(d); setCalOpen(false); } }}
-                fromYear={2020}
-                toYear={new Date().getFullYear() + 1}
-              />
-            )}
-          </PopoverContent>
-        </Popover>
-
-        <div className="flex gap-1 rounded-md border p-0.5 bg-muted">
-          {(["week", "month"] as const).map((m) => (
-            <button key={m} onClick={() => setMode(m)}
-              className={`rounded px-3 py-1 text-xs font-medium transition-colors capitalize ${mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                }`}
-            >{m}</button>
-          ))}
-        </div>
-      </div>
+      <PeriodNavigator
+        mode={mode}
+        weekPeriod={weekPeriod}
+        monthPeriod={monthPeriod}
+        onModeChange={setMode}
+        onWeekChange={setWeekPeriod}
+        onMonthChange={setMonthPeriod}
+      />
 
       {/* ── Summary pills ── */}
       <div className="flex flex-wrap gap-2 text-xs">
@@ -370,7 +324,7 @@ export function AttendanceTab() {
                 <tr className="border-b bg-muted/40">
                   {/* Sticky name column */}
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground sticky left-0 bg-muted/40 z-10 border-r"
-                    style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
+                    style={{ minWidth: mode === "weekly" ? "9rem" : "7rem" }}>
                     Employee
                   </th>
                   {displayDates.map((d) => {
@@ -383,9 +337,9 @@ export function AttendanceTab() {
                             isSunday ? "text-blue-600 bg-blue-50/50" :
                               "text-muted-foreground"
                           }`}
-                        style={{ minWidth: mode === "week" ? "7rem" : "2.2rem", padding: mode === "week" ? "0.5rem 0.25rem" : "0.5rem 0.1rem" }}
+                        style={{ minWidth: mode === "weekly" ? "7rem" : "2.2rem", padding: mode === "weekly" ? "0.5rem 0.25rem" : "0.5rem 0.1rem" }}
                       >
-                        {mode === "week" ? (
+                        {mode === "weekly" ? (
                           <>
                             <div className="text-[10px]">{d.toLocaleDateString("en-IN", { weekday: "short" })}</div>
                             <div className={`text-xs ${isToday ? "font-bold" : "font-normal"}`}>{d.getDate()}</div>
@@ -405,10 +359,10 @@ export function AttendanceTab() {
                 {employees.map((emp: any, idx: number) => (
                   <tr key={emp.id} className={`border-b last:border-b-0 ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
                     <td className="px-3 py-2 sticky left-0 bg-inherit z-10 border-r"
-                      style={{ minWidth: mode === "week" ? "9rem" : "7rem" }}>
+                      style={{ minWidth: mode === "weekly" ? "9rem" : "7rem" }}>
                       <Link href={`/dashboard/employees/${emp.id}`}
                         className="font-medium hover:text-primary transition-colors block truncate"
-                        style={{ maxWidth: mode === "week" ? "8rem" : "6.5rem" }}>
+                        style={{ maxWidth: mode === "weekly" ? "8rem" : "6.5rem" }}>
                         {emp.name}
                       </Link>
                       <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{emp.jobRole}</p>
@@ -427,12 +381,12 @@ export function AttendanceTab() {
                                 isSunday ? "bg-blue-50/30" :
                                   ""
                             }`}
-                          style={{ padding: mode === "week" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
+                          style={{ padding: mode === "weekly" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
                         >
                           <StatusPills
                             status={status}
                             onSelect={(s) => handleSelect(emp.id, ymd, s)}
-                            compact={mode === "month"}
+                            compact={mode === "monthly"}
                             locked={locked}
                           />
                         </td>
@@ -449,7 +403,7 @@ export function AttendanceTab() {
       {/* ── Legend ── */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
         <span className="font-medium text-foreground">
-          {mode === "week" ? "Tap P·A·½·H to mark:" : "Tap dots to mark:"}
+          {mode === "weekly" ? "Tap P·A·½·H to mark:" : "Tap dots to mark:"}
         </span>
         {PRIMARY_STATUSES.map((s) => (
           <span key={s.key} className="flex items-center gap-1">
