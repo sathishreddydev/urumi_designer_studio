@@ -1,43 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Search, X, Link2, Phone } from "lucide-react";
-import { customerSchema, type CustomerInput } from "@/lib/validations";
+import { ArrowLeft } from "lucide-react";
+import { type CustomerInput } from "@/lib/validations";
 import Link from "next/link";
-import { ContactPickerButton } from "@/components/contact-picker-button";
-import { PhoneInput } from "@/components/phone-input";
+import { CustomerForm } from "@/components/customers/customer-form";
 
 export default function NewCustomerPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-
-  // Controls whether we show the mobile input or the linked-customer search
-  const [useLinked, setUseLinked] = useState(false);
-  const [linkedSearch, setLinkedSearch] = useState("");
-  const [linkedLabel, setLinkedLabel] = useState<{ name: string; phone: string } | null>(null);
-  const [showLinkedDropdown, setShowLinkedDropdown] = useState(false);
-
-  const { data: linkedSearchResults } = useQuery({
-    queryKey: ["customers-search", linkedSearch],
-    queryFn: async () => {
-      if (!linkedSearch.trim()) return { customers: [] };
-      const res = await fetch(
-        `/api/customers?search=${encodeURIComponent(linkedSearch)}&limit=8`
-      );
-      if (!res.ok) return { customers: [] };
-      return res.json();
-    },
-    enabled: linkedSearch.trim().length > 0,
-  });
 
   const createMutation = useMutation({
     mutationFn: async (data: CustomerInput) => {
@@ -58,43 +32,6 @@ export default function NewCustomerPage() {
     },
   });
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    control,
-    formState: { errors },
-  } = useForm<CustomerInput>({
-    resolver: zodResolver(customerSchema),
-    mode: "onSubmit",
-    reValidateMode: "onSubmit",
-    defaultValues: { mobile: "", linkedCustomerId: "" },
-  });
-
-  const linkedCustomerId = useWatch({ control, name: "linkedCustomerId" });
-
-  const handleSelectLinked = (c: { id: string; name: string; mobile: string | null }) => {
-    setValue("linkedCustomerId", c.id, { shouldValidate: true });
-    setValue("mobile", "", { shouldValidate: true });
-    const phone = c.mobile?.startsWith("no-phone_") ? "No phone" : (c.mobile ?? "No phone");
-    setLinkedLabel({ name: c.name, phone });
-    setLinkedSearch(c.name);
-    setShowLinkedDropdown(false);
-  };
-
-  const handleSwitchToLinked = () => {
-    setUseLinked(true);
-    setValue("mobile", "", { shouldValidate: false });
-  };
-
-  const handleSwitchToMobile = () => {
-    setUseLinked(false);
-    setLinkedSearch("");
-    setLinkedLabel(null);
-    setValue("linkedCustomerId", "", { shouldValidate: false });
-    setValue("mobile", "", { shouldValidate: false });
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -111,179 +48,14 @@ export default function NewCustomerPage() {
           <CardTitle className="text-lg">Customer Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input id="name" {...register("name")} placeholder="Customer name" />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-              </div>
-
-              {/* Mobile OR Linked customer — toggled */}
-              <div className="space-y-2">
-                {/* Hidden linked field always registered */}
-                <input type="hidden" {...register("linkedCustomerId")} />
-
-                {!useLinked ? (
-                  /* ── MOBILE MODE ── */
-                  <>
-                    <Label htmlFor="mobile">Mobile *</Label>
-                    <div className="flex gap-2">
-                      <Controller
-                        name="mobile"
-                        control={control}
-                        render={({ field }) => (
-                          <PhoneInput
-                            value={field.value ?? ""}
-                            onChange={(value) => field.onChange(value || "")}
-                            placeholder="Enter phone number"
-                            defaultCountry="IN"
-                          />
-                        )}
-                      />
-                      <ContactPickerButton
-                        onPick={({ name, tel }) => {
-                          setValue("mobile", tel, { shouldValidate: true });
-                          if (name) setValue("name", name, { shouldValidate: true });
-                        }}
-                      />
-                    </div>
-                    {errors.mobile && (
-                      <p className="text-xs text-destructive">{errors.mobile.message}</p>
-                    )}
-                    {/* Toggle link */}
-                    <button
-                      type="button"
-                      onClick={handleSwitchToLinked}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Link2 className="h-3 w-3" />
-                      No phone? Link to a family member instead
-                    </button>
-                  </>
-                ) : (
-                  /* ── LINKED MEMBER MODE ── */
-                  <>
-                    <Label>Linked to (family member) *</Label>
-
-                    {linkedCustomerId ? (
-                      /* Selected pill */
-                      <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
-                        <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 min-w-0">
-                          <span className="font-medium">{linkedLabel?.name}</span>
-                          {linkedLabel?.phone && (
-                            <span className="text-muted-foreground"> — {linkedLabel.phone}</span>
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setValue("linkedCustomerId", "", { shouldValidate: true });
-                            setLinkedSearch("");
-                            setLinkedLabel(null);
-                          }}
-                          className="text-muted-foreground hover:text-destructive shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      /* Search input */
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <Input
-                          className="pl-9"
-                          placeholder="Search customer by name or phone..."
-                          value={linkedSearch}
-                          onChange={(e) => {
-                            setLinkedSearch(e.target.value);
-                            setShowLinkedDropdown(true);
-                          }}
-                          onFocus={() => setShowLinkedDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowLinkedDropdown(false), 150)}
-                        />
-                        {showLinkedDropdown && linkedSearchResults?.customers?.length > 0 && (
-                          <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
-                            {linkedSearchResults.customers.map((c: any) => {
-                              const phone = c.mobile?.startsWith("no-phone_") ? "No phone" : c.mobile;
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onMouseDown={() => handleSelectLinked(c)}
-                                  className="w-full flex flex-col px-3 py-2 text-sm hover:bg-accent text-left"
-                                >
-                                  <span className="font-medium">{c.name}</span>
-                                  <span className="text-xs text-muted-foreground">{phone}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {errors.linkedCustomerId && (
-                      <p className="text-xs text-destructive">{errors.linkedCustomerId.message}</p>
-                    )}
-                    {errors.mobile && (
-                      <p className="text-xs text-destructive">{errors.mobile.message}</p>
-                    )}
-
-                    {/* Toggle back */}
-                    <button
-                      type="button"
-                      onClick={handleSwitchToMobile}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Phone className="h-3 w-3" />
-                      Has their own phone? Enter mobile instead
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...register("email")} placeholder="Email address" />
-              </div>
-
-              {/* Address */}
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea id="address" {...register("address")} rows={2} placeholder="Full address" />
-              </div>
-
-              {/* Occasion */}
-              {/* <div className="space-y-2">
-                <Label htmlFor="occasion">Occasion</Label>
-                <Input id="occasion" {...register("occasion")} placeholder="e.g., Wedding, Reception" />
-              </div> */}
-
-              {/* Notes */}
-              {/* <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" {...register("notes")} rows={2} placeholder="Any additional notes" />
-              </div> */}
-            </div>
-
-            {createMutation.error && (
-              <p className="text-sm text-destructive">{createMutation.error.message}</p>
-            )}
-
-            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
-              <Link href="/dashboard/customers" className="sm:order-1">
-                <Button variant="outline" type="button" className="w-full">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={createMutation.isPending} className="sm:order-2">
-                {createMutation.isPending ? "Creating..." : "Create Customer"}
-              </Button>
-            </div>
-          </form>
+          <CustomerForm
+            onSubmit={(data) => createMutation.mutate(data)}
+            isPending={createMutation.isPending}
+            error={createMutation.error?.message}
+            submitLabel="Create Customer"
+            submitLoadingLabel="Creating..."
+            cancelHref="/dashboard/customers"
+          />
         </CardContent>
       </Card>
     </div>
