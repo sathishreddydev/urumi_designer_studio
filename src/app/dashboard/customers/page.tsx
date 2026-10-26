@@ -74,7 +74,7 @@ export default function CustomersPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {data?.customers?.map((customer: any) => {
               const hasPhone = customer.mobile && !customer.mobile.startsWith("no-phone_");
               const linkedPhone = customer.linkedCustomer?.mobile &&
