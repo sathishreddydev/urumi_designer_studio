@@ -9,7 +9,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LoadingButton } from "@/components/ui/loading-button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -21,18 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
 import Image from "next/image";
-import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, ArrowRight, Clock, SlidersHorizontal, ChevronDown, ImageOff } from "lucide-react";
+import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, Clock, SlidersHorizontal, ChevronDown, ImageOff } from "lucide-react";
 import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  OutfitTransitionButtons,
+  type OutfitTransition,
+} from "@/components/outfit-transition-buttons";
 
 const ALL_STATUSES = [
   "DRAFT",
@@ -107,47 +104,22 @@ function OutfitStatusUpdater({
     },
   });
 
-  const available: { status: string; label: string; blocked: boolean; reason?: string }[] =
-    transitions?.availableTransitions ?? [];
-
-  if (available.length === 0) return <span className="text-[11px] text-muted-foreground">—</span>;
+  const available: OutfitTransition[] = transitions?.availableTransitions ?? [];
 
   return (
-    <div className="flex flex-wrap gap-1">
-      <TooltipProvider delayDuration={200}>
-        {available.map((t) => (
-          <Tooltip key={t.status}>
-            <TooltipTrigger asChild>
-              <span className={t.blocked ? "cursor-not-allowed" : undefined}>
-                <LoadingButton
-                  size="sm"
-                  variant="outline"
-                  className="h-6 gap-1 px-2 text-[11px] bg-background"
-                  loading={
-                    !t.blocked &&
-                    transitionMutation.isPending &&
-                    transitionMutation.variables === t.status
-                  }
-                  disabled={t.blocked}
-                  onClick={(e) => {
-                    if (t.blocked) return;
-                    e.stopPropagation();
-                    e.preventDefault();
-                    transitionMutation.mutate(t.status);
-                  }}
-                >
-                  <ArrowRight className="h-2.5 w-2.5" />
-                  {t.label}
-                </LoadingButton>
-              </span>
-            </TooltipTrigger>
-            {t.blocked && t.reason && (
-              <TooltipContent side="bottom">{t.reason}</TooltipContent>
-            )}
-          </Tooltip>
-        ))}
-      </TooltipProvider>
-    </div>
+    <OutfitTransitionButtons
+      transitions={available}
+      onTransition={(status) => {
+        transitionMutation.mutate(status);
+      }}
+      pendingStatus={
+        transitionMutation.isPending
+          ? (transitionMutation.variables ?? null)
+          : null
+      }
+      responsive={false}
+      emptyPlaceholder={<span className="text-[11px] text-muted-foreground">—</span>}
+    />
   );
 }
 

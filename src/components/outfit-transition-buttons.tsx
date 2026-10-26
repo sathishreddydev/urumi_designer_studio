@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import { LoadingButton } from "@/components/ui/loading-button";
 import {
   Tooltip,
@@ -39,27 +39,47 @@ export interface OutfitTransition {
 interface OutfitTransitionButtonsProps {
   transitions: OutfitTransition[];
   /**
-   * Called when a transition button is clicked.
-   * `isPending` should track whether *this* status is currently loading.
+   * Called when a transition button is clicked with the target status string.
    */
   onTransition: (status: string) => void;
-  /** Pass the currently-pending status string so the right button shows a spinner. */
+  /** Pass the currently-pending status string so only that button shows a spinner. */
   pendingStatus?: string | null;
-  /** When true, show icon + short label on mobile; full label on sm+. Default: true */
+  /**
+   * When true (default), show short label on mobile and full label on sm+.
+   * When false, always show the full label.
+   */
   responsive?: boolean;
+  /**
+   * Which side to show the tooltip on. Default: "bottom".
+   */
+  tooltipSide?: "top" | "bottom" | "left" | "right";
+  /**
+   * When true, MAGGAM_WORK transitions render with a RotateCcw icon and amber
+   * outline styling to signal "send back for rework". Default: false.
+   */
+  maggamWorkVariant?: boolean;
+  /**
+   * Element to render when there are no available transitions.
+   * Default: null (renders nothing).
+   */
+  emptyPlaceholder?: React.ReactNode;
 }
 
 /**
  * Shared outfit status transition buttons.
- * Used in both the outfit detail page header and the order detail outfit cards.
+ * Used in the outfit detail header, order detail cards, production, outfits list,
+ * and stitching-maggam pages.
  */
 export function OutfitTransitionButtons({
   transitions,
   onTransition,
   pendingStatus,
   responsive = true,
+  tooltipSide = "bottom",
+  maggamWorkVariant = false,
+  emptyPlaceholder = null,
 }: OutfitTransitionButtonsProps) {
-  if (transitions.length === 0) return null;
+  if (transitions.length === 0) return <>{emptyPlaceholder}</>;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -68,19 +88,33 @@ export function OutfitTransitionButtons({
           const shortLabel = OUTFIT_STATUS_SHORT_LABELS[t.status] ?? t.label;
           const isLoading = !t.blocked && pendingStatus === t.status;
 
+          // MAGGAM_WORK is a "rework / send back" action — amber outline + RotateCcw
+          const isMaggamRework = maggamWorkVariant && t.status === "MAGGAM_WORK";
+
           return (
             <Tooltip key={t.status}>
               <TooltipTrigger asChild>
                 <span className={t.blocked ? "cursor-not-allowed" : undefined}>
                   <LoadingButton
                     size="sm"
-                    variant="outline"
+                    variant={isMaggamRework ? "outline" : "outline"}
                     loading={isLoading}
                     disabled={t.blocked}
                     onClick={() => !t.blocked && onTransition(t.status)}
-                    className="h-7 text-xs px-2 sm:px-2.5 whitespace-nowrap bg-background"
+                    className={[
+                      "h-7 text-xs px-2 sm:px-2.5 whitespace-nowrap bg-background",
+                      isMaggamRework
+                        ? "text-amber-600 border-amber-400 hover:bg-amber-50"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   >
-                    <ArrowRight className="h-3 w-3 shrink-0 sm:mr-1" />
+                    {isMaggamRework ? (
+                      <RotateCcw className="h-3 w-3 shrink-0 sm:mr-1" />
+                    ) : (
+                      <ArrowRight className="h-3 w-3 shrink-0 sm:mr-1" />
+                    )}
                     {responsive ? (
                       <>
                         <span className="hidden sm:inline">{t.label}</span>
@@ -92,7 +126,7 @@ export function OutfitTransitionButtons({
                   </LoadingButton>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side={tooltipSide}>
                 {t.blocked && t.reason ? t.reason : `Move to: ${t.label}`}
               </TooltipContent>
             </Tooltip>

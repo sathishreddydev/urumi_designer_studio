@@ -13,20 +13,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import {
   Shirt,
   Calendar,
   AlertTriangle,
-  ArrowRight,
   Search,
   Scissors,
   Sparkles,
@@ -34,11 +26,11 @@ import {
   PenTool,
   PackageCheck,
   ImageOff,
-  RotateCcw,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
+import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
 
 // Tabs shown to all roles
 const ALL_TABS = [
@@ -394,34 +386,14 @@ export default function StitchingMaggamPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {transitions.length > 0 ? (
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <TooltipProvider delayDuration={200}>
-                              {transitions.map((t) => (
-                                <Tooltip key={t.status}>
-                                  <TooltipTrigger asChild>
-                                    <span className={t.blocked ? "cursor-not-allowed" : undefined}>
-                                      <LoadingButton
-                                        size="sm"
-                                        variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
-                                        className={`whitespace-nowrap text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
-                                        loading={!t.blocked && pendingId === outfit.id && pendingStatus === t.status}
-                                        disabled={t.blocked || (transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status))}
-                                        onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
-                                      >
-                                        {t.status === "MAGGAM_WORK"
-                                          ? <><RotateCcw className="h-3 w-3 mr-1" />{t.label}</>
-                                          : <><ArrowRight className="h-3 w-3 mr-1" />{t.label}</>
-                                        }
-                                      </LoadingButton>
-                                    </span>
-                                  </TooltipTrigger>
-                                  {t.blocked && t.reason && (
-                                    <TooltipContent side="left">{t.reason}</TooltipContent>
-                                  )}
-                                </Tooltip>
-                              ))}
-                            </TooltipProvider>
-                          </div>
+                          <OutfitTransitionButtons
+                            transitions={transitions}
+                            onTransition={(status) => transitionMutation.mutate({ id: outfit.id, newStatus: status })}
+                            pendingStatus={pendingId === outfit.id ? pendingStatus : null}
+                            maggamWorkVariant
+                            tooltipSide="left"
+                            responsive={false}
+                          />
                         ) : null}
                       </td>
                     </tr>
@@ -501,34 +473,13 @@ export default function StitchingMaggamPage() {
 
                     {/* Action buttons */}
                     {transitions.length > 0 && (
-                      <div className="flex flex-col gap-1.5">
-                        <TooltipProvider delayDuration={200}>
-                          {transitions.map((t) => (
-                            <Tooltip key={t.status}>
-                              <TooltipTrigger asChild>
-                                <span className={t.blocked ? "cursor-not-allowed w-full" : "w-full"}>
-                                  <LoadingButton
-                                    size="sm"
-                                    variant={t.status === "MAGGAM_WORK" ? "outline" : "default"}
-                                    className={`w-full text-xs ${t.status === "MAGGAM_WORK" ? "text-amber-600 border-amber-400 hover:bg-amber-50" : ""}`}
-                                    loading={!t.blocked && pendingId === outfit.id && pendingStatus === t.status}
-                                    disabled={t.blocked || (transitionMutation.isPending && !(pendingId === outfit.id && pendingStatus === t.status))}
-                                    onClick={() => !t.blocked && transitionMutation.mutate({ id: outfit.id, newStatus: t.status })}
-                                  >
-                                    {t.status === "MAGGAM_WORK"
-                                      ? <><RotateCcw className="h-3 w-3 mr-1 shrink-0" /><span className="truncate">{t.label}</span></>
-                                      : <><ArrowRight className="h-3 w-3 mr-1 shrink-0" /><span className="truncate">{t.label}</span></>
-                                    }
-                                  </LoadingButton>
-                                </span>
-                              </TooltipTrigger>
-                              {t.blocked && t.reason && (
-                                <TooltipContent side="top">{t.reason}</TooltipContent>
-                              )}
-                            </Tooltip>
-                          ))}
-                        </TooltipProvider>
-                      </div>
+                      <OutfitTransitionButtons
+                        transitions={transitions}
+                        onTransition={(status) => transitionMutation.mutate({ id: outfit.id, newStatus: status })}
+                        pendingStatus={pendingId === outfit.id ? pendingStatus : null}
+                        maggamWorkVariant
+                        tooltipSide="top"
+                      />
                     )}
                   </CardContent>
                 </Card>
