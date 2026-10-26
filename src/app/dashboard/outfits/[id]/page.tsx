@@ -9,15 +9,10 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
 import {
   Accordion,
   AccordionContent,
@@ -53,7 +48,6 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   Clock,
-  ArrowRight,
   Ruler,
   Calendar,
   UserCheck,
@@ -578,53 +572,15 @@ export default function OutfitDetailPage() {
 
         {/* Right side: action button(s) + delete — always stay on the right */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <TooltipProvider delayDuration={200}>
-            {availableTransitions.map((t: any) => {
-              // Short labels for mobile — single-word / abbreviation so they fit the header
-              const SHORT_LABELS: Record<string, string> = {
-                DESIGN_IN_PROGRESS: "Design",
-                WAITING_FOR_REFERENCES: "Refs",
-                WAITING_FOR_DEPENDENCIES: "Deps",
-                PRODUCTION_READY: "Prod",
-                PATTERN_DRAFTING: "Pattern",
-                MAGGAM_WORK: "Maggam",
-                MAGGAM_REVIEW: "Review",
-                MAGGAM_REVIEWED: "✓ Maggam",
-                FABRIC_CUTTING: "Cut",
-                STITCHING: "Stitch",
-                PRODUCTION_COMPLETED: "✓ Prod",
-                TRIAL: "Trial",
-                ALTERATION: "Alter",
-                QC: "QC",
-                READY_FOR_DELIVERY: "Ready",
-                DELIVERED: "✓ Done",
-              };
-              const shortLabel = SHORT_LABELS[t.status] ?? t.label;
-              return (
-                <Tooltip key={t.status}>
-                  <TooltipTrigger asChild>
-                    {/* span wrapper required so tooltip works on disabled buttons */}
-                    <span className={t.blocked ? "cursor-not-allowed" : undefined}>
-                      <LoadingButton
-                        size="sm"
-                        loading={!t.blocked && transitionMutation.isPending}
-                        onClick={() => !t.blocked && transitionMutation.mutate({ newStatus: t.status })}
-                        className="text-xs h-8 px-2 sm:px-2.5 whitespace-nowrap"
-                        disabled={t.blocked}
-                      >
-                        <ArrowRight className="h-3 w-3 shrink-0 sm:mr-1" />
-                        <span className="hidden sm:inline">{t.label}</span>
-                        <span className="sm:hidden ml-0.5">{shortLabel}</span>
-                      </LoadingButton>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t.blocked && t.reason ? t.reason : `Move to: ${t.label}`}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </TooltipProvider>
+          <OutfitTransitionButtons
+            transitions={availableTransitions}
+            onTransition={(status) => transitionMutation.mutate({ newStatus: status })}
+            pendingStatus={
+              transitionMutation.isPending
+                ? (transitionMutation.variables?.newStatus ?? null)
+                : null
+            }
+          />
           {can("delete", "outfit") && (
             <Button
               variant="outline"

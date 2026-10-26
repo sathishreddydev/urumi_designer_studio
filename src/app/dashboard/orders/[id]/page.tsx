@@ -20,7 +20,6 @@ import {
 
 import {
   ArrowLeft,
-  ArrowRight,
   CreditCard,
   Shirt,
   Trash2,
@@ -41,16 +40,14 @@ import { ImageViewer } from "@/components/image-viewer";
 import { OutfitAttachmentChips } from "@/components/outfit-attachment-chips";
 import { compressImage } from "@/lib/compress-image";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   OutfitFormFields,
   OutfitFormValue,
   emptyOutfitFormValue,
 } from "@/components/outfit-form-fields";
+import {
+  OutfitTransitionButtons,
+  type OutfitTransition,
+} from "@/components/outfit-transition-buttons";
 
 // ─── Per-Outfit Status Updater ───────────────────────────────────────────────
 
@@ -109,46 +106,20 @@ function OutfitStatusUpdater({
     },
   });
 
-  const available: { status: string; label: string; blocked: boolean; reason?: string }[] =
-    transitions?.availableTransitions ?? [];
+  const available: OutfitTransition[] = transitions?.availableTransitions ?? [];
 
   if (disabled || available.length === 0) return null;
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-2">
-      <span className="text-[11px] font-medium text-muted-foreground">
+      <span className="text-[11px] font-medium text-muted-foreground shrink-0">
         Move to
       </span>
-      <div className="flex flex-wrap justify-end gap-1.5">
-        <TooltipProvider delayDuration={200}>
-          {available.map((t) => (
-            <Tooltip key={t.status}>
-              <TooltipTrigger asChild>
-                <span className={t.blocked ? "cursor-not-allowed" : undefined}>
-                  <LoadingButton
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1 px-2.5 text-xs bg-background"
-                    loading={
-                      !t.blocked &&
-                      transitionMutation.isPending &&
-                      transitionMutation.variables === t.status
-                    }
-                    disabled={t.blocked}
-                    onClick={() => !t.blocked && transitionMutation.mutate(t.status)}
-                  >
-                    <ArrowRight className="h-3 w-3" />
-                    {t.label}
-                  </LoadingButton>
-                </span>
-              </TooltipTrigger>
-              {t.blocked && t.reason && (
-                <TooltipContent side="bottom">{t.reason}</TooltipContent>
-              )}
-            </Tooltip>
-          ))}
-        </TooltipProvider>
-      </div>
+      <OutfitTransitionButtons
+        transitions={available}
+        onTransition={(status) => transitionMutation.mutate(status)}
+        pendingStatus={transitionMutation.isPending ? (transitionMutation.variables ?? null) : null}
+      />
     </div>
   );
 }
