@@ -75,17 +75,17 @@ export default function DashboardPage() {
         </div>
 
         {/* Production pipeline */}
-        <div>
+        {/* <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Production Pipeline</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-4 w-4" />} href="/dashboard/production" highlight={stats.productionReady > 0} />
             <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-4 w-4" />} href="/dashboard/production" />
             <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href="/dashboard/outfits" highlight={stats.readyForDelivery > 0} />
           </div>
-        </div>
+        </div> */}
 
         {/* Trials & finishing */}
-        {postProduction > 0 && (
+        {/* {postProduction > 0 && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Trials &amp; Finishing</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -103,7 +103,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        )}
+        )} */}
 
         {stats.role === "ADMIN" && <DashboardReports />}
         <DeadlineAlerts />
