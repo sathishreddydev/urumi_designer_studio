@@ -242,8 +242,8 @@ export function CustomerForm({
               placeholder="Enter customer name"
               autoComplete="name"
               className={`h-11 rounded-lg ${errors.name
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
                 }`}
             />
           </Field>
@@ -443,7 +443,6 @@ export function CustomerForm({
 
           <Field
             label="Email Address"
-            hint="Optional"
             error={errors.email?.message}
           >
             <Input
@@ -452,13 +451,13 @@ export function CustomerForm({
               placeholder="e.g. priya@example.com"
               autoComplete="email"
               className={`h-11 rounded-lg ${errors.email
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
                 }`}
             />
           </Field>
 
-          <Field label="Address" hint="Optional">
+          <Field label="Address">
             <Textarea
               {...register("address")}
               rows={3}
