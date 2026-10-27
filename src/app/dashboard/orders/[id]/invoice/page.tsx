@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Download, Printer, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -255,9 +256,7 @@ export default function InvoicePage() {
                         </td>
                         <td className="py-3 text-muted-foreground hidden sm:table-cell">{outfit.type}</td>
                         <td className="py-3 hidden sm:table-cell">
-                          <Badge className={`text-[10px] ${getStatusColor(outfit.status)}`}>
-                            {formatStatus(outfit.status)}
-                          </Badge>
+                          <OutfitStatusBadge status={outfit.status} className="text-[10px]" responsive={false} />
                         </td>
                         <td className="py-3 text-right font-medium whitespace-nowrap">
                           {outfit.price ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -470,9 +471,7 @@ export default function CustomerPortalPage() {
                               </div>
                             </div>
                           </div>
-                          <Badge className={getStatusColor(outfit.status)}>
-                            {formatStatus(outfit.status)}
-                          </Badge>
+                          <OutfitStatusBadge status={outfit.status} />
                         </div>
 
 

@@ -6,6 +6,7 @@ import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -148,9 +149,7 @@ export function DashboardReports() {
             <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Object.entries(statusBreakdown).map(([status, count]: [string, any]) => (
                 <div key={status} className="flex items-center justify-between rounded border px-2 py-1.5 min-w-0 gap-2">
-                  <Badge className={`text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)] ${getStatusColor(status)}`}>
-                    {formatStatus(status)}
-                  </Badge>
+                  <OutfitStatusBadge status={status} className="text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)]" responsive={false} />
                   <span className="text-xs font-bold shrink-0">{count}</span>
                 </div>
               ))}

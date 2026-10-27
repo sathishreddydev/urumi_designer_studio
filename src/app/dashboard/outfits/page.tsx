@@ -30,6 +30,7 @@ import {
   OutfitTransitionButtons,
   type OutfitTransition,
 } from "@/components/outfit-transition-buttons";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 
 const ALL_STATUSES = [
   "DRAFT",
@@ -479,9 +480,7 @@ export default function OutfitsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap`}>
-                            {formatStatus(outfit.status)}
-                          </Badge>
+                          <OutfitStatusBadge status={outfit.status} className="text-[10px]" />
                           {isBlocked && (
                             <Badge variant="destructive" className="text-[10px] whitespace-nowrap">BLOCKED</Badge>
                           )}
@@ -578,9 +577,7 @@ export default function OutfitsPage() {
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge className={`${getStatusColor(outfit.status)} text-[10px] max-w-[120px] truncate`}>
-                          {formatStatus(outfit.status)}
-                        </Badge>
+                        <OutfitStatusBadge status={outfit.status} className="text-[10px] max-w-[120px] truncate" />
                         {isBlocked && (
                           <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
                         )}

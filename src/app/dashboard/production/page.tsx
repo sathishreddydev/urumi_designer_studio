@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import {
@@ -257,9 +258,7 @@ export default function ProductionPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap`}>
-                            {formatStatus(outfit.status)}
-                          </Badge>
+                          <OutfitStatusBadge status={outfit.status} className="text-[10px]" />
                           {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
                             <Badge variant="destructive" className="text-[10px] whitespace-nowrap">BLOCKED</Badge>
                           )}
@@ -333,9 +332,7 @@ export default function ProductionPage() {
                       )}
                     </Link>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap max-w-[120px] truncate`}>
-                        {formatStatus(outfit.status)}
-                      </Badge>
+                      <OutfitStatusBadge status={outfit.status} className="text-[10px] max-w-[120px] truncate" />
                       {outfit.status === "WAITING_FOR_DEPENDENCIES" && (
                         <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
                       )}

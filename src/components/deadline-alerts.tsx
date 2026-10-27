@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { AlertTriangle, Clock, Calendar } from "lucide-react";
 import { formatStatus, getStatusColor } from "@/lib/utils";
 
@@ -104,9 +105,7 @@ export function DeadlineAlerts() {
                       {row.customerName} · {row.orderNumber}
                     </p>
                   </div>
-                  <Badge className={`text-[9px] shrink-0 ${getStatusColor(row.status)}`}>
-                    {formatStatus(row.status)}
-                  </Badge>
+                  <OutfitStatusBadge status={row.status} className="text-[9px] shrink-0" />
                   <span className={`text-[10px] text-right w-16 shrink-0 ${row.trialDate ? dateCellColor(row.trialDate) : "text-muted-foreground"}`}>
                     {row.trialDate ? dateLabel(row.trialDate) : "—"}
                   </span>
@@ -131,9 +130,7 @@ export function DeadlineAlerts() {
                     {row.customerName} · {row.orderNumber}
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                    <Badge className={`text-[9px] ${getStatusColor(row.status)}`}>
-                      {formatStatus(row.status)}
-                    </Badge>
+                    <OutfitStatusBadge status={row.status} className="text-[9px]" />
                     {row.trialDate && (
                       <span className={`text-[10px] ${dateCellColor(row.trialDate)}`}>
                         Trial: {dateLabel(row.trialDate)}

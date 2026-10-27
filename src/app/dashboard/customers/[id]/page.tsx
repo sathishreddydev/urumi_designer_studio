@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -595,11 +596,7 @@ const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_")
                                     />
                                   </div>
                                 </div>
-                                <Badge
-                                  className={`text-[10px] shrink-0 ${getStatusColor(outfit.status)}`}
-                                >
-                                  {formatStatus(outfit.status)}
-                                </Badge>
+                                <OutfitStatusBadge status={outfit.status} className="text-[10px] shrink-0" />
                               </div>
                             ))}
                           </div>

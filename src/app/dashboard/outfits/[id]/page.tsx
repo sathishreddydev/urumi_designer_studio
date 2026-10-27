@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Separator } from "@/components/ui/separator";
 import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
 import {
@@ -552,11 +553,7 @@ export default function OutfitDetailPage() {
             <h1 className="text-sm font-bold sm:text-base lg:text-xl truncate">
               {outfit.name}
             </h1>
-            <Badge
-              className={`${getStatusColor(outfit.status)} shrink-0 text-[10px] sm:text-xs whitespace-nowrap`}
-            >
-              {formatStatus(outfit.status)}
-            </Badge>
+            <OutfitStatusBadge status={outfit.status} className="shrink-0 text-[10px] sm:text-xs" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
             {outfit.customer?.name && (
@@ -938,12 +935,7 @@ export default function OutfitDetailPage() {
                       >
                         <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                         <div>
-                          <Badge
-                            className={getStatusColor(log.status)}
-                            variant="secondary"
-                          >
-                            {formatStatus(log.status)}
-                          </Badge>
+                          <OutfitStatusBadge status={log.status} responsive={false} />
                           {log.notes && (
                             <p className="text-xs text-muted-foreground mt-1">
                               {log.notes}

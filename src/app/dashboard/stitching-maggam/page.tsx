@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import {
@@ -428,9 +429,7 @@ export default function StitchingMaggamPage() {
                         </p>
                       </Link>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge className={`${getStatusColor(outfit.status)} text-[10px] whitespace-nowrap max-w-[120px] truncate`}>
-                          {formatStatus(outfit.status)}
-                        </Badge>
+                        <OutfitStatusBadge status={outfit.status} className="text-[10px] max-w-[120px] truncate" />
                         {outfit.customerMaterialImageUrl ? (
                           <button
                             type="button"

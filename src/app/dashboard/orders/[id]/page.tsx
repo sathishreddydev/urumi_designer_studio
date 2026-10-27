@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import {
   Select,
   SelectContent,
@@ -661,9 +662,7 @@ export default function OrderDetailPage() {
                         )}
                       </div>
                       <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                        <Badge className={getStatusColor(outfit.status)}>
-                          {formatStatus(outfit.status)}
-                        </Badge>
+                        <OutfitStatusBadge status={outfit.status} />
                         <p className="text-sm font-bold leading-5">
                           {(() => {
                             const outfitPrice = Number(outfit.price) || 0;
