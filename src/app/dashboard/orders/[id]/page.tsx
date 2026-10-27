@@ -137,7 +137,8 @@ export default function OrderDetailPage() {
   // Resolve back destination from ?from= param
   const from = searchParams.get("from");
   const customerIdParam = searchParams.get("customerId");
-  // from=orders        → /dashboard/orders
+  const returnTo = searchParams.get("returnTo");
+  // from=orders        → /dashboard/orders (or returnTo if present)
   // from=customer      → /dashboard/customers/[id]
   // from=consultations → /dashboard/consultations
   // default            → customer detail if available, else /dashboard/orders
@@ -403,7 +404,7 @@ export default function OrderDetailPage() {
       });
       const deleteBackHref =
         from === "orders"
-          ? "/dashboard/orders"
+          ? returnTo ?? "/dashboard/orders"
           : from === "consultations"
             ? "/dashboard/consultations"
             : from === "customer" && (customerIdParam || order?.customer?.id)
@@ -456,7 +457,7 @@ export default function OrderDetailPage() {
           <Link
             href={
               from === "orders"
-                ? "/dashboard/orders"
+                ? returnTo ?? "/dashboard/orders"
                 : from === "consultations"
                   ? "/dashboard/consultations"
                   : from === "customer" && (customerIdParam || order.customer?.id)

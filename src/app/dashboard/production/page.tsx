@@ -127,6 +127,15 @@ export default function ProductionPage() {
     );
   }
 
+  function buildReturnUrl() {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (statusFilter) params.set("status", statusFilter.toLowerCase());
+    if (priorityFilter) params.set("priority", priorityFilter);
+    const qs = params.toString();
+    return `/dashboard/production${qs ? `?${qs}` : ""}`;
+  }
+
   const outfits = (data || []).filter((outfit: any) => {
     if (role === "MASTER" && outfit.masterId && outfit.masterId !== session?.id) return false;
     if (statusFilter && outfit.status !== statusFilter) return false;
@@ -221,7 +230,7 @@ export default function ProductionPage() {
                   return (
                     <tr key={outfit.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 max-w-[180px]">
-                        <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="font-medium hover:underline truncate block">
+                        <Link href={`/dashboard/outfits/${outfit.id}?from=production&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="font-medium hover:underline truncate block">
                           {outfit.name}
                         </Link>
                         {outfit.priority > 0 && (() => {
@@ -280,7 +289,7 @@ export default function ProductionPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
-                          <Link href={`/dashboard/outfits/${outfit.id}?from=production`}>
+                          <Link href={`/dashboard/outfits/${outfit.id}?from=production&returnTo=${encodeURIComponent(buildReturnUrl())}`}>
                             <LoadingButton size="sm" variant="destructive" className="text-xs whitespace-nowrap">
                               <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                             </LoadingButton>
@@ -317,7 +326,7 @@ export default function ProductionPage() {
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 space-y-3">
                   {/* Top: name + badges */}
                   <div className="flex items-start justify-between gap-2">
-                    <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="min-w-0 flex-1">
+                    <Link href={`/dashboard/outfits/${outfit.id}?from=production&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
                         <p className="font-medium text-sm truncate">{outfit.name}</p>
@@ -381,7 +390,7 @@ export default function ProductionPage() {
 
                   {/* Action */}
                   {outfit.status === "WAITING_FOR_DEPENDENCIES" ? (
-                    <Link href={`/dashboard/outfits/${outfit.id}?from=production`} className="block">
+                    <Link href={`/dashboard/outfits/${outfit.id}?from=production&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="block">
                       <LoadingButton size="sm" variant="destructive" className="w-full text-xs">
                         <AlertTriangle className="h-3 w-3 mr-1" /> View Blocker
                       </LoadingButton>

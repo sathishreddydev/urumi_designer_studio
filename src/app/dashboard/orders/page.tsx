@@ -60,6 +60,15 @@ export default function OrdersPage() {
 
   const hasFilters = search || status;
 
+  function buildReturnUrl() {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (status && status !== "all") params.set("status", status);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return `/dashboard/orders${qs ? `?${qs}` : ""}`;
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -142,7 +151,7 @@ export default function OrdersPage() {
                     <tr
                       key={order.id}
                       className="hover:bg-muted/30 cursor-pointer"
-                      onClick={() => (window.location.href = `/dashboard/orders/${order.id}?from=orders`)}
+                      onClick={() => router.push(`/dashboard/orders/${order.id}?from=orders&returnTo=${encodeURIComponent(buildReturnUrl())}`)}
                     >
                       <td className="px-4 py-3 font-medium whitespace-nowrap">{order.orderNumber}</td>
                       <td className="px-4 py-3 max-w-[160px]">
@@ -180,7 +189,7 @@ export default function OrdersPage() {
               const paid = order.totalPaid || 0;
               const balance = estimated - paid;
               return (
-                <Link key={order.id} href={`/dashboard/orders/${order.id}?from=orders`} className="block">
+                <Link key={order.id} href={`/dashboard/orders/${order.id}?from=orders&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="block">
                   <div className="rounded-xl border bg-card shadow-sm p-4 active:scale-[0.99] transition-all hover:shadow-md">
                     {/* Top row: order number + status badge */}
                     <div className="flex items-start justify-between gap-2 mb-2">

@@ -100,13 +100,13 @@ export default function OutfitDetailPage() {
   // Resolve back destination from ?from= param
   const from = searchParams.get("from");
   const orderId = searchParams.get("orderId");
-  // ?returnTo= carries the full outfits list URL (with filter params) when from=outfits
+  // ?returnTo= carries the full list URL (with filter params) for any page that sets it
   const returnTo = searchParams.get("returnTo");
   const backHref =
     from === "production"
-      ? "/dashboard/production"
+      ? returnTo ?? "/dashboard/production"
       : from === "stitching-maggam"
-        ? "/dashboard/stitching-maggam"
+        ? returnTo ?? "/dashboard/stitching-maggam"
         : from === "order" && orderId
           ? `/dashboard/orders/${orderId}`
           : from === "blockers"
