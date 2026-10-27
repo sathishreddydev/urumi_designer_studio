@@ -10,7 +10,6 @@ import {
 } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { ImageViewer } from "@/components/image-viewer";
 import { ProfileMeasurements } from "@/components/portal/profile-measurements";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { formatDate, formatStatus } from "@/lib/utils";
 import { compressImage } from "@/lib/compress-image";
 import {
   Scissors,
@@ -35,33 +34,12 @@ import {
   Ruler,
   Search,
   AlertCircle,
-  Clock,
   Sparkles,
   Camera,
   ChevronLeft,
-  X,
   Filter,
 } from "lucide-react";
 
-const STATUS_PROGRESS: Record<string, number> = {
-  DRAFT: 5,
-  DESIGN_IN_PROGRESS: 12,
-  WAITING_FOR_REFERENCES: 18,
-  WAITING_FOR_DEPENDENCIES: 22,
-  PRODUCTION_READY: 28,
-  PATTERN_DRAFTING: 38,
-  MAGGAM_WORK: 48,
-  MAGGAM_REVIEW: 55,
-  MAGGAM_REVIEWED: 59,
-  FABRIC_CUTTING: 62,
-  STITCHING: 72,
-  PRODUCTION_COMPLETED: 80,
-  TRIAL: 85,
-  ALTERATION: 88,
-  QC: 92,
-  READY_FOR_DELIVERY: 96,
-  DELIVERED: 100,
-};
 
 export default function CustomerPortalPage() {
   const params = useParams();
@@ -171,7 +149,7 @@ export default function CustomerPortalPage() {
       (order.outfits || []).forEach((o: any) => statuses.add(o.status)),
     );
 
-    return STATUS_ORDER.filter((s) => statuses.has(s));
+    return ALL_OUTFIT_STATUSES.filter((s) => statuses.has(s));
   }, [data]);
 
   if (loading) {
@@ -287,337 +265,336 @@ export default function CustomerPortalPage() {
         {/* ── ORDERS VIEW ── */}
         {view === "orders" && (<>
 
-            {/* Search & Filter Controls */}
-            {totalOutfits > 1 && (
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by outfit name or type..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 bg-card h-9 text-xs"
-                  />
-                </div>
-
-                {allOutfitStatuses.length > 1 && (
-                  <>
-                    {/* Mobile: filter icon */}
-                    <div className="sm:hidden">
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="h-9 w-9 p-0 flex items-center justify-center bg-card border">
-                          <Filter className={`h-4 w-4 ${statusFilter !== "all" ? "text-primary" : "text-muted-foreground"}`} />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          {allOutfitStatuses.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {formatStatus(status)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Desktop: full select */}
-                    <div className="hidden sm:block">
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
-                          <SelectValue placeholder="All Statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          {allOutfitStatuses.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {formatStatus(status)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
+          {/* Search & Filter Controls */}
+          {totalOutfits > 1 && (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by outfit name or type..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-card h-9 text-xs"
+                />
               </div>
-            )}
 
-            {/* Empty State */}
-            {filteredOrders.length === 0 && (
-              <div className="py-12 text-center text-sm text-muted-foreground space-y-2">
-                <Shirt className="h-8 w-8 mx-auto text-muted-foreground/40" />
-                <p className="font-medium">No matching outfits found</p>
-                <p className="text-xs text-muted-foreground">
-                  Try clearing search terms or selecting a different status filter.
-                </p>
-              </div>
-            )}
-
-            {/* Orders List */}
-            {filteredOrders.map((order: any) => (
-              <div key={order.id} className="space-y-4 border rounded-lg p-4">
-                {/* Order Header */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <p className="text-base font-bold">
-                      Order #{order.orderNumber}
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {order.trialDate && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5 text-primary" />
-                          Trial:
-                          <strong className="text-foreground">
-                            {formatDate(order.trialDate)}
-                          </strong>
-                        </span>
-                      )}
-                      {order.deliveryDate && (
-                        <span className="flex items-center gap-1">
-                          <Package className="h-3.5 w-3.5 text-primary" />
-                          Delivery:
-                          <strong className="text-foreground">
-                            {formatDate(order.deliveryDate)}
-                          </strong>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <OutfitStatusBadge status={order.status} responsive={false} />
-                </div>
-
-                {/* Outfits */}
-                <div className="space-y-4">
-                  {order.outfits.map((outfit: any) => {
-                    const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status);
-                    const progress = STATUS_PROGRESS[outfit.status] || 0;
-
-                    const designRefs = (outfit.references || []).filter(
-                      (ref: any) => ref.type !== "FABRIC" && ref.type !== "COMPLETION",
-                    );
-                    const fabricRefs = (outfit.references || []).filter(
-                      (ref: any) => ref.type === "FABRIC",
-                    );
-                    const completionRefs = (outfit.references || []).filter(
-                      (ref: any) => ref.type === "COMPLETION",
-                    );
-                    const showCompletionPhotos =
-                      completionRefs.length > 0 &&
-                      ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"].includes(outfit.status);
-
-                    return (
-                      <div key={outfit.id} className="rounded-lg border bg-card p-4 space-y-4 shadow-2xs">
-                        {/* Outfit Header */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
-                              <Shirt className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-sm">{outfit.name}</h4>
-                              <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                                <span>{outfit.type}</span>
-                                {outfit.maggamRequired && (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                    Maggam Work
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="mt-1 text-xs">
-                                {outfit.price || (outfit.addOns && outfit.addOns.length > 0) ? (
-                                  (() => {
-                                    const outfitPrice = Number(outfit.price) || 0;
-                                    const addOnsTotal = (outfit.addOns || []).reduce(
-                                      (s: number, a: any) => s + (Number(a.price) || 0), 0
-                                    );
-                                    const total = outfitPrice + addOnsTotal;
-                                    return (
-                                      <span className="font-semibold text-foreground">
-                                        ₹{total.toLocaleString()}
-                                        {addOnsTotal > 0 && outfitPrice > 0 && (
-                                          <span className="font-normal text-muted-foreground ml-1 text-[10px]">
-                                            (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
-                                          </span>
-                                        )}
-                                      </span>
-                                    );
-                                  })()
-                                ) : (
-                                  <span className="italic text-amber-600">⏳ Price to be confirmed</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <OutfitStatusBadge status={outfit.status} />
-                        </div>
-
-
-                        {/* Add-ons */}
-                        {outfit.addOns && outfit.addOns.length > 0 && (
-                          <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
-                            <p className="font-medium text-blue-700 dark:text-blue-300">
-                              Add-ons (Sourced Items)
-                            </p>
-                            <ul className="space-y-1">
-                              {outfit.addOns.map((addOn: any) => (
-                                <li key={addOn.id} className="flex justify-between items-start gap-2">
-                                  <div>
-                                    <span className="font-medium">{addOn.name}</span>
-                                    {addOn.notes && (
-                                      <span className="text-muted-foreground"> — {addOn.notes}</span>
-                                    )}
-                                  </div>
-                                  <span className="font-semibold text-nowrap">
-                                    ₹{Number(addOn.price).toLocaleString()}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                            {(() => {
-                              const addOnsTotal = outfit.addOns.reduce(
-                                (s: number, a: any) => s + (Number(a.price) || 0), 0
-                              );
-                              return addOnsTotal > 0 ? (
-                                <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between font-semibold text-blue-700 dark:text-blue-300">
-                                  <span>Add-ons Total</span>
-                                  <span>₹{addOnsTotal.toLocaleString()}</span>
-                                </div>
-                              ) : null;
-                            })()}
-                          </div>
-                        )}
-
-                        {/* Design References */}
-                        {designRefs.length > 0 && (
-                          <div className="space-y-2 pt-2 border-t">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-muted-foreground">
-                                {canApprove ? "Design References (Requires Approval)" : "Confirmed References"}
-                              </span>
-                              {!canApprove && (
-                                <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
-                                  Locked for production
-                                </span>
-                              )}
-                            </div>
-                            <PortalReferences
-                              references={designRefs}
-                              token={params.token as string}
-                              outfitId={outfit.id}
-                              canApprove={canApprove}
-                            />
-                          </div>
-                        )}
-
-                        {/* Customer Material */}
-                        {fabricRefs.length > 0 && (
-                          <div className="space-y-2 pt-2 border-t">
-                            <span className="text-xs font-semibold text-muted-foreground">
-                              Customer Material
-                            </span>
-                            <PortalReferences
-                              references={fabricRefs}
-                              token={params.token as string}
-                              outfitId={outfit.id}
-                              canApprove={false}
-                            />
-                          </div>
-                        )}
-
-                        {/* Completion Photos */}
-                        {showCompletionPhotos && (
-                          <div className="space-y-2 pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-muted-foreground">
-                                Finished Outfit
-                              </span>
-                              <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
-                                ✓ Ready
-                              </span>
-                            </div>
-                            <PortalReferences
-                              references={completionRefs}
-                              token={params.token as string}
-                              outfitId={outfit.id}
-                              canApprove={false}
-                            />
-                          </div>
-                        )}
-
-                        {/* Upload */}
-                        {canApprove && (
-                          <div className="pt-2 border-t space-y-3">
-                            <PortalUpload
-                              outfitId={outfit.id}
-                              token={params.token as string}
-                              maggamRequired={outfit.maggamRequired}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Financial Summary */}
-                {(order.totalPaid > 0 || order.estimatedAmount) && (
-                  <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-muted-foreground">Payment Summary</span>
-                    </div>
-                    {(() => {
-                      const liveTotal = (order.outfits || []).reduce((s: number, o: any) => {
-                        const outfitPrice = Number(o.price) || 0;
-                        const addOnsTotal = (o.addOns || []).reduce(
-                          (as: number, a: any) => as + (Number(a.price) || 0), 0
-                        );
-                        return s + outfitPrice + addOnsTotal;
-                      }, 0);
-                      const displayTotal = liveTotal > 0 ? liveTotal : Number(order.estimatedAmount) || 0;
-                      const displayBalance = displayTotal > 0 ? Math.max(0, displayTotal - order.totalPaid) : 0;
-                      return (
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          {displayTotal > 0 && (
-                            <div>
-                              <p className="text-muted-foreground text-[10px]">Total</p>
-                              <p className="font-medium font-mono text-xs">₹{displayTotal.toLocaleString()}</p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-muted-foreground text-[10px]">Paid</p>
-                            <p className="font-semibold text-green-600 font-mono text-xs">
-                              ₹{order.totalPaid.toLocaleString()}
-                            </p>
-                          </div>
-                          {displayBalance > 0 && (
-                            <div>
-                              <p className="text-muted-foreground text-[10px]">Balance</p>
-                              <p className="font-semibold text-destructive font-mono text-xs">
-                                ₹{displayBalance.toLocaleString()}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {order.payments && order.payments.length > 0 && (
-                      <div className="border-t pt-2 space-y-1.5">
-                        {order.payments.map((p: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-muted-foreground">
-                              {p.method} · {formatDate(p.createdAt)}
-                            </span>
-                            <span className="font-medium font-mono">
-                              ₹{Number(p.amount).toLocaleString()}
-                            </span>
-                          </div>
+              {allOutfitStatuses.length > 1 && (
+                <>
+                  {/* Mobile: filter icon */}
+                  <div className="sm:hidden">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-9 w-9 p-0 flex items-center justify-center bg-card border">
+                        <Filter className={`h-4 w-4 ${statusFilter !== "all" ? "text-primary" : "text-muted-foreground"}`} />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {allOutfitStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {formatStatus(status)}
+                          </SelectItem>
                         ))}
-                      </div>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Desktop: full select */}
+                  <div className="hidden sm:block">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-9 w-auto bg-card px-3 text-xs">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {allOutfitStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {formatStatus(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {filteredOrders.length === 0 && (
+            <div className="py-12 text-center text-sm text-muted-foreground space-y-2">
+              <Shirt className="h-8 w-8 mx-auto text-muted-foreground/40" />
+              <p className="font-medium">No matching outfits found</p>
+              <p className="text-xs text-muted-foreground">
+                Try clearing search terms or selecting a different status filter.
+              </p>
+            </div>
+          )}
+
+          {/* Orders List */}
+          {filteredOrders.map((order: any) => (
+            <div key={order.id} className="space-y-4 border rounded-lg p-4">
+              {/* Order Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <p className="text-base font-bold">
+                    Order #{order.orderNumber}
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {order.trialDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        Trial:
+                        <strong className="text-foreground">
+                          {formatDate(order.trialDate)}
+                        </strong>
+                      </span>
+                    )}
+                    {order.deliveryDate && (
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3.5 w-3.5 text-primary" />
+                        Delivery:
+                        <strong className="text-foreground">
+                          {formatDate(order.deliveryDate)}
+                        </strong>
+                      </span>
                     )}
                   </div>
-                )}
+                </div>
+                <OutfitStatusBadge status={order.status} responsive={false} />
               </div>
-            ))}
-          </>
+
+              {/* Outfits */}
+              <div className="space-y-4">
+                {order.outfits.map((outfit: any) => {
+                  const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status);
+
+                  const designRefs = (outfit.references || []).filter(
+                    (ref: any) => ref.type !== "FABRIC" && ref.type !== "COMPLETION",
+                  );
+                  const fabricRefs = (outfit.references || []).filter(
+                    (ref: any) => ref.type === "FABRIC",
+                  );
+                  const completionRefs = (outfit.references || []).filter(
+                    (ref: any) => ref.type === "COMPLETION",
+                  );
+                  const showCompletionPhotos =
+                    completionRefs.length > 0 &&
+                    ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"].includes(outfit.status);
+
+                  return (
+                    <div key={outfit.id} className="rounded-lg border bg-card p-4 space-y-4 shadow-2xs">
+                      {/* Outfit Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
+                            <Shirt className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-sm">{outfit.name}</h4>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                              <span>{outfit.type}</span>
+                              {outfit.maggamRequired && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  Maggam Work
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="mt-1 text-xs">
+                              {outfit.price || (outfit.addOns && outfit.addOns.length > 0) ? (
+                                (() => {
+                                  const outfitPrice = Number(outfit.price) || 0;
+                                  const addOnsTotal = (outfit.addOns || []).reduce(
+                                    (s: number, a: any) => s + (Number(a.price) || 0), 0
+                                  );
+                                  const total = outfitPrice + addOnsTotal;
+                                  return (
+                                    <span className="font-semibold text-foreground">
+                                      ₹{total.toLocaleString()}
+                                      {addOnsTotal > 0 && outfitPrice > 0 && (
+                                        <span className="font-normal text-muted-foreground ml-1 text-[10px]">
+                                          (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
+                                        </span>
+                                      )}
+                                    </span>
+                                  );
+                                })()
+                              ) : (
+                                <span className="italic text-amber-600">⏳ Price to be confirmed</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <OutfitStatusBadge status={outfit.status} />
+                      </div>
+
+
+                      {/* Add-ons */}
+                      {outfit.addOns && outfit.addOns.length > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
+                          <p className="font-medium text-blue-700 dark:text-blue-300">
+                            Add-ons (Sourced Items)
+                          </p>
+                          <ul className="space-y-1">
+                            {outfit.addOns.map((addOn: any) => (
+                              <li key={addOn.id} className="flex justify-between items-start gap-2">
+                                <div>
+                                  <span className="font-medium">{addOn.name}</span>
+                                  {addOn.notes && (
+                                    <span className="text-muted-foreground"> — {addOn.notes}</span>
+                                  )}
+                                </div>
+                                <span className="font-semibold text-nowrap">
+                                  ₹{Number(addOn.price).toLocaleString()}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          {(() => {
+                            const addOnsTotal = outfit.addOns.reduce(
+                              (s: number, a: any) => s + (Number(a.price) || 0), 0
+                            );
+                            return addOnsTotal > 0 ? (
+                              <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between font-semibold text-blue-700 dark:text-blue-300">
+                                <span>Add-ons Total</span>
+                                <span>₹{addOnsTotal.toLocaleString()}</span>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Design References */}
+                      {designRefs.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {canApprove ? "Design References (Requires Approval)" : "Confirmed References"}
+                            </span>
+                            {!canApprove && (
+                              <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                                Locked for production
+                              </span>
+                            )}
+                          </div>
+                          <PortalReferences
+                            references={designRefs}
+                            token={params.token as string}
+                            outfitId={outfit.id}
+                            canApprove={canApprove}
+                          />
+                        </div>
+                      )}
+
+                      {/* Customer Material */}
+                      {fabricRefs.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Customer Material
+                          </span>
+                          <PortalReferences
+                            references={fabricRefs}
+                            token={params.token as string}
+                            outfitId={outfit.id}
+                            canApprove={false}
+                          />
+                        </div>
+                      )}
+
+                      {/* Completion Photos */}
+                      {showCompletionPhotos && (
+                        <div className="space-y-2 pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              Finished Outfit
+                            </span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
+                              ✓ Ready
+                            </span>
+                          </div>
+                          <PortalReferences
+                            references={completionRefs}
+                            token={params.token as string}
+                            outfitId={outfit.id}
+                            canApprove={false}
+                          />
+                        </div>
+                      )}
+
+                      {/* Upload */}
+                      {canApprove && (
+                        <div className="pt-2 border-t space-y-3">
+                          <PortalUpload
+                            outfitId={outfit.id}
+                            token={params.token as string}
+                            maggamRequired={outfit.maggamRequired}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Financial Summary */}
+              {(order.totalPaid > 0 || order.estimatedAmount) && (
+                <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-muted-foreground">Payment Summary</span>
+                  </div>
+                  {(() => {
+                    const liveTotal = (order.outfits || []).reduce((s: number, o: any) => {
+                      const outfitPrice = Number(o.price) || 0;
+                      const addOnsTotal = (o.addOns || []).reduce(
+                        (as: number, a: any) => as + (Number(a.price) || 0), 0
+                      );
+                      return s + outfitPrice + addOnsTotal;
+                    }, 0);
+                    const displayTotal = liveTotal > 0 ? liveTotal : Number(order.estimatedAmount) || 0;
+                    const displayBalance = displayTotal > 0 ? Math.max(0, displayTotal - order.totalPaid) : 0;
+                    return (
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        {displayTotal > 0 && (
+                          <div>
+                            <p className="text-muted-foreground text-[10px]">Total</p>
+                            <p className="font-medium font-mono text-xs">₹{displayTotal.toLocaleString()}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-muted-foreground text-[10px]">Paid</p>
+                          <p className="font-semibold text-green-600 font-mono text-xs">
+                            ₹{order.totalPaid.toLocaleString()}
+                          </p>
+                        </div>
+                        {displayBalance > 0 && (
+                          <div>
+                            <p className="text-muted-foreground text-[10px]">Balance</p>
+                            <p className="font-semibold text-destructive font-mono text-xs">
+                              ₹{displayBalance.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {order.payments && order.payments.length > 0 && (
+                    <div className="border-t pt-2 space-y-1.5">
+                      {order.payments.map((p: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className="text-muted-foreground">
+                            {p.method} · {formatDate(p.createdAt)}
+                          </span>
+                          <span className="font-medium font-mono">
+                            ₹{Number(p.amount).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </>
         )}
       </main>
     </div>
@@ -760,13 +737,12 @@ function PortalReferenceCard({
 
         {reference.type !== "COMPLETION" && (
           <span
-            className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${
-              reference.type === "FABRIC"
-                ? "bg-indigo-600 text-white"
-                : reference.type === "MAGGAM"
-                  ? "bg-amber-600 text-white"
-                  : "bg-slate-700 text-white"
-            }`}
+            className={`absolute top-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm ${reference.type === "FABRIC"
+              ? "bg-indigo-600 text-white"
+              : reference.type === "MAGGAM"
+                ? "bg-amber-600 text-white"
+                : "bg-slate-700 text-white"
+              }`}
           >
             {reference.type === "FABRIC"
               ? "Your Fabric"
@@ -780,9 +756,8 @@ function PortalReferenceCard({
 
         {feedback && (
           <div
-            className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${
-              feedback === "approved" ? "bg-green-600" : "bg-destructive"
-            }`}
+            className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${feedback === "approved" ? "bg-green-600" : "bg-destructive"
+              }`}
           >
             {feedback === "approved" ? (
               <ThumbsUp className="h-3 w-3 text-white" />
@@ -820,9 +795,8 @@ function PortalReferenceCard({
 
       {feedback && reference.type !== "FABRIC" && (
         <div
-          className={`py-1 text-center text-[10px] font-semibold text-white ${
-            feedback === "approved" ? "bg-green-600" : "bg-destructive"
-          }`}
+          className={`py-1 text-center text-[10px] font-semibold text-white ${feedback === "approved" ? "bg-green-600" : "bg-destructive"
+            }`}
         >
           {feedback === "approved" ? "Approved" : "Rejected"}
         </div>
@@ -1031,11 +1005,10 @@ function PortalUpload({
             key={t.value}
             type="button"
             onClick={() => setSelectedType(t.value)}
-            className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
-              selectedType === t.value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border text-muted-foreground hover:bg-muted"
-            }`}
+            className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] sm:text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${selectedType === t.value
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:bg-muted"
+              }`}
           >
             <span>{t.icon}</span>
             {t.label}
