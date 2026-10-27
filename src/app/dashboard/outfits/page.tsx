@@ -30,27 +30,7 @@ import {
   OutfitTransitionButtons,
   type OutfitTransition,
 } from "@/components/outfit-transition-buttons";
-import { OutfitStatusBadge } from "@/components/outfit-status-badge";
-
-const ALL_STATUSES = [
-  "DRAFT",
-  "DESIGN_IN_PROGRESS",
-  "WAITING_FOR_REFERENCES",
-  "WAITING_FOR_DEPENDENCIES",
-  "PRODUCTION_READY",
-  "PATTERN_DRAFTING",
-  "MAGGAM_WORK",
-  "MAGGAM_REVIEW",
-  "MAGGAM_REVIEWED",
-  "FABRIC_CUTTING",
-  "STITCHING",
-  "PRODUCTION_COMPLETED",
-  "TRIAL",
-  "ALTERATION",
-  "QC",
-  "READY_FOR_DELIVERY",
-  "DELIVERED",
-];
+import { OutfitStatusBadge, formatStatusShort, ALL_OUTFIT_STATUSES } from "@/components/outfit-status-badge";
 
 const LIMIT = 20;
 
@@ -247,8 +227,11 @@ export default function OutfitsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                {ALL_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+                {ALL_OUTFIT_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    <span className="sm:hidden">{formatStatusShort(s)}</span>
+                    <span className="hidden sm:inline">{formatStatus(s)}</span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -404,8 +387,11 @@ export default function OutfitsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {ALL_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+              {ALL_OUTFIT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  <span className="sm:hidden">{formatStatusShort(s)}</span>
+                  <span className="hidden sm:inline">{formatStatus(s)}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

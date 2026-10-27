@@ -3,6 +3,56 @@
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, formatStatus } from "@/lib/utils";
 
+// ─── Canonical status lists ───────────────────────────────────────────────────
+
+/** All 17 outfit workflow statuses in pipeline order. */
+export const ALL_OUTFIT_STATUSES = [
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+  "PRODUCTION_READY",
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY",
+  "DELIVERED",
+] as const;
+
+export type OutfitStatus = (typeof ALL_OUTFIT_STATUSES)[number];
+
+/** Production-phase statuses used to filter the production and stitching-maggam pages. */
+export const PRODUCTION_STATUSES = [
+  "WAITING_FOR_DEPENDENCIES",
+  "PRODUCTION_READY",
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+] as const;
+
+/** Order-level status strings (stored as human-readable, not SNAKE_CASE). */
+export const ORDER_STATUSES = [
+  "Active",
+  "In Design",
+  "Production Ready",
+  "Waiting For Dependencies",
+  "In Production",
+  "Trial/QC",
+  "Ready For Delivery",
+  "Completed",
+] as const;
+
 /**
  * Short labels for mobile — keeps badge narrow on small screens.
  * Full label shown on sm+ via responsive classes.
@@ -26,6 +76,14 @@ const SHORT_STATUS_LABELS: Record<string, string> = {
   READY_FOR_DELIVERY: "Ready",
   DELIVERED: "✓ Done",
 };
+
+/**
+ * Returns the short label for a status. Falls back to formatStatus if not in the map.
+ * Useful for rendering compact labels in filter dropdowns on mobile.
+ */
+export function formatStatusShort(status: string): string {
+  return SHORT_STATUS_LABELS[status] ?? formatStatus(status);
+}
 
 interface OutfitStatusBadgeProps {
   status: string;

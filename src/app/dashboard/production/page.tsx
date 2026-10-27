@@ -20,21 +20,8 @@ import { Shirt, Calendar, AlertTriangle, Search, ImageOff, X } from "lucide-reac
 import { usePermissions } from "@/hooks/use-permissions";
 import { ImageViewer } from "@/components/image-viewer";
 import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
-import {
-  OutfitTransitionButtons,
-} from "@/components/outfit-transition-buttons";
-
-const PRODUCTION_STATUSES = [
-  "WAITING_FOR_DEPENDENCIES",
-  "PRODUCTION_READY",
-  "PATTERN_DRAFTING",
-  "MAGGAM_WORK",
-  "MAGGAM_REVIEW",
-  "MAGGAM_REVIEWED",
-  "FABRIC_CUTTING",
-  "STITCHING",
-  "PRODUCTION_COMPLETED",
-];
+import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
+import { OutfitStatusBadge, formatStatusShort, PRODUCTION_STATUSES } from "@/components/outfit-status-badge";
 
 type Transition = { status: string; label: string; blocked: boolean; reason?: string };
 
@@ -158,7 +145,10 @@ export default function ProductionPage() {
             <SelectContent>
               <SelectItem value="">All Stages</SelectItem>
               {PRODUCTION_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+                <SelectItem key={s} value={s}>
+                  <span className="sm:hidden">{formatStatusShort(s)}</span>
+                  <span className="hidden sm:inline">{formatStatus(s)}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

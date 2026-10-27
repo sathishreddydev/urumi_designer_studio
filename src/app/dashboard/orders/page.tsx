@@ -17,17 +17,7 @@ import { Pagination } from "@/components/pagination";
 import { Plus, Search, Calendar, X } from "lucide-react";
 import { formatDate, getStatusColor } from "@/lib/utils";
 import Link from "next/link";
-
-const ORDER_STATUSES = [
-  "Active",
-  "In Design",
-  "Production Ready",
-  "Waiting For Dependencies",
-  "In Production",
-  "Trial/QC",
-  "Ready For Delivery",
-  "Completed",
-];
+import { ORDER_STATUSES } from "@/components/outfit-status-badge";
 const LIMIT = 20;
 
 export default function OrdersPage() {
