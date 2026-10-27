@@ -117,7 +117,7 @@ function OutfitStatusUpdater({
           ? (transitionMutation.variables ?? null)
           : null
       }
-      responsive={false}
+      responsive={true}
       emptyPlaceholder={<span className="text-[11px] text-muted-foreground">—</span>}
     />
   );

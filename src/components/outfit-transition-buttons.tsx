@@ -83,7 +83,7 @@ export function OutfitTransitionButtons({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
         {transitions.map((t) => {
           const shortLabel = OUTFIT_STATUS_SHORT_LABELS[t.status] ?? t.label;
           const isLoading = !t.blocked && pendingStatus === t.status;
