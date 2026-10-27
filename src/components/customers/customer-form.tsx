@@ -228,22 +228,7 @@ export function CustomerForm({
         onSubmit={handleSubmit(onSubmit)}
         className="overflow-visible rounded-2xl border border-border bg-card shadow-sm"
       >
-        {/* Header */}
-        <div className="flex flex-col items-center border-b border-border px-6 py-6 text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <UserRoundPlus className="h-6 w-6" />
-          </div>
 
-          <h2 className="text-xl font-semibold tracking-tight">
-            {editingCustomerId ? "Edit Customer" : "Add Customer"}
-          </h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            {editingCustomerId
-              ? "Update your customer information"
-              : "Enter the details to create a customer profile"}
-          </p>
-        </div>
 
         {/* Form fields */}
         <div className="space-y-5 px-5 py-6 sm:px-6">
@@ -256,11 +241,10 @@ export function CustomerForm({
               {...register("name")}
               placeholder="Enter customer name"
               autoComplete="name"
-              className={`h-11 rounded-lg ${
-                errors.name
+              className={`h-11 rounded-lg ${errors.name
                   ? "border-destructive focus-visible:ring-destructive"
                   : ""
-              }`}
+                }`}
             />
           </Field>
 
@@ -467,11 +451,10 @@ export function CustomerForm({
               {...register("email")}
               placeholder="e.g. priya@example.com"
               autoComplete="email"
-              className={`h-11 rounded-lg ${
-                errors.email
+              className={`h-11 rounded-lg ${errors.email
                   ? "border-destructive focus-visible:ring-destructive"
                   : ""
-              }`}
+                }`}
             />
           </Field>
 
