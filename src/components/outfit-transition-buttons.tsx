@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
 import { LoadingButton } from "@/components/ui/loading-button";
 import {
@@ -8,26 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// Short labels for mobile — single-word / abbreviation so they fit narrow spaces
-export const OUTFIT_STATUS_SHORT_LABELS: Record<string, string> = {
-  DESIGN_IN_PROGRESS: "Design",
-  WAITING_FOR_REFERENCES: "Refs",
-  WAITING_FOR_DEPENDENCIES: "Deps",
-  PRODUCTION_READY: "Prod",
-  PATTERN_DRAFTING: "Pattern",
-  MAGGAM_WORK: "Maggam",
-  MAGGAM_REVIEW: "Review",
-  MAGGAM_REVIEWED: "✓ Maggam",
-  FABRIC_CUTTING: "Cut",
-  STITCHING: "Stitch",
-  PRODUCTION_COMPLETED: "✓ Prod",
-  TRIAL: "Trial",
-  ALTERATION: "Alter",
-  QC: "QC",
-  READY_FOR_DELIVERY: "Ready",
-  DELIVERED: "✓ Done",
-};
+import { SHORT_STATUS_LABELS } from "@/components/outfit-status-badge";
 
 export interface OutfitTransition {
   status: string;
@@ -85,7 +67,7 @@ export function OutfitTransitionButtons({
     <TooltipProvider delayDuration={200}>
       <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
         {transitions.map((t) => {
-          const shortLabel = OUTFIT_STATUS_SHORT_LABELS[t.status] ?? t.label;
+          const shortLabel = SHORT_STATUS_LABELS[t.status] ?? t.label;
           const isLoading = !t.blocked && pendingStatus === t.status;
 
           // MAGGAM_WORK is a "rework / send back" action — amber outline + RotateCcw

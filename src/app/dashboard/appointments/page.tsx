@@ -6,6 +6,7 @@ import Link from "next/link";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -136,9 +137,7 @@ function AppointmentCard({
               {outfit.orderNumber && ` · ${outfit.orderNumber}`}
             </p>
           </div>
-          <Badge className={`${getStatusColor(outfit.status)} text-[10px] shrink-0`}>
-            {outfit.status === "TRIAL" ? "Trial" : "Ready"}
-          </Badge>
+          <OutfitStatusBadge status={outfit.status} className="text-[10px] shrink-0" />
         </div>
 
         {/* Date row */}

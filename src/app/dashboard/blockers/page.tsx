@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { AlertTriangle, CheckCircle, Clock, Shirt, User } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
@@ -116,9 +117,7 @@ export default function BlockersPage() {
                         <Clock className="h-3 w-3" /> {formatDate(blocker.createdAt)}
                       </span>
                       {blocker.outfit?.status && (
-                        <Badge className={`text-[10px] ${getStatusColor(blocker.outfit.status)}`}>
-                          {formatStatus(blocker.outfit.status)}
-                        </Badge>
+                        <OutfitStatusBadge status={blocker.outfit.status} className="text-[10px]" />
                       )}
                     </div>
 

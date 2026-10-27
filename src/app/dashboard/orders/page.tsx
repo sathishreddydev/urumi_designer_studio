@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OutfitStatusBadge, ORDER_STATUSES } from "@/components/outfit-status-badge";
 import {
   Select,
   SelectContent,
@@ -131,9 +132,7 @@ export default function OrdersPage() {
                         <p className="text-[10px] text-muted-foreground">{order.customerMobile}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={`${getStatusColor(order.status)} whitespace-nowrap text-xs`}>
-                          {order.status}
-                        </Badge>
+                        <OutfitStatusBadge status={order.status} responsive={false} className="whitespace-nowrap text-xs" />
                       </td>
                       <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
                         {estimated > 0 ? `₹${estimated.toLocaleString("en-IN")}` : "—"}
@@ -171,9 +170,7 @@ export default function OrdersPage() {
                         <p className="font-semibold text-sm truncate">{order.orderNumber}</p>
                         <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
                       </div>
-                      <Badge className={`${getStatusColor(order.status)} text-[10px] shrink-0 max-w-[120px] truncate`}>
-                        {order.status}
-                      </Badge>
+                      <OutfitStatusBadge status={order.status} responsive={false} className="text-[10px] shrink-0 max-w-[120px] truncate" />
                     </div>
 
                     {/* Bottom row: financials + delivery */}

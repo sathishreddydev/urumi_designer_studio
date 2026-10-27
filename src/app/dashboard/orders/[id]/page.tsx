@@ -475,11 +475,7 @@ export default function OrderDetailPage() {
               <h1 className="text-lg font-bold leading-6 tracking-tight sm:text-xl">
                 {order.orderNumber}
               </h1>
-              <Badge
-                className={`${getStatusColor(order.status)} text-xs leading-4`}
-              >
-                {order.status}
-              </Badge>
+              <OutfitStatusBadge status={order.status} responsive={false} className="text-xs leading-4" />
             </div>
             <p className="mt-1 text-xs leading-4 text-muted-foreground">
               Customer:{" "}

@@ -11,7 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { OutfitStatusBadge } from "@/components/outfit-status-badge";
+import {
+  OutfitStatusBadge,
+  COMPLETION_STATUSES,
+  MATERIAL_LOCKED_STATUSES,
+  LOCKED_STATUSES,
+} from "@/components/outfit-status-badge";
 import { Separator } from "@/components/ui/separator";
 import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
 import {
@@ -496,45 +501,15 @@ export default function OutfitDetailPage() {
   );
 
   // Completion photo upload is available from PRODUCTION_COMPLETED onwards
-  const completionStatuses = [
-    "PRODUCTION_COMPLETED",
-    "TRIAL",
-    "ALTERATION",
-    "QC",
-    "READY_FOR_DELIVERY",
-    "DELIVERED",
-  ];
   const canUploadCompletion =
     (role === "ADMIN" || role === "STORE_MANAGER" || role === "RECEPTION" || role === "DESIGNER") &&
-    completionStatuses.includes(outfit.status);
+    (COMPLETION_STATUSES as readonly string[]).includes(outfit.status);
 
-  const materialLockedStatuses = [
-    "PATTERN_DRAFTING",
-    "MAGGAM_WORK",
-    "MAGGAM_REVIEW",
-    "MAGGAM_REVIEWED",
-    "FABRIC_CUTTING",
-    "STITCHING",
-    "PRODUCTION_COMPLETED",
-    "TRIAL",
-    "ALTERATION",
-    "QC",
-    "READY_FOR_DELIVERY",
-    "DELIVERED",
-  ];
   const canManageCustomerMaterial =
     (role === "ADMIN" || role === "STORE_MANAGER" || role === "RECEPTION") &&
-    !materialLockedStatuses.includes(outfit.status);
+    !(MATERIAL_LOCKED_STATUSES as readonly string[]).includes(outfit.status);
 
-  const lockedStatuses = [
-    "PRODUCTION_COMPLETED",
-    "TRIAL",
-    "ALTERATION",
-    "QC",
-    "READY_FOR_DELIVERY",
-    "DELIVERED",
-  ];
-  const isLocked = lockedStatuses.includes(outfit.status);
+  const isLocked = (LOCKED_STATUSES as readonly string[]).includes(outfit.status);
 
   return (
     <div className="space-y-4">

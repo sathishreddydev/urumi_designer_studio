@@ -557,12 +557,7 @@ const cleanMobile = (customer.mobile && !customer.mobile.startsWith("no-phone_")
                             <span className="font-semibold text-sm truncate">
                               {order.orderNumber}
                             </span>
-                            <Badge
-                              className={`${getStatusColor(order.status)} text-[10px] shrink-0`}
-                              variant="secondary"
-                            >
-                              {order.status}
-                            </Badge>
+                            <OutfitStatusBadge status={order.status} responsive={false} className="text-[10px] shrink-0" />
                           </div>
                           {order.deliveryDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">

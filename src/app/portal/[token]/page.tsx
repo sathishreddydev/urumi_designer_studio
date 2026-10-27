@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { OutfitStatusBadge } from "@/components/outfit-status-badge";
+import {
+  OutfitStatusBadge,
+  ALL_OUTFIT_STATUSES,
+  APPROVAL_ALLOWED_STATUSES,
+} from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -39,26 +43,6 @@ import {
   Filter,
 } from "lucide-react";
 
-const STATUS_ORDER = [
-  "DRAFT",
-  "DESIGN_IN_PROGRESS",
-  "WAITING_FOR_REFERENCES",
-  "WAITING_FOR_DEPENDENCIES",
-  "PRODUCTION_READY",
-  "PATTERN_DRAFTING",
-  "MAGGAM_WORK",
-  "MAGGAM_REVIEW",
-  "MAGGAM_REVIEWED",
-  "FABRIC_CUTTING",
-  "STITCHING",
-  "PRODUCTION_COMPLETED",
-  "TRIAL",
-  "ALTERATION",
-  "QC",
-  "READY_FOR_DELIVERY",
-  "DELIVERED",
-];
-
 const STATUS_PROGRESS: Record<string, number> = {
   DRAFT: 5,
   DESIGN_IN_PROGRESS: 12,
@@ -78,13 +62,6 @@ const STATUS_PROGRESS: Record<string, number> = {
   READY_FOR_DELIVERY: 96,
   DELIVERED: 100,
 };
-
-const APPROVAL_ALLOWED_STATUSES = [
-  "DRAFT",
-  "DESIGN_IN_PROGRESS",
-  "WAITING_FOR_REFERENCES",
-  "WAITING_FOR_DEPENDENCIES",
-];
 
 export default function CustomerPortalPage() {
   const params = useParams();
@@ -404,9 +381,7 @@ export default function CustomerPortalPage() {
                       )}
                     </div>
                   </div>
-                  <Badge className={getStatusColor(order.status)} variant="outline">
-                    {formatStatus(order.status)}
-                  </Badge>
+                  <OutfitStatusBadge status={order.status} responsive={false} />
                 </div>
 
                 {/* Outfits */}

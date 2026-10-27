@@ -77,6 +77,55 @@ const SHORT_STATUS_LABELS: Record<string, string> = {
   DELIVERED: "✓ Done",
 };
 
+// Export so outfit-transition-buttons and other files can reuse
+export { SHORT_STATUS_LABELS };
+
+// ─── Semantic status groupings ────────────────────────────────────────────────
+
+/** Statuses from which completion photos can be uploaded. */
+export const COMPLETION_STATUSES = [
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY",
+  "DELIVERED",
+] as const;
+
+/** Statuses at which the outfit is locked for production — no material changes. */
+export const MATERIAL_LOCKED_STATUSES = [
+  "PATTERN_DRAFTING",
+  "MAGGAM_WORK",
+  "MAGGAM_REVIEW",
+  "MAGGAM_REVIEWED",
+  "FABRIC_CUTTING",
+  "STITCHING",
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY",
+  "DELIVERED",
+] as const;
+
+/** Statuses at which the outfit detail is fully locked (no editing). */
+export const LOCKED_STATUSES = [
+  "PRODUCTION_COMPLETED",
+  "TRIAL",
+  "ALTERATION",
+  "QC",
+  "READY_FOR_DELIVERY",
+  "DELIVERED",
+] as const;
+
+/** Statuses where the customer can approve design references in the portal. */
+export const APPROVAL_ALLOWED_STATUSES = [
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+] as const;
+
 /**
  * Returns the short label for a status. Falls back to formatStatus if not in the map.
  * Useful for rendering compact labels in filter dropdowns on mobile.
