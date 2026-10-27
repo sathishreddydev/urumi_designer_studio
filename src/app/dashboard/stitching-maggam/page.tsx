@@ -8,8 +8,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,11 +51,31 @@ type Transition = { status: string; label: string; blocked: boolean; reason?: st
 export default function StitchingMaggamPage() {
   const queryClient = useQueryClient();
   const { role, session } = usePermissions();
-  const [activeTab, setActiveTab] = useState<TabKey>("PRODUCTION_READY");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    (searchParams.get("tab")?.toUpperCase() as TabKey) || "PRODUCTION_READY"
+  );
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [typeFilter, setTypeFilter] = useState(searchParams.get("type") || "all");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      tab:    overrides.tab    !== undefined ? overrides.tab    : activeTab,
+      search: overrides.search !== undefined ? overrides.search : searchQuery,
+      type:   overrides.type   !== undefined ? overrides.type   : typeFilter,
+    };
+    const params = new URLSearchParams();
+    if (next.tab && next.tab !== "PRODUCTION_READY") params.set("tab", next.tab.toLowerCase());
+    if (next.search) params.set("search", next.search);
+    if (next.type && next.type !== "all") params.set("type", next.type);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [activeTab, searchQuery, typeFilter, pathname, router]);
 
   // Image viewer
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -253,7 +274,7 @@ export default function StitchingMaggamPage() {
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => { setActiveTab(tab.key); syncToUrl({ tab: tab.key }); }}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0 ${
                   isActive
                     ? "border-primary text-primary"
@@ -284,11 +305,11 @@ export default function StitchingMaggamPage() {
           <Input
             placeholder="Search outfit, customer, or order…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); syncToUrl({ search: e.target.value }); }}
             className="pl-9"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); syncToUrl({ type: v }); }}>
           <SelectTrigger className="h-9 sm:h-10 sm:w-[160px]">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>

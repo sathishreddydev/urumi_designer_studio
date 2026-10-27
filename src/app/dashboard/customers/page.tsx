@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +14,24 @@ import Link from "next/link";
 const LIMIT = 20;
 
 export default function CustomersPage() {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      search: overrides.search !== undefined ? overrides.search : search,
+      page:   overrides.page   !== undefined ? overrides.page   : String(page),
+    };
+    const params = new URLSearchParams();
+    if (next.search) params.set("search", next.search);
+    if (Number(next.page) > 1) params.set("page", next.page);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [search, page, pathname, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["customers", search, page],
@@ -49,7 +66,7 @@ export default function CustomersPage() {
           placeholder="Search by name, mobile, or email..."
           className="pl-10"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); syncToUrl({ search: e.target.value, page: "1" }); }}
         />
       </div>
 
@@ -135,7 +152,7 @@ export default function CustomersPage() {
             })}
           </div>
 
-          <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={setPage} />
+          <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={(p) => { setPage(p); syncToUrl({ page: String(p) }); }} />
         </>
       )}
     </div>

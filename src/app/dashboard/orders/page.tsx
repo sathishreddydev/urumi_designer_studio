@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,9 +22,27 @@ import Link from "next/link";
 const LIMIT = 20;
 
 export default function OrdersPage() {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [status, setStatus] = useState(searchParams.get("status") || "");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      search: overrides.search !== undefined ? overrides.search : search,
+      status: overrides.status !== undefined ? overrides.status : status,
+      page:   overrides.page   !== undefined ? overrides.page   : String(page),
+    };
+    const params = new URLSearchParams();
+    if (next.search) params.set("search", next.search);
+    if (next.status && next.status !== "all") params.set("status", next.status);
+    if (Number(next.page) > 1) params.set("page", next.page);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [search, status, page, pathname, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders", search, status, page],
@@ -64,10 +83,10 @@ export default function OrdersPage() {
             placeholder="Search by order number or customer..."
             className="pl-9"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); syncToUrl({ search: e.target.value, page: "1" }); }}
           />
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); syncToUrl({ status: v, page: "1" }); }}>
           <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -79,7 +98,7 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
         {hasFilters && (
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSearch(""); setStatus(""); setPage(1); }}>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSearch(""); setStatus(""); setPage(1); router.replace(pathname, { scroll: false }); }}>
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -202,7 +221,7 @@ export default function OrdersPage() {
             })}
           </div>
 
-          <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={setPage} />
+          <Pagination page={page} total={data?.total || 0} limit={LIMIT} onPageChange={(p) => { setPage(p); syncToUrl({ page: String(p) }); }} />
         </>
       )}
     </div>

@@ -114,7 +114,8 @@ export default function OutfitsPage() {
   const { isMaster } = usePermissions();
 
   // Initialise all filters from URL params so back-navigation restores state
-  const [status, setStatus] = useState(searchParams.get("status") || "");
+  // Status is stored lowercase in the URL (e.g. production_ready) but kept uppercase internally
+  const [status, setStatus] = useState((searchParams.get("status") || "").toUpperCase());
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [deadline, setDeadline] = useState(searchParams.get("deadline") || "");
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get("priority") || "");
@@ -135,7 +136,8 @@ export default function OutfitsPage() {
       page:       overrides.page       !== undefined ? overrides.page       : String(page),
     };
     const params = new URLSearchParams();
-    if (next.status && next.status !== "all") params.set("status", next.status);
+    // Store status lowercase in URL
+    if (next.status && next.status !== "all") params.set("status", next.status.toLowerCase());
     if (next.search) params.set("search", next.search);
     if (next.deadline) params.set("deadline", next.deadline);
     if (next.priority) params.set("priority", next.priority);
@@ -199,7 +201,7 @@ export default function OutfitsPage() {
   // Build the current filtered URL to pass as returnTo on outfit detail navigation
   function buildReturnUrl() {
     const params = new URLSearchParams();
-    if (status && status !== "all") params.set("status", status);
+    if (status && status !== "all") params.set("status", status.toLowerCase());
     if (search) params.set("search", search);
     if (deadline) params.set("deadline", deadline);
     if (priorityFilter) params.set("priority", priorityFilter);

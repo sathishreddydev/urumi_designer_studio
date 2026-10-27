@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,12 +163,27 @@ export default function ExpendituresPage() {
 function ExpendituresContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [month, setMonth]         = useState(currentMonth());
-  const [filterCat, setFilterCat] = useState("ALL");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [month, setMonth]         = useState(searchParams.get("month") || currentMonth());
+  const [filterCat, setFilterCat] = useState(searchParams.get("cat") || "ALL");
   const [showForm, setShowForm]   = useState(false);
   const [editId, setEditId]       = useState<string | null>(null);
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [form, setForm]           = useState<ExpenditureForm>(emptyForm());
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      month: overrides.month !== undefined ? overrides.month : month,
+      cat:   overrides.cat   !== undefined ? overrides.cat   : filterCat,
+    };
+    const params = new URLSearchParams();
+    if (next.month && next.month !== currentMonth()) params.set("month", next.month);
+    if (next.cat && next.cat !== "ALL") params.set("cat", next.cat);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [month, filterCat, pathname, router]);
 
   // ── data ────────────────────────────────────────────────────────────────────
   const queryKey = ["expenditures", month, filterCat];
@@ -248,13 +263,17 @@ function ExpendituresContent() {
   function prevMonth() {
     const [y, m] = month.split("-").map(Number);
     const d = new Date(y, m - 2, 1);
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    setMonth(newMonth);
+    syncToUrl({ month: newMonth });
   }
 
   function nextMonth() {
     const [y, m] = month.split("-").map(Number);
     const d = new Date(y, m, 1);
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    setMonth(newMonth);
+    syncToUrl({ month: newMonth });
   }
 
   function openEdit(exp: any) {
@@ -449,7 +468,7 @@ function ExpendituresContent() {
                   const label = CATEGORIES.find((c) => c.value === b.category)?.label ?? b.category;
                   return (
                     <Card key={b.category} className="cursor-pointer hover:border-primary/40"
-                      onClick={() => setFilterCat(filterCat === b.category ? "ALL" : b.category)}
+                      onClick={() => { const v = filterCat === b.category ? "ALL" : b.category; setFilterCat(v); syncToUrl({ cat: v }); }}
                     >
                       <CardContent className="p-3">
                         <Badge className={`text-xs mb-1 ${CATEGORY_COLORS[b.category]}`}>{label}</Badge>
@@ -466,7 +485,7 @@ function ExpendituresContent() {
       {/* Filter bar */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
-          onClick={() => setFilterCat("ALL")}
+          onClick={() => { setFilterCat("ALL"); syncToUrl({ cat: "ALL" }); }}
           className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${filterCat === "ALL" ? "bg-primary text-primary-foreground border-transparent" : "border-border hover:border-primary/40"}`}
         >
           All
@@ -474,7 +493,7 @@ function ExpendituresContent() {
         {CATEGORIES.map((c) => (
           <button
             key={c.value}
-            onClick={() => setFilterCat(filterCat === c.value ? "ALL" : c.value)}
+            onClick={() => { const v = filterCat === c.value ? "ALL" : c.value; setFilterCat(v); syncToUrl({ cat: v }); }}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               filterCat === c.value
                 ? "bg-primary text-primary-foreground border-transparent"

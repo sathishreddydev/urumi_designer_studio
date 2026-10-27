@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,10 +28,28 @@ type Transition = { status: string; label: string; blocked: boolean; reason?: st
 export default function ProductionPage() {
   const queryClient = useQueryClient();
   const { role, session } = usePermissions();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState((searchParams.get("status") || "").toUpperCase());
+  const [priorityFilter, setPriorityFilter] = useState(searchParams.get("priority") || "");
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      search:   overrides.search   !== undefined ? overrides.search   : search,
+      status:   overrides.status   !== undefined ? overrides.status   : statusFilter,
+      priority: overrides.priority !== undefined ? overrides.priority : priorityFilter,
+    };
+    const params = new URLSearchParams();
+    if (next.search) params.set("search", next.search);
+    if (next.status) params.set("status", next.status.toLowerCase());
+    if (next.priority) params.set("priority", next.priority);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [search, statusFilter, priorityFilter, pathname, router]);
 
   // Image viewer
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -134,10 +153,10 @@ export default function ProductionPage() {
               placeholder="Search by outfit, customer or order..."
               className="pl-9"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); syncToUrl({ search: e.target.value }); }}
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => { const u = v ? v.toUpperCase() : ""; setStatusFilter(u); syncToUrl({ status: u }); }}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="All Stages" />
             </SelectTrigger>
@@ -161,7 +180,7 @@ export default function ProductionPage() {
               <button
                 key={opt.value}
                 data-active={isActive}
-                onClick={() => setPriorityFilter(isActive ? "" : String(opt.value))}
+                onClick={() => { setPriorityFilter(isActive ? "" : String(opt.value)); syncToUrl({ priority: isActive ? "" : String(opt.value) }); }}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${opt.className} hover:opacity-90 ${isActive ? "ring-1 ring-current ring-offset-1" : ""}`}
               >
                 {opt.label}

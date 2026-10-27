@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -511,9 +511,25 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ConsultationsPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [showForm, setShowForm] = useState(false);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("draft");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "draft");
+
+  const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
+    const next = {
+      search: overrides.search !== undefined ? overrides.search : search,
+      status: overrides.status !== undefined ? overrides.status : statusFilter,
+    };
+    const params = new URLSearchParams();
+    if (next.search) params.set("search", next.search);
+    if (next.status && next.status !== "all") params.set("status", next.status);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [search, statusFilter, pathname, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["consultations", statusFilter, search],
@@ -562,9 +578,9 @@ export default function ConsultationsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search by customer or notes..." className="pl-9"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
+            value={search} onChange={(e) => { setSearch(e.target.value); syncToUrl({ search: e.target.value }); }} />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); syncToUrl({ status: v }); }}>
           <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
