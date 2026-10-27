@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,18 +108,42 @@ function OutfitStatusUpdater({
 
 export default function OutfitsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { isMaster } = usePermissions();
 
-  // Initialise status from the URL ?status= param so dashboard links land correctly
+  // Initialise all filters from URL params so back-navigation restores state
   const [status, setStatus] = useState(searchParams.get("status") || "");
-  const [search, setSearch] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [deadline, setDeadline] = useState(searchParams.get("deadline") || "");
+  const [priorityFilter, setPriorityFilter] = useState(searchParams.get("priority") || "");
+  const [customDate, setCustomDate] = useState<Date | undefined>(
+    searchParams.get("customDate") ? new Date(searchParams.get("customDate")!) : undefined
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+
+  // Sync filters → URL (replace so back button still works correctly)
+  const syncToUrl = useCallback((overrides: Record<string, string | undefined> = {}) => {
+    const next: Record<string, string> = {
+      status:     overrides.status     !== undefined ? overrides.status     : status,
+      search:     overrides.search     !== undefined ? overrides.search     : search,
+      deadline:   overrides.deadline   !== undefined ? overrides.deadline   : deadline,
+      priority:   overrides.priority   !== undefined ? overrides.priority   : priorityFilter,
+      customDate: overrides.customDate !== undefined ? overrides.customDate : (customDate?.toISOString() ?? ""),
+      page:       overrides.page       !== undefined ? overrides.page       : String(page),
+    };
+    const params = new URLSearchParams();
+    if (next.status && next.status !== "all") params.set("status", next.status);
+    if (next.search) params.set("search", next.search);
+    if (next.deadline) params.set("deadline", next.deadline);
+    if (next.priority) params.set("priority", next.priority);
+    if (next.customDate) params.set("customDate", next.customDate);
+    if (Number(next.page) > 1) params.set("page", next.page);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [status, search, deadline, priorityFilter, customDate, page, pathname, router]);
 
   // Image viewer state
   const [viewerImages, setViewerImages] = useState<{ id: string; url: string }[]>([]);
@@ -159,8 +183,30 @@ export default function OutfitsPage() {
   const total = data?.total || 0;
   const hasFilters = status || search || deadline || customDate || priorityFilter;
 
+  // ── Filter setters that also update the URL ──────────────────────────────
+  function handleStatus(v: string) { setStatus(v); setPage(1); syncToUrl({ status: v, page: "1" }); }
+  function handleSearch(v: string) { setSearch(v); setPage(1); syncToUrl({ search: v, page: "1" }); }
+  function handleDeadline(v: string) { setDeadline(v); setCustomDate(undefined); setPage(1); syncToUrl({ deadline: v, customDate: "", page: "1" }); }
+  function handlePriority(v: string) { setPriorityFilter(v); setPage(1); syncToUrl({ priority: v, page: "1" }); }
+  function handleCustomDate(d: Date | undefined) { setCustomDate(d); setDeadline(""); setPage(1); syncToUrl({ customDate: d?.toISOString() ?? "", deadline: "", page: "1" }); }
+  function handlePage(p: number) { setPage(p); syncToUrl({ page: String(p) }); }
+
   function clearAll() {
     setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPriorityFilter(""); setPage(1);
+    router.replace(pathname, { scroll: false });
+  }
+
+  // Build the current filtered URL to pass as returnTo on outfit detail navigation
+  function buildReturnUrl() {
+    const params = new URLSearchParams();
+    if (status && status !== "all") params.set("status", status);
+    if (search) params.set("search", search);
+    if (deadline) params.set("deadline", deadline);
+    if (priorityFilter) params.set("priority", priorityFilter);
+    if (customDate) params.set("customDate", customDate.toISOString());
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return `/dashboard/outfits${qs ? `?${qs}` : ""}`;
   }
 
   const DEADLINE_PILLS = [
@@ -195,7 +241,7 @@ export default function OutfitsPage() {
             placeholder="Search outfits..."
             className="pl-9"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
         <Button
@@ -221,7 +267,7 @@ export default function OutfitsPage() {
           {/* Status */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Status</p>
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+            <Select value={status} onValueChange={handleStatus}>
               <SelectTrigger className="w-full h-8 text-xs">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
@@ -247,7 +293,7 @@ export default function OutfitsPage() {
                   <button
                     key={pill.value}
                     data-active={isActive}
-                    onClick={() => { setPriorityFilter(isActive ? "" : pill.value); setPage(1); }}
+                    onClick={() => handlePriority(isActive ? "" : pill.value)}
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
                   >
                     {pill.label}
@@ -267,7 +313,7 @@ export default function OutfitsPage() {
                   <button
                     key={pill.value}
                     data-active={isActive}
-                    onClick={() => { setDeadline(isActive ? "" : pill.value); setCustomDate(undefined); setPage(1); }}
+                    onClick={() => handleDeadline(isActive ? "" : pill.value)}
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
                   >
                     {pill.icon}
@@ -287,14 +333,14 @@ export default function OutfitsPage() {
                     <CalendarIcon className="h-3 w-3" />
                     {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
                     {customDate && (
-                      <span role="button" onClick={(e) => { e.stopPropagation(); setCustomDate(undefined); setPage(1); }} className="ml-0.5 opacity-70">
+                      <span role="button" onClick={(e) => { e.stopPropagation(); handleCustomDate(undefined); }} className="ml-0.5 opacity-70">
                         <X className="h-3 w-3" />
                       </span>
                     )}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar mode="single" selected={customDate} onSelect={(d) => { setCustomDate(d); setDeadline(""); setPage(1); }} initialFocus />
+                  <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -320,7 +366,7 @@ export default function OutfitsPage() {
               <button
                 key={pill.value}
                 data-active={isActive}
-                onClick={() => { setPriorityFilter(isActive ? "" : pill.value); setPage(1); }}
+                onClick={() => handlePriority(isActive ? "" : pill.value)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${pill.className}`}
               >
                 {pill.label}
@@ -338,7 +384,7 @@ export default function OutfitsPage() {
               <button
                 key={pill.value}
                 data-active={isActive}
-                onClick={() => { setDeadline(isActive ? "" : pill.value); setCustomDate(undefined); setPage(1); }}
+                onClick={() => handleDeadline(isActive ? "" : pill.value)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${pill.className}`}
               >
                 {pill.icon}
@@ -358,14 +404,14 @@ export default function OutfitsPage() {
                 <CalendarIcon className="h-3 w-3" />
                 {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
                 {customDate && (
-                  <span role="button" aria-label="Clear date" onClick={(e) => { e.stopPropagation(); setCustomDate(undefined); setPage(1); }} className="ml-0.5 opacity-70 hover:opacity-100">
+                  <span role="button" aria-label="Clear date" onClick={(e) => { e.stopPropagation(); handleCustomDate(undefined); }} className="ml-0.5 opacity-70 hover:opacity-100">
                     <X className="h-3 w-3" />
                   </span>
                 )}
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-auto p-0">
-              <Calendar mode="single" selected={customDate} onSelect={(d) => { setCustomDate(d); setDeadline(""); setPage(1); }} initialFocus />
+              <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
@@ -378,10 +424,10 @@ export default function OutfitsPage() {
               placeholder="Search by outfit name or customer..."
               className="pl-9"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
-          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+          <Select value={status} onValueChange={handleStatus}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
@@ -440,7 +486,7 @@ export default function OutfitsPage() {
                     <tr
                       key={outfit.id}
                       className="hover:bg-muted/30 cursor-pointer"
-                      onClick={() => router.push(`/dashboard/outfits/${outfit.id}?from=outfits`)}
+                      onClick={() => router.push(`/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`)}
                     >
                       <td className="px-4 py-3 max-w-[180px]">
                         <p className="font-medium truncate">{outfit.name}</p>
@@ -538,7 +584,7 @@ export default function OutfitsPage() {
               return (
                 <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md">
                   {/* Top row: name + status badge */}
-                  <Link href={`/dashboard/outfits/${outfit.id}?from=outfits`} className="block">
+                  <Link href={`/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="block">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
@@ -626,7 +672,7 @@ export default function OutfitsPage() {
             })}
           </div>
 
-          <Pagination page={page} total={total} limit={LIMIT} onPageChange={setPage} />
+          <Pagination page={page} total={total} limit={LIMIT} onPageChange={handlePage} />
         </>
       )}
 
