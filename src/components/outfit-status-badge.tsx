@@ -59,22 +59,22 @@ export const ORDER_STATUSES = [
  */
 const SHORT_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
-  DESIGN_IN_PROGRESS: "Design",
-  WAITING_FOR_REFERENCES: "Refs",
-  WAITING_FOR_DEPENDENCIES: "Blocked",
-  PRODUCTION_READY: "Prod",
-  PATTERN_DRAFTING: "Pattern",
+  DESIGN_IN_PROGRESS: "Designing",
+  WAITING_FOR_REFERENCES: "Wait-Ref",
+  WAITING_FOR_DEPENDENCIES: "Wait-Dep",
+  PRODUCTION_READY: "P-Ready",
+  PATTERN_DRAFTING: "Drafting",
   MAGGAM_WORK: "Maggam",
-  MAGGAM_REVIEW: "Review",
-  MAGGAM_REVIEWED: "✓ Maggam",
-  FABRIC_CUTTING: "Cut",
+  MAGGAM_REVIEW: "M-Review",
+  MAGGAM_REVIEWED: "M-Reviewed",
+  FABRIC_CUTTING: "Fab Cutting",
   STITCHING: "Stitch",
-  PRODUCTION_COMPLETED: "✓ Prod",
+  PRODUCTION_COMPLETED: "P-Completed",
   TRIAL: "Trial",
   ALTERATION: "Alter",
   QC: "QC",
-  READY_FOR_DELIVERY: "Ready",
-  DELIVERED: "✓ Done",
+  READY_FOR_DELIVERY: "Rdy-Del",
+  DELIVERED: "Delivered",
 };
 
 // Export so outfit-transition-buttons and other files can reuse
