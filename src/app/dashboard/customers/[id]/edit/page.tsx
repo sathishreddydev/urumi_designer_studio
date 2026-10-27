@@ -77,14 +77,19 @@ export default function EditCustomerPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <Link href={`/dashboard/customers/${params.id}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">Edit Customer</h1>
-        <span>{customer.name}</span>
+
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold">Edit Customer</h1>
+          <span className="text-sm text-muted-foreground">
+            {customer.name}
+          </span>
+        </div>
       </div>
 
       <CustomerForm
