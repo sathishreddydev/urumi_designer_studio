@@ -363,95 +363,176 @@ export default function CustomerPortalPage() {
               </div>
 
               {/* Outfits */}
+
               <div className="space-y-4">
                 {order.outfits.map((outfit: any) => {
-                  const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status);
+                  const canApprove = APPROVAL_ALLOWED_STATUSES.includes(
+                    outfit.status
+                  );
 
                   const designRefs = (outfit.references || []).filter(
-                    (ref: any) => ref.type !== "FABRIC" && ref.type !== "COMPLETION",
+                    (ref: any) =>
+                      ref.type !== "FABRIC" && ref.type !== "COMPLETION"
                   );
+
                   const fabricRefs = (outfit.references || []).filter(
-                    (ref: any) => ref.type === "FABRIC",
+                    (ref: any) => ref.type === "FABRIC"
                   );
+
                   const completionRefs = (outfit.references || []).filter(
-                    (ref: any) => ref.type === "COMPLETION",
+                    (ref: any) => ref.type === "COMPLETION"
                   );
+
                   const showCompletionPhotos =
                     completionRefs.length > 0 &&
-                    ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"].includes(outfit.status);
+                    [
+                      "PRODUCTION_COMPLETED",
+                      "TRIAL",
+                      "ALTERATION",
+                      "QC",
+                      "READY_FOR_DELIVERY",
+                      "DELIVERED",
+                    ].includes(outfit.status);
+
+                  const outfitPrice = Number(outfit.price) || 0;
+                  const addOns = outfit.addOns || [];
+
+                  const addOnsTotal = addOns.reduce(
+                    (sum: number, item: any) =>
+                      sum + (Number(item.price) || 0),
+                    0
+                  );
+
+                  const total = outfitPrice + addOnsTotal;
+                  const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
+
+                  const formatPrice = (price: number) =>
+                    `₹${price.toLocaleString("en-IN")}`;
 
                   return (
-                    <div key={outfit.id} className="rounded-lg border bg-card p-4 space-y-4 shadow-2xs">
+                    <div
+                      key={outfit.id}
+                      className="space-y-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5"
+                    >
                       {/* Outfit Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
-                            <Shirt className="h-4 w-4" />
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <Shirt className="h-5 w-5" />
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-sm">{outfit.name}</h4>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <h4 className="text-sm font-semibold leading-5">
+                              {outfit.name}
+                            </h4>
+
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <span>{outfit.type}</span>
+
                               {outfit.maggamRequired && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                <Badge
+                                  variant="secondary"
+                                  className="px-2 py-0.5 text-[10px]"
+                                >
                                   Maggam Work
                                 </Badge>
                               )}
                             </div>
-                            <div className="mt-1 text-xs">
-                              {/* Price summary — always shown */}
-                              {(() => {
-                                const outfitPrice = Number(outfit.price) || 0;
-                                const addOns = outfit.addOns || [];
-                                const addOnsTotal = addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
-                                const total = outfitPrice + addOnsTotal;
-                                const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
 
-                                if (!hasAnyPrice) {
-                                  return <span className="italic text-amber-600">⏳ Price to be confirmed</span>;
-                                }
-                                return (
-                                  <div className="space-y-0.5">
+                            {/* Price Summary */}
+                            <div className="mt-3 w-full max-w-sm overflow-hidden rounded-lg border bg-muted/20">
+                              {!hasAnyPrice ? (
+                                <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                  <div>
+                                    <p className="text-xs font-medium">
+                                      Design Price
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                      Final quotation pending
+                                    </p>
+                                  </div>
+
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                                  >
+                                    To be confirmed
+                                  </Badge>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="space-y-2 p-3">
                                     {outfitPrice > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Outfit Price</span>
-                                        <span className="font-medium">₹{outfitPrice.toLocaleString()}</span>
+                                      <div className="flex items-center justify-between gap-4 text-xs">
+                                        <span className="text-muted-foreground">
+                                          Outfit / Design
+                                        </span>
+
+                                        <span className="shrink-0 font-medium tabular-nums">
+                                          {formatPrice(outfitPrice)}
+                                        </span>
                                       </div>
                                     )}
-                                    {addOns.map((a: any) => (
-                                      <div key={a.id} className="flex justify-between">
-                                        <span className="text-muted-foreground">{a.name}</span>
-                                        <span className="font-medium">₹{Number(a.price).toLocaleString()}</span>
+
+                                    {addOns.map((item: any) => (
+                                      <div
+                                        key={item.id}
+                                        className="flex items-center justify-between gap-4 text-xs"
+                                      >
+                                        <span className="min-w-0 break-words text-muted-foreground">
+                                          {item.name}
+                                        </span>
+
+                                        <span className="shrink-0 font-medium tabular-nums">
+                                          {formatPrice(Number(item.price) || 0)}
+                                        </span>
                                       </div>
                                     ))}
-                                    {outfitPrice > 0 && addOnsTotal > 0 && (
-                                      <div className="flex justify-between border-t pt-0.5 font-semibold">
-                                        <span>Total</span>
-                                        <span>₹{total.toLocaleString()}</span>
-                                      </div>
-                                    )}
                                   </div>
-                                );
-                              })()}
+
+                                  <div className="flex items-center justify-between gap-4 border-t bg-muted/50 px-3 py-2.5">
+                                    <div>
+                                      <p className="text-xs font-semibold">
+                                        Total Amount
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        Including add-ons
+                                      </p>
+                                    </div>
+
+                                    <span className="shrink-0 text-base font-bold tabular-nums">
+                                      {formatPrice(total)}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
-                        <OutfitStatusBadge status={outfit.status} />
+
+                        {/* Outfit Status */}
+                        <div className="flex shrink-0 items-center sm:justify-end">
+                          <OutfitStatusBadge status={outfit.status} />
+                        </div>
                       </div>
 
                       {/* Design References */}
                       {designRefs.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t">
-                          <div className="flex items-center justify-between">
+                        <div className="space-y-3 border-t pt-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="text-xs font-semibold text-muted-foreground">
-                              {canApprove ? "Design References (Requires Approval)" : "Confirmed References"}
+                              {canApprove
+                                ? "Design References (Requires Approval)"
+                                : "Confirmed References"}
                             </span>
+
                             {!canApprove && (
-                              <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                              <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-muted-foreground dark:bg-neutral-800">
                                 Locked for production
                               </span>
                             )}
                           </div>
+
                           <PortalReferences
                             references={designRefs}
                             token={params.token as string}
@@ -463,10 +544,11 @@ export default function CustomerPortalPage() {
 
                       {/* Customer Material */}
                       {fabricRefs.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t">
+                        <div className="space-y-3 border-t pt-4">
                           <span className="text-xs font-semibold text-muted-foreground">
                             Customer Material
                           </span>
+
                           <PortalReferences
                             references={fabricRefs}
                             token={params.token as string}
@@ -478,15 +560,17 @@ export default function CustomerPortalPage() {
 
                       {/* Completion Photos */}
                       {showCompletionPhotos && (
-                        <div className="space-y-2 pt-2 border-t">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-3 border-t pt-4">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs font-semibold text-muted-foreground">
                               Finished Outfit
                             </span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 font-medium">
+
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                               ✓ Ready
                             </span>
                           </div>
+
                           <PortalReferences
                             references={completionRefs}
                             token={params.token as string}
@@ -498,7 +582,7 @@ export default function CustomerPortalPage() {
 
                       {/* Upload */}
                       {canApprove && (
-                        <div className="pt-2 border-t space-y-3">
+                        <div className="space-y-3 border-t pt-4">
                           <PortalUpload
                             outfitId={outfit.id}
                             token={params.token as string}
@@ -510,6 +594,7 @@ export default function CustomerPortalPage() {
                   );
                 })}
               </div>
+
 
               {/* Financial Summary */}
               {(order.totalPaid > 0 || Number(order.estimatedAmount) > 0) && (
