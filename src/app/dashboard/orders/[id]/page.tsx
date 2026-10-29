@@ -679,11 +679,13 @@ export default function OrderDetailPage() {
                       const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
 
                       return (
-                        <div className="text-xs space-y-1 border-t pt-2">
+                        <div className="text-xs space-y-1.5 border-t pt-2">
                           {!hasAnyPrice ? (
-                            <span className="text-muted-foreground italic">Price not set</span>
+                            <div className="rounded-md border border-violet-100 bg-violet-50/80 px-3 py-2 dark:border-violet-900/50 dark:bg-violet-950/20">
+                              <span className="text-muted-foreground italic">Price not set</span>
+                            </div>
                           ) : (
-                            <>
+                            <div className="space-y-1.5 rounded-md border border-violet-100 bg-violet-50/80 px-3 py-2 dark:border-violet-900/50 dark:bg-violet-950/20">
                               {outfitPrice > 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Outfit Price</span>
@@ -696,13 +698,11 @@ export default function OrderDetailPage() {
                                   <span className="font-medium">₹{Number(a.price).toLocaleString()}</span>
                                 </div>
                               ))}
-                              {outfitPrice > 0 && addOnsTotal > 0 && (
-                                <div className="flex justify-between border-t pt-1 font-semibold">
-                                  <span>Total</span>
-                                  <span>₹{total.toLocaleString()}</span>
-                                </div>
-                              )}
-                            </>
+                              <div className="flex justify-between border-t border-violet-200 pt-1.5 font-semibold dark:border-violet-800">
+                                <span>Outfit Total</span>
+                                <span>₹{total.toLocaleString()}</span>
+                              </div>
+                            </div>
                           )}
                         </div>
                       );

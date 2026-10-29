@@ -75,6 +75,15 @@ function emptyOutfit(isNew = true): OutfitEntry {
   return { ...emptyOutfitFormValue(), isNew };
 }
 
+function customerContact(customer: any) {
+  const mobile = customer?.mobile && !customer.mobile.startsWith("no-phone_")
+    ? customer.mobile
+    : customer?.linkedCustomer?.mobile && !customer.linkedCustomer.mobile.startsWith("no-phone_")
+      ? `${customer.linkedCustomer.mobile} (linked customer)`
+      : null;
+  return mobile || customer?.email || "No phone";
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface OrderFormProps {
@@ -653,7 +662,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <div>
                     <p className="text-sm font-medium">{order.customer?.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {order.customer?.mobile || order.customer?.email || "No contact info"}
+                      {customerContact(order.customer)}
                     </p>
                   </div>
                   <Badge variant="secondary">{order.orderNumber}</Badge>
@@ -663,7 +672,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <div>
                     <p className="text-sm font-medium">{selectedCustomer.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {selectedCustomer.mobile || selectedCustomer.email || "No contact info"}
+                      {customerContact(selectedCustomer)}
                     </p>
                   </div>
                   <Badge variant="secondary">Preselected</Badge>
@@ -684,7 +693,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       ) : (
                         customers.map((c: any) => (
                           <SelectItem key={c.id} value={c.id}>
-                            {c.name} ({c.mobile})
+                            {c.name} ({customerContact(c)})
                           </SelectItem>
                         ))
                       )}
