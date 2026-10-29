@@ -59,6 +59,14 @@ type Consultation = {
   updatedAt: string;
 };
 
+function customerPhone(customer: any): string {
+  if (customer?.mobile && !customer.mobile.startsWith("no-phone_")) return customer.mobile;
+  if (customer?.linkedCustomer?.mobile && !customer.linkedCustomer.mobile.startsWith("no-phone_")) {
+    return `${customer.linkedCustomer.mobile} (linked customer)`;
+  }
+  return "No phone";
+}
+
 // ─── New Consultation Form (inline panel) ─────────────────────────────────────
 function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () => void }) {
   const [customerId, setCustomerId] = useState("");
@@ -139,7 +147,7 @@ function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSa
           <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
             <div>
               <p className="text-sm font-medium">{selectedCustomer.name}</p>
-              <p className="text-xs text-muted-foreground">{selectedCustomer.mobile}</p>
+              <p className="text-xs text-muted-foreground">{customerPhone(selectedCustomer)}</p>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7"
               onClick={() => { setSelectedCustomer(null); setCustomerId(""); }}>
@@ -165,7 +173,7 @@ function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSa
                     <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <div>
                       <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.mobile}</p>
+                      <p className="text-xs text-muted-foreground">{customerPhone(c)}</p>
                     </div>
                   </button>
                 ))}

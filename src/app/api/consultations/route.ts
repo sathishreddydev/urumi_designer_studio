@@ -24,7 +24,7 @@ export const GET = withPermission(
     }
 
     const list = await db
-      .select({ consultation: consultations, customerName: customers.name, customerMobile: customers.mobile })
+      .select({ consultation: consultations, linkedCustomerId: customers.linkedCustomerId, customerName: customers.name, customerMobile: customers.mobile })
       .from(consultations)
       .innerJoin(customers, eq(consultations.customerId, customers.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -33,14 +33,22 @@ export const GET = withPermission(
 
     // Enrich with creator name
     const enriched = await Promise.all(
-      list.map(async ({ consultation: c, customerName, customerMobile }) => {
+      list.map(async ({ consultation: c, linkedCustomerId, customerName, customerMobile }) => {
         const [creator] = c.createdBy
           ? await db.select({ name: users.name }).from(users).where(eq(users.id, c.createdBy)).limit(1)
           : [null];
+        const [linkedCustomer] = !customerMobile?.startsWith("no-phone_") || !linkedCustomerId
+          ? [null]
+          : await db.select({ mobile: customers.mobile }).from(customers).where(eq(customers.id, linkedCustomerId)).limit(1);
+        const displayMobile = customerMobile && !customerMobile.startsWith("no-phone_")
+          ? customerMobile
+          : linkedCustomer?.mobile && !linkedCustomer.mobile.startsWith("no-phone_")
+            ? `${linkedCustomer.mobile} (linked customer)`
+            : "No phone";
         return {
           ...c,
           customerName: customerName || "",
-          customerMobile: customerMobile || "",
+          customerMobile: displayMobile,
           createdByName: creator?.name || "",
         };
       })

@@ -125,6 +125,16 @@ function OutfitStatusUpdater({
   );
 }
 
+function customerPhone(customer: any) {
+  if (customer?.mobile && !customer.mobile.startsWith("no-phone_")) {
+    return customer.mobile;
+  }
+  if (customer?.linkedCustomer?.mobile && !customer.linkedCustomer.mobile.startsWith("no-phone_")) {
+    return `${customer.linkedCustomer.mobile} (linked customer)`;
+  }
+  return "No phone";
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage() {
@@ -483,7 +493,7 @@ export default function OrderDetailPage() {
               <span className="font-medium text-foreground">
                 {order.customer?.name}
               </span>{" "}
-              ({order.customer?.mobile})
+              ({customerPhone(order.customer)})
             </p>
           </div>
         </div>

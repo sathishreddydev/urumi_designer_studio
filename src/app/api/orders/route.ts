@@ -35,7 +35,7 @@ export const GET = withPermission(
       .from(orders)
       .innerJoin(customers, eq(orders.customerId, customers.id))
       .where(condition)
-      .orderBy(desc(orders.createdAt))
+      .orderBy(desc(orders.orderDate), desc(orders.createdAt))
       .limit(limit)
       .offset(offset)
       .then((rows) => rows.map((r) => r.order));
@@ -44,10 +44,17 @@ export const GET = withPermission(
     const enriched = await Promise.all(
       ordersList.map(async (order) => {
         const [cust] = await db
-          .select({ name: customers.name, mobile: customers.mobile })
+          .select({ id: customers.id, name: customers.name, mobile: customers.mobile, linkedCustomerId: customers.linkedCustomerId })
           .from(customers)
           .where(eq(customers.id, order.customerId))
           .limit(1);
+        const [linkedCustomer] = cust?.linkedCustomerId
+          ? await db
+              .select({ mobile: customers.mobile })
+              .from(customers)
+              .where(eq(customers.id, cust.linkedCustomerId))
+              .limit(1)
+          : [null];
         const [paymentResult] = await db
           .select({ totalPaid: sum(payments.amount) })
           .from(payments)
@@ -55,7 +62,12 @@ export const GET = withPermission(
         return {
           ...order,
           customerName: cust?.name || "",
-          customerMobile: cust?.mobile || "",
+          customerMobile:
+            cust?.mobile && !cust.mobile.startsWith("no-phone_")
+              ? cust.mobile
+              : linkedCustomer?.mobile && !linkedCustomer.mobile.startsWith("no-phone_")
+                ? `${linkedCustomer.mobile} (linked customer)`
+                : "No phone",
           totalPaid: paymentResult?.totalPaid ? Number(paymentResult.totalPaid) : 0,
         };
       })

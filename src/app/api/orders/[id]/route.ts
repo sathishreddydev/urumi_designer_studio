@@ -23,6 +23,15 @@ export const GET = withPermission(
       db.select().from(payments).where(eq(payments.orderId, id)),  // all statuses returned so UI can show voided payments
     ]);
 
+    const customer = customerResult[0] || null;
+    const linkedCustomer = customer?.linkedCustomerId
+      ? (await db
+          .select({ name: customers.name, mobile: customers.mobile })
+          .from(customers)
+          .where(eq(customers.id, customer.linkedCustomerId))
+          .limit(1))[0] ?? null
+      : null;
+
     // Enrich outfits with their references
     const outfitsWithRefs = await Promise.all(
       orderOutfits.map(async (outfit) => {
@@ -36,7 +45,7 @@ export const GET = withPermission(
 
     return NextResponse.json({
       ...order,
-      customer: customerResult[0] || null,
+      customer: customer ? { ...customer, linkedCustomer } : null,
       outfits: outfitsWithRefs,
       payments: orderPayments,
     });

@@ -23,6 +23,7 @@ export const GET = withAuth(async (_request, { params }) => {
       status: orders.status,
       customerName: customers.name,
       customerMobile: customers.mobile,
+      customerLinkedId: customers.linkedCustomerId,
       customerEmail: customers.email,
       customerAddress: customers.address,
     })
@@ -33,6 +34,19 @@ export const GET = withAuth(async (_request, { params }) => {
 
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
+  if (!order.customerMobile || order.customerMobile.startsWith("no-phone_")) {
+    const [linkedCustomer] = order.customerLinkedId
+      ? await db
+          .select({ mobile: customers.mobile })
+          .from(customers)
+          .where(eq(customers.id, order.customerLinkedId))
+          .limit(1)
+      : [null];
+    order.customerMobile = linkedCustomer?.mobile && !linkedCustomer.mobile.startsWith("no-phone_")
+      ? `${linkedCustomer.mobile} (linked customer)`
+      : "No phone";
   }
 
   // Get outfits — include price + addOns for line items
