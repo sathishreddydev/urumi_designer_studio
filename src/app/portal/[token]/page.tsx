@@ -399,7 +399,7 @@ export default function CustomerPortalPage() {
                               )}
                             </div>
                             <div className="mt-1 text-xs">
-                              {outfit.price || (outfit.addOns && outfit.addOns.length > 0) ? (
+                              {(Number(outfit.price) > 0 || (outfit.addOns && outfit.addOns.length > 0)) ? (
                                 (() => {
                                   const outfitPrice = Number(outfit.price) || 0;
                                   const addOnsTotal = (outfit.addOns || []).reduce(
@@ -535,7 +535,7 @@ export default function CustomerPortalPage() {
               </div>
 
               {/* Financial Summary */}
-              {(order.totalPaid > 0 || order.estimatedAmount) && (
+              {(order.totalPaid > 0 || Number(order.estimatedAmount) > 0) && (
                 <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
