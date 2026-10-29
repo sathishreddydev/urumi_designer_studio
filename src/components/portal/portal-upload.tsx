@@ -5,6 +5,14 @@ import { Upload, Camera, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { compressImage } from "@/lib/compress-image";
 
+const UPLOAD_TYPE_OPTIONS = [
+  { value: "PATTERN" as const, label: "Pattern", icon: "✨" },
+  { value: "MAGGAM" as const, label: "Maggam", icon: "🪡" },
+  { value: "FABRIC" as const, label: "My Fabric", icon: "🧵" },
+] as const;
+
+type UploadType = "PATTERN" | "MAGGAM" | "FABRIC";
+
 /* ══════════════════════════════════════════════════════════
    CAMERA CAPTURE MODAL
 ══════════════════════════════════════════════════════════ */
@@ -118,21 +126,31 @@ export function CameraCaptureModal({
 }
 
 /* ══════════════════════════════════════════════════════════
-   DESKTOP UPLOAD ZONE — drag-and-drop compact zone
+   DESKTOP UPLOAD ZONE
+   Compact drag-and-drop zone with type selector.
+   Calls onUploaded(url) after each successful upload so
+   the parent (DesktopOutfitRow) can refresh references.
 ══════════════════════════════════════════════════════════ */
 export function DesktopUploadZone({
   outfitId,
   token,
   maggamRequired,
+  onUploaded,
 }: {
   outfitId: string;
   token: string;
   maggamRequired: boolean;
+  onUploaded?: (url: string, type: UploadType) => void;
 }) {
+  const availableTypes = UPLOAD_TYPE_OPTIONS.filter(
+    (t) => t.value !== "MAGGAM" || maggamRequired
+  );
+
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<{ url: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [selectedType, setSelectedType] = useState<UploadType>("PATTERN");
 
   async function handleFiles(files: FileList | File[]) {
     setUploading(true);
@@ -148,11 +166,12 @@ export function DesktopUploadZone({
         const fd = new FormData();
         fd.append("file", compressed);
         fd.append("outfitId", outfitId);
-        fd.append("type", "PATTERN");
+        fd.append("type", selectedType);
         const res = await fetch(`/api/portal/${token}/upload`, { method: "POST", body: fd });
         if (res.ok) {
           const d = await res.json();
           setUploaded((prev) => [...prev, { url: d.url }]);
+          onUploaded?.(d.url, selectedType);
         } else {
           const err = await res.json().catch(() => ({}));
           setUploadError(err?.error ?? "Upload failed.");
@@ -165,47 +184,80 @@ export function DesktopUploadZone({
   }
 
   return (
-    <label
-      className={`block cursor-pointer rounded-lg border-2 border-dashed px-3 py-3 text-center transition-colors ${
-        dragging
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary/40 hover:bg-muted/30"
-      }`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragging(false);
-        handleFiles(e.dataTransfer.files);
-      }}
-    >
-      <input
-        type="file"
-        className="hidden"
-        accept="image/*,video/*"
-        multiple
-        onChange={(e) => e.target.files && handleFiles(e.target.files)}
-        disabled={uploading}
-      />
-      {uploading ? (
-        <p className="text-xs text-muted-foreground">Uploading...</p>
-      ) : (
-        <>
-          <Upload className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-          <p className="text-[10px] text-muted-foreground">Click to upload or drag and drop</p>
-          <p className="text-[10px] text-muted-foreground">Images, videos up to 10MB</p>
-        </>
+    <div className="space-y-2">
+      {/* Type selector */}
+      {availableTypes.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {availableTypes.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setSelectedType(t.value)}
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors whitespace-nowrap ${
+                selectedType === t.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
       )}
-      {uploadError && <p className="mt-1 text-[10px] text-destructive">{uploadError}</p>}
-    </label>
+
+      {/* Uploaded thumbnails */}
+      {uploaded.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          {uploaded.map((item, i) => (
+            <div key={i} className="relative h-10 w-10 rounded border overflow-hidden shrink-0">
+              <img src={item.url} alt="Uploaded" className="object-cover w-full h-full" />
+              <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
+                <Check className="h-2 w-2 text-white" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Drop zone */}
+      <label
+        className={`block cursor-pointer rounded-lg border-2 border-dashed px-3 py-3 text-center transition-colors ${
+          dragging
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary/40 hover:bg-muted/30"
+        }`}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+      >
+        <input
+          type="file"
+          className="hidden"
+          accept="image/*,video/*"
+          multiple
+          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+          disabled={uploading}
+        />
+        {uploading ? (
+          <p className="text-xs text-muted-foreground">Uploading...</p>
+        ) : (
+          <>
+            <Upload className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-[10px] text-muted-foreground">Click to upload or drag and drop</p>
+            <p className="text-[10px] text-muted-foreground">Images, videos up to 10MB</p>
+          </>
+        )}
+        {uploadError && <p className="mt-1 text-[10px] text-destructive">{uploadError}</p>}
+      </label>
+    </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════
    PORTAL UPLOAD — full upload UI (mobile / overview tab)
+   Single file input — the drop zone label IS the upload
+   trigger. The separate "Upload Photos" button is removed
+   to prevent the duplicate-input double-upload bug.
 ══════════════════════════════════════════════════════════ */
 export function PortalUpload({
   outfitId,
@@ -216,17 +268,15 @@ export function PortalUpload({
   token: string;
   maggamRequired: boolean;
 }) {
-  const UPLOAD_TYPES = [
-    { value: "PATTERN" as const, label: "Pattern", icon: "✨" },
-    ...(maggamRequired ? [{ value: "MAGGAM" as const, label: "Maggam", icon: "🪡" }] : []),
-    { value: "FABRIC" as const, label: "My Fabric", icon: "🧵" },
-  ];
+  const availableTypes = UPLOAD_TYPE_OPTIONS.filter(
+    (t) => t.value !== "MAGGAM" || maggamRequired
+  );
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<{ url: string; type: string }[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<"PATTERN" | "MAGGAM" | "FABRIC">("PATTERN");
+  const [selectedType, setSelectedType] = useState<UploadType>("PATTERN");
 
   async function handleUpload(files: FileList | File | null) {
     if (!files) return;
@@ -263,7 +313,7 @@ export function PortalUpload({
     <div className="space-y-3">
       {/* Type selector */}
       <div className="flex flex-wrap gap-2">
-        {UPLOAD_TYPES.map((t) => (
+        {availableTypes.map((t) => (
           <button
             key={t.value}
             type="button"
@@ -299,7 +349,7 @@ export function PortalUpload({
         </div>
       )}
 
-      {/* Drop zone */}
+      {/* Single drop zone — this is the primary upload trigger */}
       <label className="block cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center hover:border-primary/40 hover:bg-muted/30 transition-colors">
         <input
           type="file"
@@ -310,37 +360,22 @@ export function PortalUpload({
           disabled={uploading}
         />
         <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-xs font-medium text-muted-foreground">Click to upload or drag and drop</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          {uploading ? "Uploading..." : "Click to upload or drag and drop"}
+        </p>
         <p className="text-[10px] text-muted-foreground mt-0.5">Images, videos up to 10MB</p>
       </label>
 
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block">
-          <Button size="sm" variant="outline" className="w-full text-xs h-9" disabled={uploading} asChild>
-            <span>
-              <Upload className="h-3.5 w-3.5 mr-1.5" />
-              {uploading ? "Uploading..." : "Upload Photos"}
-            </span>
-          </Button>
-          <input
-            type="file"
-            className="hidden"
-            accept="image/*"
-            multiple
-            onChange={(e) => handleUpload(e.target.files)}
-            disabled={uploading}
-          />
-        </label>
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full text-xs h-9"
-          disabled={uploading}
-          onClick={() => setCameraOpen(true)}
-        >
-          <Camera className="h-3.5 w-3.5 mr-1.5" /> Take Photo
-        </Button>
-      </div>
+      {/* Camera button only — no duplicate file input */}
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full text-xs h-9"
+        disabled={uploading}
+        onClick={() => setCameraOpen(true)}
+      >
+        <Camera className="h-3.5 w-3.5 mr-1.5" /> Take Photo
+      </Button>
 
       <CameraCaptureModal
         open={cameraOpen}

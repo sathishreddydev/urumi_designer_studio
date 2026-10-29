@@ -61,3 +61,9 @@ export const COMPLETION_VISIBLE_STATUSES = [
   "READY_FOR_DELIVERY",
   "DELIVERED",
 ] as const;
+
+export type CompletionVisibleStatus = (typeof COMPLETION_VISIBLE_STATUSES)[number];
+
+export function isCompletionVisible(status: string): boolean {
+  return (COMPLETION_VISIBLE_STATUSES as readonly string[]).includes(status);
+}

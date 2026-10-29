@@ -31,7 +31,7 @@ import { OutfitStatusBadge, ALL_OUTFIT_STATUSES, APPROVAL_ALLOWED_STATUSES } fro
 import { ProfileMeasurements } from "@/components/portal/profile-measurements";
 import { PortalReferences, MobilePhotoStrip } from "@/components/portal/portal-reference-card";
 import { PortalUpload } from "@/components/portal/portal-upload";
-import { fmtPrice, outfitTotals, orderTotals, MobileScreen } from "@/components/portal/portal-utils";
+import { fmtPrice, outfitTotals, orderTotals, MobileScreen, isCompletionVisible } from "@/components/portal/portal-utils";
 import { formatDate, formatStatus } from "@/lib/utils";
 
 /* ── Mobile Stat Card ───────────────────────────────────── */
@@ -343,10 +343,7 @@ export function MobileOutfitDetail({
   const fabricRefs = (outfit.references || []).filter((r: any) => r.type === "FABRIC");
   const completionRefs = (outfit.references || []).filter((r: any) => r.type === "COMPLETION");
   const showCompletion =
-    completionRefs.length > 0 &&
-    ["PRODUCTION_COMPLETED", "TRIAL", "ALTERATION", "QC", "READY_FOR_DELIVERY", "DELIVERED"].includes(
-      outfit.status
-    );
+    completionRefs.length > 0 && isCompletionVisible(outfit.status);
 
   const { price, total } = outfitTotals(outfit);
   const coverRef =
