@@ -370,7 +370,7 @@ export function InvoicePDFDocument({ data }: { data: InvoicePDFData }) {
               <Text style={S.colNo}>{i + 1}</Text>
               <Text style={S.colName}>{outfit.name}</Text>
               <Text style={S.colType}>{outfit.type}</Text>
-              <Text style={S.colPrice}>{fmtCurrency(outfit.price)}</Text>
+              <Text style={S.colPrice}>{Number(outfit.price) > 0 ? fmtCurrency(outfit.price) : "—"}</Text>
             </View>
             {(outfit.addOns || []).map((addOn, ai) => (
               <View

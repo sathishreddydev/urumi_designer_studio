@@ -259,7 +259,7 @@ export default function InvoicePage() {
                           <OutfitStatusBadge status={outfit.status} className="text-[10px]" responsive={false} />
                         </td>
                         <td className="py-3 text-right font-medium whitespace-nowrap">
-                          {outfit.price ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
+                          {Number(outfit.price) > 0 ? `₹${Number(outfit.price).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
                         </td>
                       </tr>
                       {/* Add-on sub-rows */}
