@@ -105,7 +105,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
     }
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 text-right">
             <a
                 href="#download-invoice"
                 aria-disabled={isDownloading}
@@ -123,7 +123,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
 
                 {isDownloading
                     ? "Preparing invoice..."
-                    : "Download Invoice"}
+                    : "Invoice"}
             </a>
 
             {downloadError && (
