@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { OutfitStatusBadge, APPROVAL_ALLOWED_STATUSES } from "@/components/outfit-status-badge";
 import { InlinePhotoStrip } from "@/components/portal/portal-reference-card";
 import { DesktopUploadZone } from "@/components/portal/portal-upload";
+import { PaymentHistoryDialog } from "@/components/portal/payment-history-dialog";
 import { fmtPrice, outfitTotals, orderTotals, isCompletionVisible, outfitThumbnail } from "@/components/portal/portal-utils";
 import { formatDate } from "@/lib/utils";
 
@@ -64,24 +65,27 @@ export function DesktopOrderCard({ order, token }: { order: any; token: string }
 
         {/* Financial summary */}
         <div className="flex items-center gap-6 shrink-0">
-          {displayTotal > 0 && (
-            <div className="text-right">
-              <p className="text-[10px] text-muted-foreground">Total Amount</p>
-              <p className="text-sm font-bold tabular-nums">{fmtPrice(displayTotal)}</p>
-            </div>
-          )}
-          {paid > 0 && (
-            <div className="text-right">
-              <p className="text-[10px] text-muted-foreground">Paid Amount</p>
-              <p className="text-sm font-bold tabular-nums text-green-600">{fmtPrice(paid)}</p>
-            </div>
-          )}
-          {balance > 0 && (
-            <div className="text-right">
-              <p className="text-[10px] text-muted-foreground">Balance</p>
-              <p className="text-sm font-bold tabular-nums text-destructive">{fmtPrice(balance)}</p>
-            </div>
-          )}
+          <div className="grid grid-cols-4 items-end gap-4">
+            {displayTotal > 0 && (
+              <div className="text-right">
+                <p className="text-[10px] text-muted-foreground">Total Amount</p>
+                <p className="text-sm font-bold tabular-nums">{fmtPrice(displayTotal)}</p>
+              </div>
+            )}
+            {paid > 0 && (
+              <div className="text-right">
+                <p className="text-[10px] text-muted-foreground">Paid Amount</p>
+                <p className="text-sm font-bold tabular-nums text-green-600">{fmtPrice(paid)}</p>
+              </div>
+            )}
+            {balance > 0 && (
+              <div className="text-right">
+                <p className="text-[10px] text-muted-foreground">Balance</p>
+                <p className="text-sm font-bold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+              </div>
+            )}
+            <PaymentHistoryDialog order={order} />
+          </div>
           <Button
             variant="outline"
             size="sm"
