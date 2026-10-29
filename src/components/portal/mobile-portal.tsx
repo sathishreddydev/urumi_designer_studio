@@ -30,6 +30,7 @@ import {
 import { OutfitStatusBadge, ALL_OUTFIT_STATUSES, APPROVAL_ALLOWED_STATUSES } from "@/components/outfit-status-badge";
 import { ProfileMeasurements } from "@/components/portal/profile-measurements";
 import { PortalReferences, MobilePhotoStrip } from "@/components/portal/portal-reference-card";
+import { PaymentHistoryDialog } from "@/components/portal/payment-history-dialog";
 import { PortalUpload } from "@/components/portal/portal-upload";
 import { fmtPrice, outfitTotals, orderTotals, MobileScreen, isCompletionVisible, outfitThumbnail } from "@/components/portal/portal-utils";
 import { formatDate, formatStatus } from "@/lib/utils";
@@ -231,10 +232,12 @@ export function MobileOrderDetail({
   onBack: () => void;
   onOutfitTap: (id: string) => void;
 }) {
+  const { displayTotal, paid, balance } = orderTotals(order);
+
   return (
     <div className="pb-8">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-background border-b px-4 py-2.5 flex items-start gap-3">
         <button onClick={onBack} className="p-1 -ml-1 rounded-lg hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -243,6 +246,21 @@ export function MobileOrderDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <div>
+              <p className="text-[9px] text-muted-foreground">Total</p>
+              <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground">Paid</p>
+              <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground">Balance</p>
+              <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+            </div>
+          </div>
+          <PaymentHistoryDialog order={order} />
         </div>
       </div>
 
@@ -343,6 +361,7 @@ export function MobileOutfitDetail({
 }) {
   const [tab, setTab] = useState<"overview" | "references" | "uploads" | "progress">("overview");
   const outfits: any[] = order.outfits || [];
+  const { displayTotal, paid, balance } = orderTotals(order);
 
   const canApprove = APPROVAL_ALLOWED_STATUSES.includes(outfit.status as any);
   const designRefs = (outfit.references || []).filter(
@@ -366,7 +385,7 @@ export function MobileOutfitDetail({
   return (
     <div className="pb-8">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 bg-background border-b px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-background border-b px-4 py-2.5 flex items-start gap-3">
         <button onClick={onBack} className="p-1 -ml-1 rounded-lg hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -375,6 +394,21 @@ export function MobileOutfitDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <div>
+              <p className="text-[9px] text-muted-foreground">Total</p>
+              <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground">Paid</p>
+              <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground">Balance</p>
+              <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+            </div>
+          </div>
+          <PaymentHistoryDialog order={order} />
         </div>
       </div>
 
@@ -821,7 +855,7 @@ export function MobilePortal({
                   key={order.id}
                   className="rounded-2xl border bg-card shadow-sm overflow-hidden cursor-pointer active:bg-muted/50"
                   onClick={() =>
-                    order.outfits.length === 1
+                    order.outfits.length > 0
                       ? setScreen({
                           view: "outfit-detail",
                           orderId: order.id,
@@ -911,7 +945,7 @@ export function MobilePortal({
         order={order}
         outfit={outfit}
         token={token}
-        onBack={() => setScreen({ view: "order-detail", orderId: order.id })}
+        onBack={() => setScreen({ view: "orders" })}
         onOutfitSwitch={(outfitId) =>
           setScreen({ view: "outfit-detail", orderId: order.id, outfitId })
         }

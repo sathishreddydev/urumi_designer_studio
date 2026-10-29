@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { customers, orders, outfits, referenceImages, payments, customerMeasurements } from "@/lib/db/schema";
+import { customers, orders, outfits, referenceImages, payments, customerMeasurements, invoices } from "@/lib/db/schema";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(
@@ -100,9 +100,16 @@ export async function GET(
         );
 
         const orderPayments = await db
-          .select({ amount: payments.amount, method: payments.method, createdAt: payments.createdAt })
+          .select({ id: payments.id, amount: payments.amount, method: payments.method, transactionRef: payments.transactionRef, createdAt: payments.createdAt })
           .from(payments)
           .where(and(eq(payments.orderId, order.id), eq(payments.status, "SETTLED")));
+
+        const [invoice] = await db
+          .select({ invoiceNumber: invoices.invoiceNumber, issuedAt: invoices.issuedAt })
+          .from(invoices)
+          .where(eq(invoices.orderId, order.id))
+          .orderBy(desc(invoices.issuedAt))
+          .limit(1);
 
         return {
           id: order.id,
@@ -112,9 +119,15 @@ export async function GET(
           trialDate: order.trialDate,
           estimatedAmount: order.estimatedAmount,
           advanceAmount: order.advanceAmount,
+          notes: order.notes,
           status: order.status,
+          customerName: customer.name,
+          customerMobile: customer.mobile,
+          customerEmail: customer.email,
+          customerAddress: customer.address,
           outfits: outfitsForPortal,
           payments: orderPayments,
+          invoice: invoice || null,
           totalPaid: orderPayments.reduce((sum, p) => sum + Number(p.amount), 0),
         };
       })
