@@ -670,48 +670,43 @@ export default function OrderDetailPage() {
                       disabled={isCompleted || !can("update", "outfit")}
                     />
 
-                    {/* Pricing & Add-ons — shown when outfit price > 0 or add-ons exist */}
-                    {(Number(outfit.price) > 0 || (outfit.addOns && outfit.addOns.length > 0)) && (
-                      <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
-                        <p className="font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1">
-                          <Plus className="h-3.5 w-3.5" /> Add-ons (Sourced Items)
-                        </p>
+                    {/* Price Summary */}
+                    {(() => {
+                      const outfitPrice = Number(outfit.price) || 0;
+                      const addOns = outfit.addOns || [];
+                      const addOnsTotal = addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                      const total = outfitPrice + addOnsTotal;
+                      const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
 
-                        <ul className="space-y-1">
-                          {/* Outfit base price as first row — only when > 0 */}
-                          {Number(outfit.price) > 0 && (
-                            <li className="flex justify-between items-center gap-2">
-                              <span className="font-medium">Outfit Price</span>
-                              <span className="font-semibold text-nowrap">₹{Number(outfit.price).toLocaleString()}</span>
-                            </li>
+                      return (
+                        <div className="text-xs space-y-1 border-t pt-2">
+                          {!hasAnyPrice ? (
+                            <span className="text-muted-foreground italic">Price not set</span>
+                          ) : (
+                            <>
+                              {outfitPrice > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Outfit Price</span>
+                                  <span className="font-medium">₹{outfitPrice.toLocaleString()}</span>
+                                </div>
+                              )}
+                              {addOns.map((a: any) => (
+                                <div key={a.id} className="flex justify-between">
+                                  <span className="text-muted-foreground">{a.name}</span>
+                                  <span className="font-medium">₹{Number(a.price).toLocaleString()}</span>
+                                </div>
+                              ))}
+                              {outfitPrice > 0 && addOnsTotal > 0 && (
+                                <div className="flex justify-between border-t pt-1 font-semibold">
+                                  <span>Total</span>
+                                  <span>₹{total.toLocaleString()}</span>
+                                </div>
+                              )}
+                            </>
                           )}
-                          {(outfit.addOns || []).map((addOn: any) => (
-                            <li key={addOn.id} className="flex justify-between items-start gap-2">
-                              <div>
-                                <span className="font-medium">{addOn.name}</span>
-                                {addOn.notes && <span className="text-muted-foreground"> — {addOn.notes}</span>}
-                              </div>
-                              <span className="font-semibold text-nowrap">₹{Number(addOn.price).toLocaleString()}</span>
-                            </li>
-                          ))}
-                        </ul>
-
-                        {/* Total row — only when both outfit price and add-ons exist */}
-                        {(() => {
-                          const addOnsTotal = (outfit.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
-                          const outfitPrice = Number(outfit.price) || 0;
-                          if (outfitPrice === 0 || addOnsTotal === 0) return null;
-                          return (
-                            <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 mt-1 flex justify-between font-semibold">
-                              <span className="text-blue-700 dark:text-blue-300">Outfit Total</span>
-                              <span className="text-blue-700 dark:text-blue-300 text-nowrap">
-                                ₹{(outfitPrice + addOnsTotal).toLocaleString()}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Attachment type chips */}
                     <OutfitAttachmentChips

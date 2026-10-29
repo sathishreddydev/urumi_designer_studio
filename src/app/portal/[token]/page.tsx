@@ -399,68 +399,45 @@ export default function CustomerPortalPage() {
                               )}
                             </div>
                             <div className="mt-1 text-xs">
-                              {(Number(outfit.price) > 0 || (outfit.addOns && outfit.addOns.length > 0)) ? (
-                                (() => {
-                                  const outfitPrice = Number(outfit.price) || 0;
-                                  const addOnsTotal = (outfit.addOns || []).reduce(
-                                    (s: number, a: any) => s + (Number(a.price) || 0), 0
-                                  );
-                                  const total = outfitPrice + addOnsTotal;
-                                  return (
-                                    <span className="font-semibold text-foreground">
-                                      ₹{total.toLocaleString()}
-                                      {addOnsTotal > 0 && outfitPrice > 0 && (
-                                        <span className="font-normal text-muted-foreground ml-1 text-[10px]">
-                                          (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
-                                        </span>
-                                      )}
-                                    </span>
-                                  );
-                                })()
-                              ) : (
-                                <span className="italic text-amber-600">⏳ Price to be confirmed</span>
-                              )}
+                              {/* Price summary — always shown */}
+                              {(() => {
+                                const outfitPrice = Number(outfit.price) || 0;
+                                const addOns = outfit.addOns || [];
+                                const addOnsTotal = addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                                const total = outfitPrice + addOnsTotal;
+                                const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
+
+                                if (!hasAnyPrice) {
+                                  return <span className="italic text-amber-600">⏳ Price to be confirmed</span>;
+                                }
+                                return (
+                                  <div className="space-y-0.5">
+                                    {outfitPrice > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Outfit Price</span>
+                                        <span className="font-medium">₹{outfitPrice.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {addOns.map((a: any) => (
+                                      <div key={a.id} className="flex justify-between">
+                                        <span className="text-muted-foreground">{a.name}</span>
+                                        <span className="font-medium">₹{Number(a.price).toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                    {outfitPrice > 0 && addOnsTotal > 0 && (
+                                      <div className="flex justify-between border-t pt-0.5 font-semibold">
+                                        <span>Total</span>
+                                        <span>₹{total.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
                         <OutfitStatusBadge status={outfit.status} />
                       </div>
-
-
-                      {/* Add-ons */}
-                      {outfit.addOns && outfit.addOns.length > 0 && (
-                        <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
-                          <p className="font-medium text-blue-700 dark:text-blue-300">
-                            Add-ons (Sourced Items)
-                          </p>
-                          <ul className="space-y-1">
-                            {outfit.addOns.map((addOn: any) => (
-                              <li key={addOn.id} className="flex justify-between items-start gap-2">
-                                <div>
-                                  <span className="font-medium">{addOn.name}</span>
-                                  {addOn.notes && (
-                                    <span className="text-muted-foreground"> — {addOn.notes}</span>
-                                  )}
-                                </div>
-                                <span className="font-semibold text-nowrap">
-                                  ₹{Number(addOn.price).toLocaleString()}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                          {(() => {
-                            const addOnsTotal = outfit.addOns.reduce(
-                              (s: number, a: any) => s + (Number(a.price) || 0), 0
-                            );
-                            return addOnsTotal > 0 ? (
-                              <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 flex justify-between font-semibold text-blue-700 dark:text-blue-300">
-                                <span>Add-ons Total</span>
-                                <span>₹{addOnsTotal.toLocaleString()}</span>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
 
                       {/* Design References */}
                       {designRefs.length > 0 && (
