@@ -537,20 +537,22 @@ export function MobileOutfitDetail({
           )}
 
           {/* Customer Material */}
-          {fabricRefs.length > 0 && (
-            <MobileSection
-              icon={<span className="text-sm">🧵</span>}
-              title="Customer Material"
-              onChevron={() => setTab("references")}
-            >
+          <MobileSection
+            icon={<span className="text-sm">🧵</span>}
+            title="Customer Fabric"
+            onChevron={() => setTab("references")}
+          >
+            {fabricRefs.length > 0 ? (
               <MobilePhotoStrip
                 references={fabricRefs}
                 token={token}
                 outfitId={outfit.id}
                 canApprove={false}
               />
-            </MobileSection>
-          )}
+            ) : (
+              <p className="text-xs text-muted-foreground">No customer fabric photos available.</p>
+            )}
+          </MobileSection>
 
           {/* Upload */}
           {canApprove && (
@@ -609,19 +611,21 @@ export function MobileOutfitDetail({
               />
             </div>
           )}
-          {fabricRefs.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Customer Material
-              </p>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Customer Fabric
+            </p>
+            {fabricRefs.length > 0 ? (
               <PortalReferences
                 references={fabricRefs}
                 token={token}
                 outfitId={outfit.id}
                 canApprove={false}
               />
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-muted-foreground">No customer fabric photos available.</p>
+            )}
+          </div>
           {showCompletion && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">

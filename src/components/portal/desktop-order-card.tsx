@@ -220,17 +220,19 @@ export function DesktopOutfitRow({
           </div>
         )}
 
-        {fabricRefs.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-muted-foreground">Customer Material</p>
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold text-muted-foreground">Customer Fabric</p>
+          {fabricRefs.length > 0 ? (
             <InlinePhotoStrip
               references={fabricRefs}
               token={token}
               outfitId={outfit.id}
               canApprove={false}
             />
-          </div>
-        )}
+          ) : (
+            <p className="text-[10px] text-muted-foreground">No customer fabric photos available.</p>
+          )}
+        </div>
 
         {canApprove && (
           <div className="space-y-1.5">
