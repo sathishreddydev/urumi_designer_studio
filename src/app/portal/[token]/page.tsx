@@ -17,6 +17,7 @@ export default function CustomerPortalPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
 
   // Shared filter state — passed to both desktop and mobile
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,6 +28,27 @@ export default function CustomerPortalPage() {
 
   // Mobile navigation
   const [mobileScreen, setMobileScreen] = useState<MobileScreen>({ view: "orders" });
+
+  /* ── Hide the mobile header while scrolling down; reveal it when scrolling up ── */
+  useEffect(() => {
+    let previousScrollY = window.scrollY;
+
+    function handleScroll() {
+      const currentScrollY = window.scrollY;
+      const scrollDelta = currentScrollY - previousScrollY;
+
+      if (currentScrollY < 24) {
+        setMobileHeaderVisible(true);
+      } else if (Math.abs(scrollDelta) > 4) {
+        setMobileHeaderVisible(scrollDelta < 0);
+      }
+
+      previousScrollY = currentScrollY;
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   /* ── Initial fetch ── */
   useEffect(() => {
@@ -168,7 +190,11 @@ export default function CustomerPortalPage() {
   return (
     <div className="min-h-screen bg-[#faf8f7] text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b bg-background/95 shadow-sm backdrop-blur-xl">
+      <header
+        className={`${mobileScreen.view === "order-detail" ? "md:sticky md:top-0" : "sticky top-0"} z-30 border-b bg-background/95 shadow-sm backdrop-blur-xl transition-transform duration-200 md:translate-y-0 ${
+          mobileHeaderVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
