@@ -105,7 +105,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
     }
 
     return (
-        <div className="min-w-0 space-y-2 self-end text-right">
+        <div className="col-start-4 min-w-0 space-y-2 self-end text-right">
             <a
                 href="#download-invoice"
                 aria-disabled={isDownloading}

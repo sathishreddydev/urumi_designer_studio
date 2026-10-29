@@ -251,10 +251,12 @@ export function MobileOrderDetail({
               <p className="text-[9px] text-muted-foreground">Paid</p>
               <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
             </div>
-            <div>
-              <p className="text-[9px] text-muted-foreground">Balance</p>
-              <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
-            </div>
+            {balance > 0 && (
+              <div>
+                <p className="text-[9px] text-muted-foreground">Balance</p>
+                <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+              </div>
+            )}
             <PaymentHistoryDialog order={order} />
           </div>
         </div>
@@ -399,10 +401,12 @@ export function MobileOutfitDetail({
               <p className="text-[9px] text-muted-foreground">Paid</p>
               <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
             </div>
-            <div>
-              <p className="text-[9px] text-muted-foreground">Balance</p>
-              <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
-            </div>
+            {balance > 0 && (
+              <div>
+                <p className="text-[9px] text-muted-foreground">Balance</p>
+                <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+              </div>
+            )}
             <PaymentHistoryDialog order={order} />
           </div>
         </div>
