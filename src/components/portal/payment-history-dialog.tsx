@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import type { InvoicePDFData } from "@/components/invoice-pdf";
-import { Button } from "@/components/ui/button";
 import { orderTotals } from "@/components/portal/portal-utils";
 
 export function PaymentHistoryDialog({ order }: { order: any }) {
@@ -107,22 +106,25 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
 
     return (
         <div className="space-y-2">
-            <Button
-                type="button"
-                className="w-full"
-                onClick={handleDownloadInvoice}
-                disabled={isDownloading}
+            <a
+                href="#download-invoice"
+                aria-disabled={isDownloading}
+                onClick={(event) => {
+                    event.preventDefault();
+                    if (!isDownloading) void handleDownloadInvoice();
+                }}
+                className={`inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline ${isDownloading ? "pointer-events-none opacity-60" : ""}`}
             >
                 {isDownloading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                    <Download className="mr-2 h-4 w-4" />
+                    <Download className="h-4 w-4" />
                 )}
 
                 {isDownloading
                     ? "Preparing invoice..."
                     : "Download Invoice"}
-            </Button>
+            </a>
 
             {downloadError && (
                 <p
