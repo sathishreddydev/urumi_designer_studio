@@ -27,6 +27,11 @@ export function PortalReferenceCard({
   );
   const [loading, setLoading] = useState(false);
 
+  // Sync when parent re-fetches (live polling updates customerFeedback)
+  useEffect(() => {
+    setFeedback(reference.customerFeedback || null);
+  }, [reference.customerFeedback]);
+
   async function handleFeedback(action: "approved" | "rejected") {
     setLoading(true);
     try {
@@ -271,6 +276,11 @@ function DesktopRefThumb({
     reference.customerFeedback || null
   );
   const [loading, setLoading] = useState(false);
+
+  // Sync when parent re-fetches
+  useEffect(() => {
+    setFeedback(reference.customerFeedback || null);
+  }, [reference.customerFeedback]);
 
   async function handleFeedback(action: "approved" | "rejected") {
     setLoading(true);

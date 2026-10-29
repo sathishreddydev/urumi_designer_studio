@@ -49,7 +49,9 @@ export function DesktopPortal({
       <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-card mt-6 p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 max-w-lg">
-            <h1 className="text-2xl font-bold tracking-tight">Welcome!</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Welcome{data.customer?.name ? `, ${data.customer.name}` : ""}!
+            </h1>
             <p className="text-sm font-medium text-foreground/80">
               Here&apos;s your custom outfit journey with us.
             </p>
@@ -133,19 +135,22 @@ export function DesktopPortal({
         <div className="mt-5 space-y-5">
           {/* Search & Filter */}
           <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search outfits by name or type..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 bg-background pl-9 text-sm rounded-xl"
+                className="h-10 bg-background pl-9 text-sm rounded-xl w-full"
               />
             </div>
+            <div className="shrink-0">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 min-w-[160px] bg-background rounded-xl text-sm">
-                <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="All Statuses" />
+              <SelectTrigger className="h-10 w-[160px] bg-background rounded-xl text-sm">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="All Statuses" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -156,6 +161,7 @@ export function DesktopPortal({
                 ))}
               </SelectContent>
             </Select>
+            </div>
             <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
               {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} ·{" "}
               {filteredOrders.reduce((s: number, o: any) => s + o.outfits.length, 0)} outfits

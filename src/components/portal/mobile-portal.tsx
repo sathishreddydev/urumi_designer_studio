@@ -302,7 +302,7 @@ export function MobileOrderDetail({
                     </Badge>
                   )}
                 </div>
-                <OutfitStatusBadge status={outfit.status} responsive={false} />
+                <OutfitStatusBadge status={outfit.status} responsive={true} />
                 {total > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Total Amount{" "}
@@ -433,7 +433,7 @@ export function MobileOutfitDetail({
               </Badge>
             )}
           </div>
-          <OutfitStatusBadge status={outfit.status} responsive={false} />
+          <OutfitStatusBadge status={outfit.status} responsive={true} />
         </div>
       </div>
 
@@ -707,7 +707,7 @@ export function MobilePortal({
       <div className="pb-8">
         {/* Hero */}
         <div className="bg-gradient-to-br from-primary/10 via-card to-card px-4 pt-5 pb-4">
-          <h1 className="text-xl font-bold">Welcome!</h1>
+          <h1 className="text-xl font-bold">Welcome{data.customer?.name ? `, ${data.customer.name}` : ""}!</h1>
           <p className="text-sm text-foreground/80 mt-0.5">
             Here&apos;s your custom outfit journey with us.
           </p>
@@ -774,19 +774,20 @@ export function MobilePortal({
         {/* Orders list */}
         {screen.view === "orders" && (
           <div className="px-4 pt-4 space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search outfits..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 text-sm bg-background rounded-xl"
+                  className="h-9 pl-9 text-sm bg-background rounded-xl w-full"
                 />
               </div>
+              <div className="shrink-0">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-9 bg-background rounded-xl text-xs min-w-[110px]">
-                  <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                <SelectTrigger className="h-9 bg-background rounded-xl text-xs w-[120px]">
+                  <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground shrink-0" />
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent align="end">
@@ -798,6 +799,7 @@ export function MobilePortal({
                   ))}
                 </SelectContent>
               </Select>
+              </div>
             </div>
 
             {filteredOrders.length === 0 && (
@@ -835,19 +837,19 @@ export function MobilePortal({
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </div>
                   {displayTotal > 0 && (
-                    <div className="px-4 pb-3 flex gap-4 text-xs">
-                      <div>
+                    <div className="px-4 pb-3 flex items-center justify-end gap-5 text-xs">
+                      <div className="text-right">
                         <p className="text-[10px] text-muted-foreground">Total Amount</p>
                         <p className="font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
                       </div>
                       {paid > 0 && (
-                        <div>
+                        <div className="text-right">
                           <p className="text-[10px] text-muted-foreground">Paid Amount</p>
                           <p className="font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
                         </div>
                       )}
                       {balance > 0 && (
-                        <div>
+                        <div className="text-right">
                           <p className="text-[10px] text-muted-foreground">Balance</p>
                           <p className="font-semibold tabular-nums text-destructive">
                             {fmtPrice(balance)}
