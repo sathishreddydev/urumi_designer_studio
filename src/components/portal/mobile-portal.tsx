@@ -366,7 +366,7 @@ export function MobileOutfitDetail({
     { key: "overview" as const, label: "Overview" },
     { key: "references" as const, label: "References" },
     { key: "uploads" as const, label: "Uploads" },
-    { key: "progress" as const, label: "Progress" },
+    // { key: "progress" as const, label: "Progress" },
   ];
 
   return (
