@@ -660,15 +660,6 @@ export default function OrderDetailPage() {
                       </div>
                       <div className="flex flex-shrink-0 flex-col items-end gap-1">
                         <OutfitStatusBadge status={outfit.status} />
-                        <p className="text-sm font-bold leading-5">
-                          {(() => {
-                            const outfitPrice = Number(outfit.price) || 0;
-                            const addOnsTotal = (outfit.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
-                            const total = outfitPrice + addOnsTotal;
-                            if (total > 0) return `₹${total.toLocaleString()}`;
-                            return <span className="text-amber-600 text-xs font-normal">Price Pending</span>;
-                          })()}
-                        </p>
                       </div>
                     </div>
 
@@ -679,14 +670,22 @@ export default function OrderDetailPage() {
                       disabled={isCompleted || !can("update", "outfit")}
                     />
 
-                    {/* Add-ons Display */}
-                    {outfit.addOns && outfit.addOns.length > 0 && (
+                    {/* Pricing & Add-ons — shown when outfit price > 0 or add-ons exist */}
+                    {(Number(outfit.price) > 0 || (outfit.addOns && outfit.addOns.length > 0)) && (
                       <div className="bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-md text-xs space-y-1.5">
                         <p className="font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1">
                           <Plus className="h-3.5 w-3.5" /> Add-ons (Sourced Items)
                         </p>
+
                         <ul className="space-y-1">
-                          {outfit.addOns.map((addOn: any) => (
+                          {/* Outfit base price as first row — only when > 0 */}
+                          {Number(outfit.price) > 0 && (
+                            <li className="flex justify-between items-center gap-2">
+                              <span className="font-medium">Outfit Price</span>
+                              <span className="font-semibold text-nowrap">₹{Number(outfit.price).toLocaleString()}</span>
+                            </li>
+                          )}
+                          {(outfit.addOns || []).map((addOn: any) => (
                             <li key={addOn.id} className="flex justify-between items-start gap-2">
                               <div>
                                 <span className="font-medium">{addOn.name}</span>
@@ -696,20 +695,15 @@ export default function OrderDetailPage() {
                             </li>
                           ))}
                         </ul>
-                        {/* Add-ons subtotal */}
+
+                        {/* Total row — only when both outfit price and add-ons exist */}
                         {(() => {
-                          const addOnsTotal = outfit.addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                          const addOnsTotal = (outfit.addOns || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
                           const outfitPrice = Number(outfit.price) || 0;
+                          if (outfitPrice === 0 || addOnsTotal === 0) return null;
                           return (
                             <div className="border-t border-blue-200 dark:border-blue-800 pt-1.5 mt-1 flex justify-between font-semibold">
-                              <span className="text-blue-700 dark:text-blue-300">
-                                Outfit Total
-                                {outfitPrice > 0 && (
-                                  <span className="font-normal text-muted-foreground ml-1">
-                                    (₹{outfitPrice.toLocaleString()} + ₹{addOnsTotal.toLocaleString()} add-ons)
-                                  </span>
-                                )}
-                              </span>
+                              <span className="text-blue-700 dark:text-blue-300">Outfit Total</span>
                               <span className="text-blue-700 dark:text-blue-300 text-nowrap">
                                 ₹{(outfitPrice + addOnsTotal).toLocaleString()}
                               </span>
@@ -878,7 +872,12 @@ export default function OrderDetailPage() {
                       Total
                     </span>
                     <p className="font-bold text-sm">
-                      ₹{(orderTotal > 0 ? orderTotal : (Number(order.estimatedAmount) || 0)).toLocaleString()}
+                      {orderTotal > 0
+                        ? `₹${orderTotal.toLocaleString()}`
+                        : Number(order.estimatedAmount) > 0
+                          ? `₹${Number(order.estimatedAmount).toLocaleString()}`
+                          : <span className="text-muted-foreground text-xs">Not set</span>
+                      }
                     </p>
                   </div>
                   <div>
