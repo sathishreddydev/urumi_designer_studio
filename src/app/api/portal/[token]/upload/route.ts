@@ -8,6 +8,13 @@ import { v4 as uuidv4 } from "uuid";
 import { sanitizeFilename } from "@/lib/utils";
 import { uploadLimiter, getClientIp } from "@/lib/rate-limit";
 
+const CUSTOMER_UPLOAD_STATUSES = [
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+];
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -43,7 +50,7 @@ export async function POST(
     const allowedReferenceTypes = ["PATTERN", "MAGGAM", "FABRIC"] as const;
     const type = allowedReferenceTypes.includes(rawType as any) ? (rawType as typeof allowedReferenceTypes[number]) : null;
 
-    if (!file || !outfitId) {
+    if (!(file instanceof File) || !outfitId) {
       return NextResponse.json({ error: "File and outfitId are required" }, { status: 400 });
     }
 
@@ -83,6 +90,13 @@ export async function POST(
 
     if (!order || order.customerId !== customer.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (!CUSTOMER_UPLOAD_STATUSES.includes(outfit.status)) {
+      return NextResponse.json(
+        { error: "Uploads are closed after production begins" },
+        { status: 409 }
+      );
     }
 
     const bytes = await file.arrayBuffer();
@@ -187,6 +201,13 @@ export async function DELETE(
 
     if (!order || order.customerId !== customer.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (!CUSTOMER_UPLOAD_STATUSES.includes(outfit.status)) {
+      return NextResponse.json(
+        { error: "Changes are closed after production begins" },
+        { status: 409 }
+      );
     }
 
     // Only allow deletion of customer-uploaded images

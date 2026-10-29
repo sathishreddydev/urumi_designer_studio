@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages, payments, customerMeasurements } from "@/lib/db/schema";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
@@ -102,7 +102,7 @@ export async function GET(
         const orderPayments = await db
           .select({ amount: payments.amount, method: payments.method, createdAt: payments.createdAt })
           .from(payments)
-          .where(eq(payments.orderId, order.id));
+          .where(and(eq(payments.orderId, order.id), eq(payments.status, "SETTLED")));
 
         return {
           id: order.id,

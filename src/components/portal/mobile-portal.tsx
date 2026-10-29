@@ -109,24 +109,34 @@ export function ApproveAllButton({
 }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleAll() {
     setLoading(true);
+    setError("");
     const pending = references.filter((r: any) => !r.customerFeedback);
+    let succeeded = true;
     for (const ref of pending) {
-      await fetch(`/api/portal/${token}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ referenceId: ref.id, outfitId, feedback: action }),
-      }).catch(() => {});
+      try {
+        const res = await fetch(`/api/portal/${token}/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referenceId: ref.id, outfitId, feedback: action }),
+        });
+        if (!res.ok) succeeded = false;
+      } catch {
+        succeeded = false;
+      }
     }
-    setDone(true);
+    if (succeeded) setDone(true);
+    else setError("Some references could not be updated. Please try again.");
     setLoading(false);
   }
 
   if (done) return null;
 
   return (
+    <div className="space-y-1.5">
     <button
       onClick={handleAll}
       disabled={loading}
@@ -143,6 +153,8 @@ export function ApproveAllButton({
       )}
       {loading ? "..." : action === "approved" ? "Approve" : "Request Changes"}
     </button>
+      {error && <p role="alert" className="text-[10px] text-destructive">{error}</p>}
+    </div>
   );
 }
 
@@ -513,7 +525,7 @@ export function MobileOutfitDetail({
                 outfitId={outfit.id}
                 canApprove={canApprove}
               />
-              {canApprove && !designRefs.some((r: any) => r.customerFeedback) && (
+              {canApprove && designRefs.some((r: any) => !r.customerFeedback) && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <ApproveAllButton
                     references={designRefs}

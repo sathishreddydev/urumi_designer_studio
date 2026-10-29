@@ -12,6 +12,8 @@ const UPLOAD_TYPE_OPTIONS = [
 ] as const;
 
 type UploadType = "PATTERN" | "MAGGAM" | "FABRIC";
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_COMPRESSED_SIZE = 5 * 1024 * 1024;
 
 /* ══════════════════════════════════════════════════════════
    CAMERA CAPTURE MODAL
@@ -157,12 +159,16 @@ export function DesktopUploadZone({
     setUploadError(null);
     const arr = Array.from(files);
     for (const file of arr) {
-      if (file.size > 20 * 1024 * 1024) {
+      if (file.size > MAX_FILE_SIZE) {
         setUploadError(`"${file.name}" is over 20MB.`);
         continue;
       }
       try {
         const compressed = await compressImage(file);
+        if (compressed.size > MAX_COMPRESSED_SIZE) {
+          setUploadError(`"${file.name}" is still over 5MB after compression.`);
+          continue;
+        }
         const fd = new FormData();
         fd.append("file", compressed);
         fd.append("outfitId", outfitId);
@@ -233,7 +239,7 @@ export function DesktopUploadZone({
         <input
           type="file"
           className="hidden"
-          accept="image/*,video/*"
+          accept="image/*"
           multiple
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
           disabled={uploading}
@@ -244,7 +250,7 @@ export function DesktopUploadZone({
           <>
             <Upload className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground">Click to upload or drag and drop</p>
-            <p className="text-[10px] text-muted-foreground">Images, videos up to 10MB</p>
+            <p className="text-[10px] text-muted-foreground">Images up to 20MB (5MB after compression)</p>
           </>
         )}
         {uploadError && <p className="mt-1 text-[10px] text-destructive">{uploadError}</p>}
@@ -277,6 +283,7 @@ export function PortalUpload({
   const [uploaded, setUploaded] = useState<{ url: string; type: string }[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<UploadType>("PATTERN");
+  const [dragging, setDragging] = useState(false);
 
   async function handleUpload(files: FileList | File | null) {
     if (!files) return;
@@ -284,12 +291,16 @@ export function PortalUpload({
     setUploadError(null);
     const arr = files instanceof File ? [files] : Array.from(files);
     for (const file of arr) {
-      if (file.size > 20 * 1024 * 1024) {
+      if (file.size > MAX_FILE_SIZE) {
         setUploadError(`"${file.name}" is over 20MB.`);
         continue;
       }
       try {
         const compressed = await compressImage(file);
+        if (compressed.size > MAX_COMPRESSED_SIZE) {
+          setUploadError(`"${file.name}" is still over 5MB after compression.`);
+          continue;
+        }
         const fd = new FormData();
         fd.append("file", compressed);
         fd.append("outfitId", outfitId);
@@ -350,7 +361,18 @@ export function PortalUpload({
       )}
 
       {/* Single drop zone — this is the primary upload trigger */}
-      <label className="block cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center hover:border-primary/40 hover:bg-muted/30 transition-colors">
+      <label
+        className={`block cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          dragging ? "border-primary bg-primary/5" : "hover:border-primary/40 hover:bg-muted/30"
+        }`}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          handleUpload(e.dataTransfer.files);
+        }}
+      >
         <input
           type="file"
           className="hidden"
@@ -363,7 +385,7 @@ export function PortalUpload({
         <p className="text-xs font-medium text-muted-foreground">
           {uploading ? "Uploading..." : "Click to upload or drag and drop"}
         </p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">Images, videos up to 10MB</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">Images up to 20MB (5MB after compression)</p>
       </label>
 
       {/* Camera button only — no duplicate file input */}

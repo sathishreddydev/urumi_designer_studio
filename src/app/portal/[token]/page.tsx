@@ -49,6 +49,7 @@ export default function CustomerPortalPage() {
     if (!data) return;
     let active = true;
     let lastTimestamp = Date.now();
+    let pollsSinceRefresh = 0;
 
     function refetch() {
       fetch(`/api/portal/${params.token}`)
@@ -65,7 +66,11 @@ export default function CustomerPortalPage() {
         );
         if (!res.ok) return;
         const body = await res.json();
-        if (body.hasUpdates) refetch();
+        pollsSinceRefresh += 1;
+        if (body.hasUpdates || pollsSinceRefresh >= 8) {
+          refetch();
+          pollsSinceRefresh = 0;
+        }
         if (body.serverTime) lastTimestamp = body.serverTime;
       } catch { }
     }

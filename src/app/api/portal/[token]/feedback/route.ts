@@ -4,6 +4,13 @@ import { customers, referenceImages, outfits, orders } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
 
+const CUSTOMER_REVIEW_STATUSES = [
+  "DRAFT",
+  "DESIGN_IN_PROGRESS",
+  "WAITING_FOR_REFERENCES",
+  "WAITING_FOR_DEPENDENCIES",
+];
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -44,7 +51,7 @@ export async function POST(
 
   // ── Ownership: verify the outfit belongs to one of THIS customer's orders ──
   const [ownerRow] = await db
-    .select({ customerId: orders.customerId })
+    .select({ customerId: orders.customerId, outfitStatus: outfits.status })
     .from(outfits)
     .innerJoin(orders, eq(outfits.orderId, orders.id))
     .where(eq(outfits.id, outfitId))
@@ -53,10 +60,13 @@ export async function POST(
   if (!ownerRow || ownerRow.customerId !== customer.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  if (!CUSTOMER_REVIEW_STATUSES.includes(ownerRow.outfitStatus)) {
+    return NextResponse.json({ error: "Reference review is closed" }, { status: 409 });
+  }
 
   // ── Ownership: verify the reference belongs to the claimed outfit ──────────
   const [refRow] = await db
-    .select({ id: referenceImages.id })
+    .select({ id: referenceImages.id, type: referenceImages.type })
     .from(referenceImages)
     .where(and(
       eq(referenceImages.id, referenceId),
@@ -66,6 +76,9 @@ export async function POST(
 
   if (!refRow) {
     return NextResponse.json({ error: "Reference not found" }, { status: 403 });
+  }
+  if (refRow.type !== "PATTERN" && refRow.type !== "MAGGAM") {
+    return NextResponse.json({ error: "This reference cannot be reviewed" }, { status: 400 });
   }
 
   // ── Apply feedback ───────────────────────────────────────────────────────────
@@ -77,11 +90,12 @@ export async function POST(
 
     // Check if all references for this outfit are now locked → auto-advance
     const allRefs = await db
-      .select({ status: referenceImages.status })
+      .select({ status: referenceImages.status, type: referenceImages.type })
       .from(referenceImages)
       .where(eq(referenceImages.outfitId, outfitId));
 
-    const allLocked = allRefs.length > 0 && allRefs.every((r) => r.status === "LOCKED");
+    const approvalRefs = allRefs.filter((r) => r.type === "PATTERN" || r.type === "MAGGAM");
+    const allLocked = approvalRefs.length > 0 && approvalRefs.every((r) => r.status === "LOCKED");
     if (allLocked) {
       const [outfit] = await db
         .select({ status: outfits.status })
