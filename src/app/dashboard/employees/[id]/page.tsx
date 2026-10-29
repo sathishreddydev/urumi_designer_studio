@@ -432,7 +432,7 @@ function SalaryTab({
   const [periodEnd, setPeriodEnd]     = useState("");
   const [gross, setGross]             = useState("");
   const [deductions, setDeductions]   = useState("0");
-  const [method, setMethod]           = useState("CASH");
+  const [method, setMethod]           = useState("UPI");
   const [notes, setNotes]             = useState("");
 
   const { data: payments = [], isLoading } = useQuery({

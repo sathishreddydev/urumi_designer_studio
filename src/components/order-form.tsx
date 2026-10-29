@@ -89,7 +89,7 @@ function outfitPayload(outfit: OutfitEntry) {
     name: outfit.name,
     type: outfit.type,
     occasion: outfit.occasion || undefined,
-    price: outfit.price ? Number(outfit.price) : undefined,
+    price: outfit.price !== "" ? Number(outfit.price) : 0,
     priority: outfit.priority ?? 0,
     maggamRequired: outfit.maggamRequired,
     designerId: outfit.designerId || undefined,
@@ -120,7 +120,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const [trialDate, setTrialDate] = useState<Date | undefined>(undefined);
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(undefined);
   const [advanceAmount, setAdvanceAmount] = useState("");
-  const [advanceMethod, setAdvanceMethod] = useState("CASH");
+  const [advanceMethod, setAdvanceMethod] = useState("UPI");
   const [notes, setNotes] = useState("");
   const [outfits, setOutfits] = useState<OutfitEntry[]>([emptyOutfit()]);
   const [deleteOutfitId, setDeleteOutfitId] = useState<string | null>(null);
@@ -166,6 +166,25 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     (u: any) => u.role === "MASTER" && (u.active || assignedMasterIds.has(u.id)),
   );
   const selectedCustomer = customers.find((c: any) => c.id === customerId);
+
+  // ── Auto-select single designer / master on new outfits ──────────────────────
+  useEffect(() => {
+    if (!isAdminOrStoreManager) return;
+    setOutfits((prev) =>
+      prev.map((o) => {
+        if (!o.isNew) return o;
+        const updated = { ...o };
+        if (!updated.designerId && designers.length === 1) {
+          updated.designerId = designers[0].id;
+        }
+        if (!updated.masterId && masters.length === 1) {
+          updated.masterId = masters[0].id;
+        }
+        return updated;
+      }),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designers.length, masters.length, isAdminOrStoreManager]);
 
   // ── Populate form in edit mode ───────────────────────────────────────────────
   useEffect(() => {
@@ -338,7 +357,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         body: JSON.stringify({
           trialDate: trialDate?.toISOString() || undefined,
           deliveryDate: deliveryDate?.toISOString() || undefined,
-          estimatedAmount: estimatedTotal > 0 ? estimatedTotal : undefined,
+          estimatedAmount: estimatedTotal,
           notes,
         }),
       });
@@ -434,7 +453,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   // ── Outfit helpers ───────────────────────────────────────────────────────────
   function addOutfit() {
-    setOutfits((prev) => [...prev, emptyOutfit()]);
+    const outfit = emptyOutfit();
+    if (designers.length === 1) outfit.designerId = designers[0].id;
+    if (masters.length === 1) outfit.masterId = masters[0].id;
+    setOutfits((prev) => [...prev, outfit]);
   }
 
   function removeOutfit(index: number) {
