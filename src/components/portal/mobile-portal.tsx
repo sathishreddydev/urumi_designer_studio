@@ -242,7 +242,7 @@ export function MobileOrderDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 items-end gap-2 mt-2">
             <div>
               <p className="text-[9px] text-muted-foreground">Total</p>
               <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
@@ -255,8 +255,8 @@ export function MobileOrderDetail({
               <p className="text-[9px] text-muted-foreground">Balance</p>
               <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
             </div>
+            <PaymentHistoryDialog order={order} />
           </div>
-          <PaymentHistoryDialog order={order} />
         </div>
       </div>
 
@@ -390,7 +390,7 @@ export function MobileOutfitDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 items-end gap-2 mt-2">
             <div>
               <p className="text-[9px] text-muted-foreground">Total</p>
               <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
@@ -404,7 +404,6 @@ export function MobileOutfitDetail({
               <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
             </div>
             <PaymentHistoryDialog order={order} />
-
           </div>
         </div>
       </div>

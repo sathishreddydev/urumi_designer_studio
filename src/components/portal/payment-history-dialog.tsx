@@ -105,7 +105,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
     }
 
     return (
-        <div className="space-y-2 text-right">
+        <div className="min-w-0 space-y-2 self-end text-right">
             <a
                 href="#download-invoice"
                 aria-disabled={isDownloading}
@@ -113,7 +113,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
                     event.preventDefault();
                     if (!isDownloading) void handleDownloadInvoice();
                 }}
-                className={`inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline ${isDownloading ? "pointer-events-none opacity-60" : ""}`}
+                className={`inline-flex items-center justify-end gap-1 whitespace-nowrap text-xs font-medium text-primary underline-offset-4 hover:underline ${isDownloading ? "pointer-events-none opacity-60" : ""}`}
             >
                 {isDownloading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
