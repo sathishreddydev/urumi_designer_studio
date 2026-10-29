@@ -97,7 +97,8 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
             );
         } finally {
             if (url) {
-                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                const objectUrl = url;
+                window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
             }
 
             setIsDownloading(false);
