@@ -67,3 +67,13 @@ export type CompletionVisibleStatus = (typeof COMPLETION_VISIBLE_STATUSES)[numbe
 export function isCompletionVisible(status: string): boolean {
   return (COMPLETION_VISIBLE_STATUSES as readonly string[]).includes(status);
 }
+
+/** Prefer a visible finished-product photo, then the customer's material photo. */
+export function outfitThumbnail(outfit: any) {
+  const references: any[] = outfit.references || [];
+  if (isCompletionVisible(outfit.status)) {
+    const finishedPhoto = references.find((reference) => reference.type === "COMPLETION");
+    if (finishedPhoto) return finishedPhoto;
+  }
+  return references.find((reference) => reference.type === "FABRIC") || null;
+}

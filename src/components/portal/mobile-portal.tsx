@@ -31,7 +31,7 @@ import { OutfitStatusBadge, ALL_OUTFIT_STATUSES, APPROVAL_ALLOWED_STATUSES } fro
 import { ProfileMeasurements } from "@/components/portal/profile-measurements";
 import { PortalReferences, MobilePhotoStrip } from "@/components/portal/portal-reference-card";
 import { PortalUpload } from "@/components/portal/portal-upload";
-import { fmtPrice, outfitTotals, orderTotals, MobileScreen, isCompletionVisible } from "@/components/portal/portal-utils";
+import { fmtPrice, outfitTotals, orderTotals, MobileScreen, isCompletionVisible, outfitThumbnail } from "@/components/portal/portal-utils";
 import { formatDate, formatStatus } from "@/lib/utils";
 
 /* ── Mobile Stat Card ───────────────────────────────────── */
@@ -249,9 +249,7 @@ export function MobileOrderDetail({
       {/* Outfit tabs */}
       <div className="flex gap-3 px-4 py-3 overflow-x-auto no-scrollbar border-b">
         {outfits.map((outfit: any, idx: number) => {
-          const coverRef =
-            (outfit.references || []).find((r: any) => r.type !== "COMPLETION") ||
-            outfit.references?.[0];
+          const coverRef = outfitThumbnail(outfit);
           return (
             <button
               key={outfit.id}
@@ -280,9 +278,7 @@ export function MobileOrderDetail({
       {/* Outfit list */}
       <div className="px-4 pt-4 space-y-3">
         {outfits.map((outfit: any) => {
-          const coverRef =
-            (outfit.references || []).find((r: any) => r.type !== "COMPLETION") ||
-            outfit.references?.[0];
+          const coverRef = outfitThumbnail(outfit);
           const { total } = outfitTotals(outfit);
           return (
             <div
@@ -358,9 +354,7 @@ export function MobileOutfitDetail({
     completionRefs.length > 0 && isCompletionVisible(outfit.status);
 
   const { price, total } = outfitTotals(outfit);
-  const coverRef =
-    (outfit.references || []).find((r: any) => r.type !== "COMPLETION") ||
-    outfit.references?.[0];
+  const coverRef = outfitThumbnail(outfit);
 
   const TABS = [
     { key: "overview" as const, label: "Overview" },
@@ -387,9 +381,7 @@ export function MobileOutfitDetail({
       {/* Outfit switcher */}
       <div className="flex gap-2.5 px-4 py-3 overflow-x-auto no-scrollbar border-b">
         {outfits.map((o: any, idx: number) => {
-          const cRef =
-            (o.references || []).find((r: any) => r.type !== "COMPLETION") ||
-            o.references?.[0];
+          const cRef = outfitThumbnail(o);
           const isActive = o.id === outfit.id;
           return (
             <button

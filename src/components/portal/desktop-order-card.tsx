@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { OutfitStatusBadge, APPROVAL_ALLOWED_STATUSES } from "@/components/outfit-status-badge";
 import { InlinePhotoStrip } from "@/components/portal/portal-reference-card";
 import { DesktopUploadZone } from "@/components/portal/portal-upload";
-import { fmtPrice, outfitTotals, orderTotals, isCompletionVisible } from "@/components/portal/portal-utils";
+import { fmtPrice, outfitTotals, orderTotals, isCompletionVisible, outfitThumbnail } from "@/components/portal/portal-utils";
 import { formatDate } from "@/lib/utils";
 
 /* ── Stat Card ──────────────────────────────────────────── */
@@ -134,9 +134,7 @@ export function DesktopOutfitRow({
 
   const { price, total } = outfitTotals(outfit);
   const hasPrice = price > 0 || (outfit.addOns || []).length > 0;
-  const coverRef =
-    (outfit.references || []).find((r: any) => r.type !== "COMPLETION") ||
-    outfit.references?.[0];
+  const coverRef = outfitThumbnail(outfit);
 
   return (
     <div className={`grid grid-cols-[90px_1fr_1fr_1fr] gap-0 ${!isLast ? "border-b" : ""}`}>
