@@ -138,22 +138,21 @@ export function ApproveAllButton({
 
   return (
     <div className="space-y-1.5">
-    <button
-      onClick={handleAll}
-      disabled={loading}
-      className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
-        action === "approved"
+      <button
+        onClick={handleAll}
+        disabled={loading}
+        className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${action === "approved"
           ? "bg-green-600 hover:bg-green-700 text-white"
           : "border border-destructive text-destructive hover:bg-destructive/5"
-      }`}
-    >
-      {action === "approved" ? (
-        <ThumbsUp className="h-4 w-4" />
-      ) : (
-        <ThumbsDown className="h-4 w-4" />
-      )}
-      {loading ? "..." : action === "approved" ? "Approve" : "Request Changes"}
-    </button>
+          }`}
+      >
+        {action === "approved" ? (
+          <ThumbsUp className="h-4 w-4" />
+        ) : (
+          <ThumbsDown className="h-4 w-4" />
+        )}
+        {loading ? "..." : action === "approved" ? "Approve" : "Request Changes"}
+      </button>
       {error && <p role="alert" className="text-[10px] text-destructive">{error}</p>}
     </div>
   );
@@ -177,31 +176,28 @@ export function MobileOutfitProgress({ status }: { status: string }) {
           return (
             <div
               key={step}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
-                isCurrent
-                  ? "bg-primary/10 border border-primary/20"
-                  : isPending
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${isCurrent
+                ? "bg-primary/10 border border-primary/20"
+                : isPending
                   ? "opacity-40"
                   : ""
-              }`}
+                }`}
             >
               <div
-                className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                  isDone
-                    ? "bg-green-100 text-green-700"
-                    : isCurrent
+                className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${isDone
+                  ? "bg-green-100 text-green-700"
+                  : isCurrent
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                }`}
+                  }`}
               >
                 {isDone ? <Check className="h-3 w-3" /> : idx + 1}
               </div>
               <span
-                className={`text-xs ${
-                  isCurrent
-                    ? "font-semibold text-primary"
-                    : "text-muted-foreground"
-                }`}
+                className={`text-xs ${isCurrent
+                  ? "font-semibold text-primary"
+                  : "text-muted-foreground"
+                  }`}
               >
                 {formatStatus(step)}
               </span>
@@ -394,7 +390,7 @@ export function MobileOutfitDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
-          {/* <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2">
             <div>
               <p className="text-[9px] text-muted-foreground">Total</p>
               <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
@@ -407,8 +403,9 @@ export function MobileOutfitDetail({
               <p className="text-[9px] text-muted-foreground">Balance</p>
               <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
             </div>
-          </div> */}
-          <PaymentHistoryDialog order={order} />
+            <PaymentHistoryDialog order={order} />
+
+          </div>
         </div>
       </div>
 
@@ -424,9 +421,8 @@ export function MobileOutfitDetail({
               className="flex flex-col items-center gap-1 shrink-0"
             >
               <div
-                className={`h-20 w-20 rounded-xl overflow-hidden border-2 transition-all bg-muted flex items-center justify-center ${
-                  isActive ? "border-primary" : "border-transparent"
-                }`}
+                className={`h-20 w-20 rounded-xl overflow-hidden border-2 transition-all bg-muted flex items-center justify-center ${isActive ? "border-primary" : "border-transparent"
+                  }`}
               >
                 {cRef ? (
                   <img src={cRef.url} alt={o.name} className="h-full w-full object-cover" />
@@ -435,9 +431,8 @@ export function MobileOutfitDetail({
                 )}
               </div>
               <p
-                className={`text-[10px] text-center leading-tight max-w-[80px] line-clamp-1 ${
-                  isActive ? "text-primary font-semibold" : "text-muted-foreground"
-                }`}
+                className={`text-[10px] text-center leading-tight max-w-[80px] line-clamp-1 ${isActive ? "text-primary font-semibold" : "text-muted-foreground"
+                  }`}
               >
                 {idx + 1}. {o.name}
               </p>
@@ -478,11 +473,10 @@ export function MobileOutfitDetail({
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-              tab === t.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
-            }`}
+            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 transition-colors ${tab === t.key
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
+              }`}
           >
             {t.label}
           </button>
@@ -783,21 +777,19 @@ export function MobilePortal({
         <div className="grid grid-cols-2 border-b">
           <button
             onClick={() => setScreen({ view: "orders" })}
-            className={`flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
-              screen.view !== "measurements"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
-            }`}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${screen.view !== "measurements"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
+              }`}
           >
             <ShoppingBag className="h-4 w-4" /> Orders
           </button>
           <button
             onClick={() => setScreen({ view: "measurements" })}
-            className={`flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
-              screen.view === "measurements"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
-            }`}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${screen.view === "measurements"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
+              }`}
           >
             <Ruler className="h-4 w-4" /> My Measurements
           </button>
@@ -824,20 +816,20 @@ export function MobilePortal({
                 />
               </div>
               <div className="shrink-0">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-9 bg-background rounded-xl text-xs w-[120px]">
-                  <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {allOutfitStatuses.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {formatStatus(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9 bg-background rounded-xl text-xs w-[120px]">
+                    <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground shrink-0" />
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {allOutfitStatuses.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {formatStatus(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -857,10 +849,10 @@ export function MobilePortal({
                   onClick={() =>
                     order.outfits.length > 0
                       ? setScreen({
-                          view: "outfit-detail",
-                          orderId: order.id,
-                          outfitId: order.outfits[0].id,
-                        })
+                        view: "outfit-detail",
+                        orderId: order.id,
+                        outfitId: order.outfits[0].id,
+                      })
                       : setScreen({ view: "order-detail", orderId: order.id })
                   }
                 >
