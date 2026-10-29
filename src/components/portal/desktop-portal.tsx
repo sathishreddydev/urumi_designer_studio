@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Search, Filter, Shirt, ShoppingBag, Clock, CheckCircle2, Ruler } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -134,23 +133,19 @@ export function DesktopPortal({
       {desktopView === "orders" && (
         <div className="mt-5 space-y-5">
           {/* Search & Filter */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search outfits by name or type..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 bg-background pl-9 text-sm rounded-xl w-full"
-              />
-            </div>
-            <div className="shrink-0">
+          <div className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-sm">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              placeholder="Search outfits by name or type..."
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <div className="h-5 w-px bg-border shrink-0" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-[160px] bg-background rounded-xl text-sm">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="All Statuses" />
-                </div>
+              <SelectTrigger className="h-8 w-[150px] border-0 bg-transparent shadow-none text-sm px-1 shrink-0 focus:ring-0">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground mr-1.5 shrink-0" />
+                <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -161,10 +156,9 @@ export function DesktopPortal({
                 ))}
               </SelectContent>
             </Select>
-            </div>
-            <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
-              {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} ·{" "}
-              {filteredOrders.reduce((s: number, o: any) => s + o.outfits.length, 0)} outfits
+            <div className="h-5 w-px bg-border shrink-0" />
+            <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap pr-1">
+              {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} · {filteredOrders.reduce((s: number, o: any) => s + o.outfits.length, 0)} outfits
             </span>
           </div>
 

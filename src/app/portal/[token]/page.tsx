@@ -95,7 +95,7 @@ export default function CustomerPortalPage() {
       .filter((o: any) => o.outfits.length > 0)
       .sort(
         (a: any, b: any) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.orderDate ?? b.createdAt ?? 0).getTime() - new Date(a.orderDate ?? a.createdAt ?? 0).getTime()
       );
   }, [data, searchQuery, statusFilter]);
 

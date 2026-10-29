@@ -91,7 +91,7 @@ export function PortalReferenceCard({
               : "Pattern"}
           </span>
         )}
-        {feedback && (
+        {feedback && canApprove && (
           <div
             className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow-md ${
               feedback === "approved" ? "bg-green-600" : "bg-destructive"
@@ -129,7 +129,7 @@ export function PortalReferenceCard({
           Read only
         </div>
       )}
-      {feedback && reference.type !== "FABRIC" && (
+      {feedback && canApprove && reference.type !== "FABRIC" && (
         <div
           className={`py-1 text-center text-[10px] font-semibold text-white ${
             feedback === "approved" ? "bg-green-600" : "bg-destructive"
@@ -307,7 +307,7 @@ function DesktopRefThumb({
           alt=""
           className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
         />
-        {feedback && (
+        {feedback && canApprove && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             {feedback === "approved" ? (
               <ThumbsUp className="h-4 w-4 text-white" />

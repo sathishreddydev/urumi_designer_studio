@@ -57,7 +57,7 @@ export function DesktopOrderCard({ order, token }: { order: any; token: string }
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Placed on {formatDate(order.createdAt)}
+              Placed on {formatDate(order.orderDate ?? order.createdAt)}
             </p>
           </div>
         </div>

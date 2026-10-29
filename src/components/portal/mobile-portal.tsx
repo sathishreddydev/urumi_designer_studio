@@ -229,7 +229,7 @@ export function MobileOrderDetail({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold">Order #{order.orderNumber}</p>
           <p className="text-[11px] text-muted-foreground">
-            Placed on {formatDate(order.createdAt)}
+            Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
         </div>
       </div>
@@ -370,7 +370,7 @@ export function MobileOutfitDetail({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold">Order #{order.orderNumber}</p>
           <p className="text-[11px] text-muted-foreground">
-            Placed on {formatDate(order.createdAt)}
+            Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
         </div>
       </div>
@@ -830,7 +830,7 @@ export function MobilePortal({
                           </Badge>
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          Placed on {formatDate(order.createdAt)}
+                          Placed on {formatDate(order.orderDate ?? order.createdAt)}
                         </p>
                       </div>
                     </div>
