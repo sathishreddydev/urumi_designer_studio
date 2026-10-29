@@ -122,7 +122,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
                 )}
 
                 {isDownloading
-                    ? "Preparing invoice..."
+                    ? "Preparing..."
                     : "Invoice"}
             </a>
 
