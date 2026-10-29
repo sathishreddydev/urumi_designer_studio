@@ -820,7 +820,15 @@ export function MobilePortal({
                 <div
                   key={order.id}
                   className="rounded-2xl border bg-card shadow-sm overflow-hidden cursor-pointer active:bg-muted/50"
-                  onClick={() => setScreen({ view: "order-detail", orderId: order.id })}
+                  onClick={() =>
+                    order.outfits.length === 1
+                      ? setScreen({
+                          view: "outfit-detail",
+                          orderId: order.id,
+                          outfitId: order.outfits[0].id,
+                        })
+                      : setScreen({ view: "order-detail", orderId: order.id })
+                  }
                 >
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2.5 min-w-0">
