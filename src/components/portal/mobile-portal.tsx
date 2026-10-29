@@ -395,7 +395,7 @@ export function MobileOutfitDetail({
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-4 items-end gap-2 mt-2">
+        <div className="grid grid-cols-4 items-end gap-2 mt-2 px-4">
           <div>
             <p className="text-[9px] text-muted-foreground">Total</p>
             <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>

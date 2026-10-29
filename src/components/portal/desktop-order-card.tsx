@@ -72,13 +72,13 @@ export function DesktopOrderCard({ order, token }: { order: any; token: string }
                 <p className="text-sm font-bold tabular-nums">{fmtPrice(displayTotal)}</p>
               </div>
             )}
-            {paid > 0 && (
+            {(
               <div className="text-right">
                 <p className="text-[10px] text-muted-foreground">Paid Amount</p>
                 <p className="text-sm font-bold tabular-nums text-green-600">{fmtPrice(paid)}</p>
               </div>
             )}
-            {balance > 0 && (
+            {(
               <div className="text-right">
                 <p className="text-[10px] text-muted-foreground">Balance</p>
                 <p className="text-sm font-bold tabular-nums text-destructive">{fmtPrice(balance)}</p>
