@@ -398,42 +398,6 @@ export default function CustomerPortalPage() {
                                 </Badge>
                               )}
                             </div>
-                            <div className="mt-1 text-xs">
-                              {/* Price summary — always shown */}
-                              {(() => {
-                                const outfitPrice = Number(outfit.price) || 0;
-                                const addOns = outfit.addOns || [];
-                                const addOnsTotal = addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
-                                const total = outfitPrice + addOnsTotal;
-                                const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
-
-                                if (!hasAnyPrice) {
-                                  return <span className="italic text-amber-600">⏳ Price to be confirmed</span>;
-                                }
-                                return (
-                                  <div className="space-y-0.5">
-                                    {outfitPrice > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Outfit Price</span>
-                                        <span className="font-medium">₹{outfitPrice.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {addOns.map((a: any) => (
-                                      <div key={a.id} className="flex justify-between">
-                                        <span className="text-muted-foreground">{a.name}</span>
-                                        <span className="font-medium">₹{Number(a.price).toLocaleString()}</span>
-                                      </div>
-                                    ))}
-                                    {outfitPrice > 0 && addOnsTotal > 0 && (
-                                      <div className="flex justify-between border-t pt-0.5 font-semibold">
-                                        <span>Total</span>
-                                        <span>₹{total.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </div>
                           </div>
                         </div>
                         <OutfitStatusBadge status={outfit.status} />
@@ -512,12 +476,45 @@ export default function CustomerPortalPage() {
               </div>
 
               {/* Financial Summary */}
-              {(order.totalPaid > 0 || Number(order.estimatedAmount) > 0) && (
+              {(order.totalPaid > 0 || Number(order.estimatedAmount) > 0 || (order.outfits || []).some((o: any) => Number(o.price) > 0 || (o.addOns || []).some((a: any) => Number(a.price) > 0))) && (
                 <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3.5 border space-y-3 text-xs">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="font-medium text-muted-foreground">Payment Summary</span>
                   </div>
+
+                  {/* Per-outfit price breakdown */}
+                  {(order.outfits || []).map((o: any) => {
+                    const outfitPrice = Number(o.price) || 0;
+                    const addOns = o.addOns || [];
+                    const addOnsTotal = addOns.reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
+                    const hasAnyPrice = outfitPrice > 0 || addOnsTotal > 0;
+                    if (!hasAnyPrice) return null;
+                    return (
+                      <div key={o.id} className="space-y-0.5">
+                        <p className="font-medium text-foreground">{o.name}</p>
+                        {outfitPrice > 0 && (
+                          <div className="flex justify-between pl-2">
+                            <span className="text-muted-foreground">Outfit Price</span>
+                            <span>₹{outfitPrice.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {addOns.map((a: any) => (
+                          <div key={a.id} className="flex justify-between pl-2">
+                            <span className="text-muted-foreground">{a.name}</span>
+                            <span>₹{Number(a.price).toLocaleString()}</span>
+                          </div>
+                        ))}
+                        {outfitPrice > 0 && addOnsTotal > 0 && (
+                          <div className="flex justify-between pl-2 font-semibold border-t pt-0.5">
+                            <span>Subtotal</span>
+                            <span>₹{(outfitPrice + addOnsTotal).toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
                   {(() => {
                     const liveTotal = (order.outfits || []).reduce((s: number, o: any) => {
                       const outfitPrice = Number(o.price) || 0;
