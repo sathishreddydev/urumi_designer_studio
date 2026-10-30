@@ -49,6 +49,11 @@ import {
   OutfitTransitionButtons,
   type OutfitTransition,
 } from "@/components/outfit-transition-buttons";
+import {
+  WhatsAppNotificationDialog,
+  WHATSAPP_NOTIFICATIONS_ENABLED,
+  type WhatsAppNotificationPrompt,
+} from "@/components/whatsapp-notification-dialog";
 
 // ─── Per-Outfit Status Updater ───────────────────────────────────────────────
 
@@ -62,6 +67,7 @@ function OutfitStatusUpdater({
   disabled?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const [whatsappPrompt, setWhatsappPrompt] = useState<WhatsAppNotificationPrompt | null>(null);
 
   const { data: transitions } = useQuery({
     queryKey: ["outfit-transitions", outfitId],
@@ -86,7 +92,7 @@ function OutfitStatusUpdater({
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["order", orderId] });
       queryClient.invalidateQueries({
         queryKey: ["outfit-transitions", outfitId],
@@ -97,6 +103,12 @@ function OutfitStatusUpdater({
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Status updated" });
+      if (WHATSAPP_NOTIFICATIONS_ENABLED && data.notifyCustomer?.whatsappUrl) {
+        setWhatsappPrompt({
+          customerName: data.notifyCustomer.customerName,
+          url: data.notifyCustomer.whatsappUrl,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -109,17 +121,23 @@ function OutfitStatusUpdater({
 
   const available: OutfitTransition[] = transitions?.availableTransitions ?? [];
 
-  if (disabled || available.length === 0) return null;
-
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-2">
-      <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-        Move to
-      </span>
-      <OutfitTransitionButtons
-        transitions={available}
-        onTransition={(status) => transitionMutation.mutate(status)}
-        pendingStatus={transitionMutation.isPending ? (transitionMutation.variables ?? null) : null}
+    <div className="contents">
+      {!disabled && available.length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-2">
+          <span className="text-[11px] font-medium text-muted-foreground shrink-0">
+            Move to
+          </span>
+          <OutfitTransitionButtons
+            transitions={available}
+            onTransition={(status) => transitionMutation.mutate(status)}
+            pendingStatus={transitionMutation.isPending ? (transitionMutation.variables ?? null) : null}
+          />
+        </div>
+      )}
+      <WhatsAppNotificationDialog
+        prompt={whatsappPrompt}
+        onClose={() => setWhatsappPrompt(null)}
       />
     </div>
   );

@@ -32,7 +32,7 @@ import {
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "@/hooks/use-toast";
 import { ImageViewer } from "@/components/image-viewer";
-import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
+import { OutfitTransitionButtons, type OutfitTransition } from "@/components/outfit-transition-buttons";
 
 // Tabs shown to all roles
 const ALL_TABS = [
@@ -46,8 +46,6 @@ const ALL_TABS = [
 ] as const;
 
 type TabKey = (typeof ALL_TABS)[number]["key"];
-type Transition = { status: string; label: string; blocked: boolean; reason?: string };
-
 export default function StitchingMaggamPage() {
   const queryClient = useQueryClient();
   const { role, session } = usePermissions();
@@ -125,7 +123,7 @@ export default function StitchingMaggamPage() {
       });
       if (!res.ok) return {};
       const d = await res.json();
-      return d.transitions as Record<string, Transition[]>;
+      return d.transitions as Record<string, OutfitTransition[]>;
     },
     enabled: outfitIds.length > 0,
   });
@@ -348,7 +346,7 @@ export default function StitchingMaggamPage() {
               </thead>
               <tbody className="divide-y">
                 {filteredOutfits.map((outfit: any) => {
-                  const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
+                  const transitions: OutfitTransition[] = bulkTransitions?.[outfit.id] ?? [];
                   const isUrgent =
                     outfit.deliveryDate &&
                     new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -428,7 +426,7 @@ export default function StitchingMaggamPage() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {filteredOutfits.map((outfit: any) => {
-              const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
+              const transitions: OutfitTransition[] = bulkTransitions?.[outfit.id] ?? [];
               const isUrgent =
                 outfit.deliveryDate &&
                 new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);

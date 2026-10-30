@@ -398,7 +398,7 @@ export function MobileOutfitDetail({
             <p className="text-[11px] text-muted-foreground">
               Placed on {formatDate(order.orderDate ?? order.createdAt)}
             </p>
-            <div className="mt-2 flex items-end justify-end gap-4 text-right">
+            <div className="flex items-end justify-end gap-4 text-right">
               {displayTotal > 0 && (
                 <div className="text-right">
                   <p className="text-[9px] text-muted-foreground">Total</p>

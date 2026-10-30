@@ -37,9 +37,11 @@ interface OutfitTransitionButtonsProps {
   tooltipSide?: "top" | "bottom" | "left" | "right";
   /**
    * When true, MAGGAM_WORK transitions render with a RotateCcw icon and amber
-   * outline styling to signal "send back for rework". Default: false.
+    * outline styling to signal "send back for rework". Default: true.
    */
   maggamWorkVariant?: boolean;
+    /** Optional layout classes for the button group container. */
+    containerClassName?: string;
   /**
    * Element to render when there are no available transitions.
    * Default: null (renders nothing).
@@ -58,14 +60,15 @@ export function OutfitTransitionButtons({
   pendingStatus,
   responsive = true,
   tooltipSide = "bottom",
-  maggamWorkVariant = false,
+  maggamWorkVariant = true,
+  containerClassName = "w-full flex-wrap",
   emptyPlaceholder = null,
 }: OutfitTransitionButtonsProps) {
   if (transitions.length === 0) return <>{emptyPlaceholder}</>;
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
+      <div className={`flex items-center justify-end gap-1.5 ${containerClassName}`}>
         {transitions.map((t) => {
           const shortLabel = SHORT_STATUS_LABELS[t.status] ?? t.label;
           const isLoading = !t.blocked && pendingStatus === t.status;
@@ -79,7 +82,7 @@ export function OutfitTransitionButtons({
                 <span className={t.blocked ? "cursor-not-allowed" : undefined}>
                   <LoadingButton
                     size="sm"
-                    variant={isMaggamRework ? "outline" : "outline"}
+                    variant="outline"
                     loading={isLoading}
                     disabled={t.blocked}
                     onClick={() => !t.blocked && onTransition(t.status)}

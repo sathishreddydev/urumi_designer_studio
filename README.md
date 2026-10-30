@@ -34,7 +34,9 @@ A production-ready Designer Studio / Bridal Boutique management application buil
    ```
    DATABASE_URL="postgresql://postgres:password@localhost:5432/designer_studio"
    JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+   NEXT_PUBLIC_ENABLE_WHATSAPP_NOTIFICATIONS="false"
    ```
+   Set `NEXT_PUBLIC_ENABLE_WHATSAPP_NOTIFICATIONS="false"` to disable the WhatsApp prompt entirely. Omit it or set it to `true` to keep the prompt enabled.
 
 3. **Push schema to database**:
    ```bash

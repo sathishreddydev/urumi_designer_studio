@@ -20,10 +20,9 @@ import { Shirt, Calendar, AlertTriangle, Search, ImageOff, X } from "lucide-reac
 import { usePermissions } from "@/hooks/use-permissions";
 import { ImageViewer } from "@/components/image-viewer";
 import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
-import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
+import { OutfitTransitionButtons, type OutfitTransition } from "@/components/outfit-transition-buttons";
 import { OutfitStatusBadge, formatStatusShort, PRODUCTION_STATUSES } from "@/components/outfit-status-badge";
 
-type Transition = { status: string; label: string; blocked: boolean; reason?: string };
 
 export default function ProductionPage() {
   const queryClient = useQueryClient();
@@ -87,7 +86,7 @@ export default function ProductionPage() {
       });
       if (!res.ok) return {};
       const d = await res.json();
-      return d.transitions as Record<string, Transition[]>;
+      return d.transitions as Record<string, OutfitTransition[]>;
     },
     enabled: outfitIds.length > 0,
   });
@@ -106,7 +105,7 @@ export default function ProductionPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+      const { data: bulkTransitions } = useQuery({
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["bulk-transitions-production"] });
     },
@@ -224,7 +223,7 @@ export default function ProductionPage() {
               </thead>
               <tbody className="divide-y">
                 {outfits.map((outfit: any) => {
-                  const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
+                  const transitions: OutfitTransition[] = bulkTransitions?.[outfit.id] ?? [];
                   const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
                   return (
@@ -319,7 +318,7 @@ export default function ProductionPage() {
           {/* Mobile Cards */}
           <div className="md:hidden flex flex-col gap-3">
             {outfits.map((outfit: any) => {
-              const transitions: Transition[] = bulkTransitions?.[outfit.id] ?? [];
+              const transitions: OutfitTransition[] = bulkTransitions?.[outfit.id] ?? [];
               const isUrgent = outfit.deliveryDate && new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
               return (

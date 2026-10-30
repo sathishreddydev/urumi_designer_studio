@@ -20,6 +20,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { OutfitTransitionButtons } from "@/components/outfit-transition-buttons";
 import {
+  WhatsAppNotificationDialog,
+  WHATSAPP_NOTIFICATIONS_ENABLED,
+  type WhatsAppNotificationPrompt,
+} from "@/components/whatsapp-notification-dialog";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -129,10 +134,7 @@ export default function OutfitDetailPage() {
               ? "Appointments"
               : "Outfits";
 
-  const [whatsappPrompt, setWhatsappPrompt] = useState<{
-    customerName: string;
-    url: string;
-  } | null>(null);
+  const [whatsappPrompt, setWhatsappPrompt] = useState<WhatsAppNotificationPrompt | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [showMeasurementZoom, setShowMeasurementZoom] = useState(false);
@@ -240,7 +242,7 @@ export default function OutfitDetailPage() {
         description: "Outfit transitioned successfully.",
       });
 
-      if (data.notifyCustomer?.whatsappUrl) {
+      if (WHATSAPP_NOTIFICATIONS_ENABLED && data.notifyCustomer?.whatsappUrl) {
         setWhatsappPrompt({
           customerName: data.notifyCustomer.customerName,
           url: data.notifyCustomer.whatsappUrl,
@@ -551,6 +553,7 @@ export default function OutfitDetailPage() {
           <OutfitTransitionButtons
             transitions={availableTransitions}
             onTransition={(status) => transitionMutation.mutate({ newStatus: status })}
+            containerClassName="w-auto flex-nowrap"
             pendingStatus={
               transitionMutation.isPending
                 ? (transitionMutation.variables?.newStatus ?? null)
@@ -1213,34 +1216,10 @@ export default function OutfitDetailPage() {
         </div>
       </div>
 
-      {/* WhatsApp Dialog */}
-      <AlertDialog
-        open={!!whatsappPrompt}
-        onOpenChange={(open) => !open && setWhatsappPrompt(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Notify Customer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Outfit is ready! Would you like to notify{" "}
-              {whatsappPrompt?.customerName} via WhatsApp?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Skip</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (whatsappPrompt?.url) {
-                  window.open(whatsappPrompt.url, "_blank");
-                }
-                setWhatsappPrompt(null);
-              }}
-            >
-              Send WhatsApp
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <WhatsAppNotificationDialog
+        prompt={whatsappPrompt}
+        onClose={() => setWhatsappPrompt(null)}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
