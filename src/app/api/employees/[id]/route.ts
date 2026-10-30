@@ -4,10 +4,12 @@ import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
+import { requiredPhoneSchema } from "@/lib/validations";
+import { normalizePhoneNumber } from "@/lib/phone-utils";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
-  phone: z.string().min(7).optional(),
+  phone: requiredPhoneSchema.optional(),
   jobRole: z.string().min(1).optional(),
   payCycle: z.enum(["WEEKLY", "MONTHLY"]).optional(),
   salaryAmount: z.number().positive().optional(),
@@ -39,7 +41,7 @@ export const PATCH = withPermission(
 
     const updateData: Record<string, any> = { updatedAt: new Date() };
     if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
-    if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
+    if (parsed.data.phone !== undefined) updateData.phone = normalizePhoneNumber(parsed.data.phone)!;
     if (parsed.data.jobRole !== undefined) updateData.jobRole = parsed.data.jobRole;
     if (parsed.data.payCycle !== undefined) updateData.payCycle = parsed.data.payCycle;
     if (parsed.data.salaryAmount !== undefined) updateData.salaryAmount = String(parsed.data.salaryAmount);

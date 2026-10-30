@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { userSchema } from "@/lib/validations";
+import { normalizePhoneNumber } from "@/lib/phone-utils";
 
 export const GET = withPermission(
   { resource: "user", action: "read" },
@@ -46,7 +47,7 @@ export const POST = withPermission(
           email: parsed.data.email.toLowerCase(),
           password: hashedPassword,
           role: parsed.data.role,
-          phone: parsed.data.phone,
+          phone: normalizePhoneNumber(parsed.data.phone),
         })
         .returning({
           id: users.id,

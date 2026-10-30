@@ -1,5 +1,26 @@
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
+import { normalizePhoneNumber } from "@/lib/phone-utils";
+
+const PHONE_VALIDATION_MESSAGE = "Please enter a valid phone number for the selected country";
+
+/** Shared optional phone validation; API handlers normalize valid values to E.164 before storage. */
+export const optionalPhoneSchema = z
+  .string()
+  .trim()
+  .optional()
+  .refine((value) => !value || normalizePhoneNumber(value) !== null, {
+    message: PHONE_VALIDATION_MESSAGE,
+  });
+
+/** Shared required phone validation; API handlers normalize valid values to E.164 before storage. */
+export const requiredPhoneSchema = z
+  .string()
+  .trim()
+  .min(1, "Phone number is required")
+  .refine((value) => normalizePhoneNumber(value) !== null, {
+    message: PHONE_VALIDATION_MESSAGE,
+  });
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -14,13 +35,9 @@ export const customerBaseSchema = z.object({
   mobile: z
     .string()
     .optional()
-    .refine(
-      (val) => {
-        if (!val) return true; // blank passes the field-level check
-        return isValidPhoneNumber(val);
-      },
-      { message: "Please enter a valid phone number with country code" }
-    ),
+    .refine((value) => !value || isValidPhoneNumber(value), {
+      message: PHONE_VALIDATION_MESSAGE,
+    }),
   whatsapp: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
@@ -93,34 +110,22 @@ export const userSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["ADMIN", "STORE_MANAGER", "RECEPTION", "DESIGNER", "MASTER"]),
-  phone: z
-    .string()
-    .optional()
-    .refine(
-      (val) => {
-        if (!val || val === "") return true;
-        return isValidPhoneNumber(val);
-      },
-      {
-        message: "Please enter a valid phone number with country code",
-      }
-    ),
+  phone: optionalPhoneSchema,
+});
+
+export const userUpdateSchema = z.object({
+  name: z.string().min(2, "Name is required").optional(),
+  phone: optionalPhoneSchema,
+  role: userSchema.shape.role.optional(),
+  password: z.string().optional().refine((value) => !value || value.length >= 6, {
+    message: "Password must be at least 6 characters",
+  }),
+  active: z.boolean().optional(),
 });
 
 export const employeeSchema = z.object({
   name: z.string().min(2, "Name is required"),
-  phone: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => {
-        if (!val) return false;
-        return isValidPhoneNumber(val);
-      },
-      {
-        message: "Please enter a valid phone number with country code",
-      }
-    ),
+  phone: requiredPhoneSchema,
   jobRole: z.string().min(1, "Job role is required"),
   payCycle: z.enum(["WEEKLY", "MONTHLY"]),
   payAmount: z.number().positive("Pay amount must be positive"),

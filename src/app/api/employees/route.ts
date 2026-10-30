@@ -4,10 +4,12 @@ import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
+import { requiredPhoneSchema } from "@/lib/validations";
+import { normalizePhoneNumber } from "@/lib/phone-utils";
 
 const employeeSchema = z.object({
   name: z.string().min(2, "Name is required"),
-  phone: z.string().min(7, "Valid phone number required"),
+  phone: requiredPhoneSchema,
   jobRole: z.string().min(1, "Job role is required"),
   payCycle: z.enum(["WEEKLY", "MONTHLY"]).default("MONTHLY"),
   salaryAmount: z.number().positive("Salary must be positive"),
@@ -77,7 +79,7 @@ export const POST = withPermission(
       .insert(employees)
       .values({
         name: parsed.data.name,
-        phone: parsed.data.phone,
+        phone: normalizePhoneNumber(parsed.data.phone)!,
         jobRole: parsed.data.jobRole,
         payCycle: parsed.data.payCycle,
         salaryAmount: String(parsed.data.salaryAmount),

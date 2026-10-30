@@ -55,13 +55,19 @@ import { Controller } from "react-hook-form";
 
 ### User Phone (`phone` field)
 - **Required**: No (optional)
-- **Format**: Must include country code if provided
-- **Validation**: Same as customer phone, but allows empty values
+- **Format**: Stored in E.164; local input is interpreted as India (IN) by default
+- **Validation**: Shared phone validation on create/edit and API; blank values are allowed
 
 ### Employee Phone (`phone` field)
 - **Required**: Yes
-- **Format**: Must include country code
-- **Validation**: Same as customer phone
+- **Format**: Stored in E.164; local input is interpreted as India (IN) by default
+- **Validation**: Shared `normalizePhoneNumber()` check on forms and API
+
+### Legacy employee/user phone normalization
+- Migration `0021_normalize_legacy_employee_user_phones.sql` canonicalizes explicitly international numbers to E.164 and converts unambiguous 10-digit Indian mobiles to `+91…`.
+- Employee values are left unchanged if normalization would collide with another employee's unique phone.
+- Other local formats and ambiguous/invalid values are intentionally skipped; confirm their country before correcting them.
+- Apply SQL migrations with `npm run db:migrate:sql` after configuring `.env.local`.
 
 ## Utility Functions
 
@@ -123,8 +129,8 @@ The following pages now use the new phone validation:
 
 1. **Customer Creation** (`src/app/dashboard/customers/new/page.tsx`)
 2. **Customer Edit** (`src/app/dashboard/customers/[id]/edit/page.tsx`)
-3. **Employee Forms** (Ready to update)
-4. **User Forms** (Ready to update)
+3. **Employee Create/Edit Forms** use the shared country-aware phone input and validation.
+4. **User Create/Edit Forms** use the shared country-aware phone input and validation.
 
 ## Styling
 

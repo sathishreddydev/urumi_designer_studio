@@ -1,4 +1,20 @@
-import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+import { parsePhoneNumber, parsePhoneNumberFromString, isValidPhoneNumber } from "libphonenumber-js";
+
+/** Normalize valid phone input to E.164, interpreting local input as India by default. */
+export function normalizePhoneNumber(
+  phoneNumber: string | null | undefined,
+  defaultCountry: string = "IN"
+): string | null {
+  const value = phoneNumber?.trim();
+  if (!value) return null;
+
+  try {
+    const parsed = parsePhoneNumberFromString(value, defaultCountry as any);
+    return parsed?.isValid() ? parsed.format("E.164") : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Format a phone number for display
@@ -61,12 +77,9 @@ export function getPhoneCountry(phoneNumber: string | null | undefined): string 
  * @param phoneNumber - The phone number string
  * @returns True if valid, false otherwise
  */
-export function validatePhoneNumber(phoneNumber: string | null | undefined): boolean {
-  if (!phoneNumber) return false;
-  
-  try {
-    return isValidPhoneNumber(phoneNumber);
-  } catch (error) {
-    return false;
-  }
+export function validatePhoneNumber(
+  phoneNumber: string | null | undefined,
+  defaultCountry: string = "IN"
+): boolean {
+  return normalizePhoneNumber(phoneNumber, defaultCountry) !== null;
 }

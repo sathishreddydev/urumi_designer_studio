@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import {
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
+import { PhoneInput } from "@/components/phone-input";
+import { validatePhoneNumber } from "@/lib/phone-utils";
 
 interface EmployeeForm {
   name: string;
@@ -35,7 +37,7 @@ export default function NewEmployeePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EmployeeForm>({
+  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<EmployeeForm>({
     defaultValues: { payCycle: "MONTHLY" },
   });
 
@@ -99,34 +101,21 @@ export default function NewEmployeePage() {
               {/* Phone */}
               <div className="space-y-2">
                 <Label>Phone *</Label>
-                <Input 
-                  {...register("phone", { 
-                    required: "Phone is required",
-                    pattern: {
-                      value: /^[0-9+\-\s()]*$/,
-                      message: "Phone number can only contain numbers and +, -, (, ), spaces"
-                    }
-                  })} 
-                  placeholder="Mobile number"
-                  onKeyDown={(e) => {
-                    // Allow: backspace, delete, tab, escape, enter, +, -, (, ), space
-                    if ([8, 9, 27, 13, 46, 107, 109, 187, 189, 32].includes(e.keyCode) ||
-                        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                        (e.keyCode === 65 && e.ctrlKey === true) ||
-                        (e.keyCode === 67 && e.ctrlKey === true) ||
-                        (e.keyCode === 86 && e.ctrlKey === true) ||
-                        (e.keyCode === 88 && e.ctrlKey === true) ||
-                        // Allow: home, end, left, right
-                        (e.keyCode >= 35 && e.keyCode <= 39)) {
-                      return;
-                    }
-                    // Ensure that it is a number or allowed symbols
-                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
-                        (e.keyCode < 96 || e.keyCode > 105) &&
-                        ![187, 189, 57, 48].includes(e.keyCode)) {
-                      e.preventDefault();
-                    }
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    validate: (value) =>
+                      validatePhoneNumber(value) || "Enter a valid phone number",
                   }}
+                  render={({ field }) => (
+                    <PhoneInput
+                      value={field.value ?? ""}
+                      onChange={(value) => field.onChange(value ?? "")}
+                      placeholder="Mobile number"
+                      defaultCountry="IN"
+                    />
+                  )}
                 />
                 {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
               </div>

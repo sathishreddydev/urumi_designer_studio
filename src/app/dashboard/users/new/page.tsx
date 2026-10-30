@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { userSchema, type UserInput } from "@/lib/validations";
+import { PhoneInput } from "@/components/phone-input";
 import { ROLES } from "@/lib/permissions";
 import Link from "next/link";
 
@@ -49,6 +50,7 @@ export default function NewUserPage() {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors },
   } = useForm<UserInput>({
     resolver: zodResolver(userSchema),
@@ -117,7 +119,19 @@ export default function NewUserPage() {
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input {...register("phone")} placeholder="Phone number" />
+                <Controller
+                  name="phone"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneInput
+                      value={field.value ?? ""}
+                      onChange={(value) => field.onChange(value ?? "")}
+                      placeholder="Phone number"
+                      defaultCountry="IN"
+                    />
+                  )}
+                />
+                {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
               </div>
             </div>
 

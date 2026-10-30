@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,8 @@ import {
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ROLES } from "@/lib/permissions";
+import { PhoneInput } from "@/components/phone-input";
+import { validatePhoneNumber } from "@/lib/phone-utils";
 
 interface EditUserForm {
   name: string;
@@ -62,7 +64,7 @@ function EditUserForm({
   router: ReturnType<typeof useRouter>;
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
-  const { register, handleSubmit, setValue, watch } = useForm<EditUserForm>({
+  const { register, handleSubmit, setValue, watch, control, formState: { errors } } = useForm<EditUserForm>({
     defaultValues: {
       name: user.name,
       phone: user.phone || "",
@@ -119,7 +121,23 @@ function EditUserForm({
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input {...register("phone")} />
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    validate: (value) =>
+                      !value || validatePhoneNumber(value) || "Enter a valid phone number",
+                  }}
+                  render={({ field }) => (
+                    <PhoneInput
+                      value={field.value ?? ""}
+                      onChange={(value) => field.onChange(value ?? "")}
+                      placeholder="Phone number"
+                      defaultCountry="IN"
+                    />
+                  )}
+                />
+                {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>

@@ -48,22 +48,24 @@ export function PhoneInput({
   const [selectedCountry, setSelectedCountry] = useState(defaultCountry);
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Parse existing value when component mounts or value changes externally
+  // Parse E.164 and local-format values when the form loads or changes externally.
   useEffect(() => {
-    if (value && value.startsWith("+")) {
+    if (value) {
       try {
-        const parsed = parsePhoneNumber(value);
-        if (parsed && parsed.country) {
-          setSelectedCountry(parsed.country);
+        const parsed = parsePhoneNumber(value, defaultCountry as any);
+        if (parsed) {
+          if (parsed.country) setSelectedCountry(parsed.country);
           setPhoneNumber(parsed.nationalNumber);
+        } else {
+          setPhoneNumber(value.replace(/[^\d]/g, ""));
         }
       } catch {
-        // If parsing fails, keep current state
+        setPhoneNumber(value.replace(/[^\d]/g, ""));
       }
     } else if (!value) {
       setPhoneNumber("");
     }
-  }, [value]);
+  }, [value, defaultCountry]);
 
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);

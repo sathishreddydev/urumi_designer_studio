@@ -101,8 +101,8 @@ After running `npm install`, you can:
 1. ✅ Create customers with international phone numbers
 2. ✅ Edit existing customers (they'll need to select country code)
 3. ✅ All phone validations work country-wise
-4. 🔄 Update employee and user forms (optional, structure is ready)
-5. 🔄 Migrate existing phone numbers to add country codes
+4. ✅ Employee and user create/edit forms now use the shared country-aware input and validation
+5. ✅ Migration `0021_normalize_legacy_employee_user_phones.sql` safely normalizes recognizable legacy values
 
 ## Installation Command
 
