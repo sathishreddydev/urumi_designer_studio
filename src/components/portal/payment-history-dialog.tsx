@@ -9,6 +9,7 @@ import { orderTotals } from "@/components/portal/portal-utils";
 export function PaymentHistoryDialog({ order }: { order: any }) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState("");
+    const { displayTotal } = orderTotals(order);
 
     const payments = [...(order.payments || [])].sort(
         (a: any, b: any) =>
@@ -104,8 +105,10 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
         }
     }
 
+    if (displayTotal <= 0) return null;
+
     return (
-        <div className="col-start-4 min-w-0 space-y-2 self-end text-right">
+        <div className="min-w-0 space-y-2 self-end text-right">
             <a
                 href="#download-invoice"
                 aria-disabled={isDownloading}

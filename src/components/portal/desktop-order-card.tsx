@@ -56,6 +56,7 @@ export function DesktopOrderCard({ order, token }: { order: any; token: string }
               <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-semibold">
                 {order.outfits.length} Outfit{order.outfits.length !== 1 ? "s" : ""}
               </Badge>
+              <PaymentHistoryDialog order={order} />
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Placed on {formatDate(order.orderDate ?? order.createdAt)}
@@ -72,19 +73,18 @@ export function DesktopOrderCard({ order, token }: { order: any; token: string }
                 <p className="text-sm font-bold tabular-nums">{fmtPrice(displayTotal)}</p>
               </div>
             )}
-            {(
+            {paid > 0 && (
               <div className="text-right">
                 <p className="text-[10px] text-muted-foreground">Paid Amount</p>
                 <p className="text-sm font-bold tabular-nums text-green-600">{fmtPrice(paid)}</p>
               </div>
             )}
-            {(
+            {balance > 0 && (
               <div className="text-right">
                 <p className="text-[10px] text-muted-foreground">Balance</p>
                 <p className="text-sm font-bold tabular-nums text-destructive">{fmtPrice(balance)}</p>
               </div>
             )}
-            <PaymentHistoryDialog order={order} />
           </div>
           <Button
             variant="outline"

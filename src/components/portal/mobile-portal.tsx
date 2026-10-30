@@ -238,11 +238,14 @@ export function MobileOrderDetail({
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">Order #{order.orderNumber}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold">Order #{order.orderNumber}</p>
+            <PaymentHistoryDialog order={order} />
+          </div>
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
-          <div className="grid grid-cols-4 items-end gap-2 mt-2">
+          <div className="grid grid-cols-3 items-end gap-2 mt-2">
             <div>
               <p className="text-[9px] text-muted-foreground">Total</p>
               <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
@@ -257,7 +260,6 @@ export function MobileOrderDetail({
                 <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
               </div>
             )}
-            <PaymentHistoryDialog order={order} />
           </div>
         </div>
       </div>
@@ -389,31 +391,35 @@ export function MobileOutfitDetail({
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold">Order #{order.orderNumber}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold">Order #{order.orderNumber}</p>
+              <PaymentHistoryDialog order={order} />
+            </div>
             <p className="text-[11px] text-muted-foreground">
               Placed on {formatDate(order.orderDate ?? order.createdAt)}
             </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-4 items-end gap-2 mt-2 px-4">
-          <div>
-            <p className="text-[9px] text-muted-foreground">Total</p>
-            <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
-          </div>
-          <div>
-            <p className="text-[9px] text-muted-foreground">Paid</p>
-            <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
-          </div>
-          {balance > 0 && (
-            <div>
-              <p className="text-[9px] text-muted-foreground">Balance</p>
-              <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+            <div className="grid grid-cols-3 items-end gap-2 mt-2">
+              {displayTotal > 0 && (
+                <div>
+                  <p className="text-[9px] text-muted-foreground">Total</p>
+                  <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
+                </div>
+              )}
+              {paid > 0 && (
+                <div>
+                  <p className="text-[9px] text-muted-foreground">Paid</p>
+                  <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
+                </div>
+              )}
+              {balance > 0 && (
+                <div>
+                  <p className="text-[9px] text-muted-foreground">Balance</p>
+                  <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
+                </div>
+              )}
             </div>
-          )}
-          <PaymentHistoryDialog order={order} />
+          </div>
         </div>
-
-
       </div>
 
       {/* Outfit switcher */}
