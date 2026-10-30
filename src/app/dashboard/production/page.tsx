@@ -105,7 +105,7 @@ export default function ProductionPage() {
       }
       return res.json();
     },
-      const { data: bulkTransitions } = useQuery({
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-outfits"] });
       queryClient.invalidateQueries({ queryKey: ["bulk-transitions-production"] });
     },
