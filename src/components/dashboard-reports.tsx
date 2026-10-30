@@ -4,15 +4,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import type { DateRange } from "react-day-picker";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatStatus, getStatusColor } from "@/lib/utils";
 import { IndianRupee, TrendingUp, Clock, CalendarRange } from "lucide-react";
-
+import { SummaryStats } from "@/components/dashboard/summary-stats";
 // Default: last 30 days
 function defaultRange(): DateRange {
   return { from: subDays(new Date(), 29), to: new Date() };
@@ -29,7 +28,7 @@ export function DashboardReports() {
   const [open, setOpen] = useState(false);
 
   const fromIso = range.from ? startOfDay(range.from).toISOString() : undefined;
-  const toIso   = range.to   ? endOfDay(range.to).toISOString()     : undefined;
+  const toIso = range.to ? endOfDay(range.to).toISOString() : undefined;
 
   const { data, isLoading } = useQuery({
     queryKey: ["reports", fromIso, toIso],
@@ -93,51 +92,30 @@ export function DashboardReports() {
       </div>
 
       {/* Revenue cards — 1 col on xs, 3 on sm+ */}
-      <div className="grid gap-3 grid-cols-3">
-        <Card>
-          <CardContent className="pt-3 pb-3 px-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-green-100 p-1.5 dark:bg-green-900/30 shrink-0">
-                <IndianRupee className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold truncate">₹{summary.totalRevenue?.toLocaleString() || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Revenue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-3 pb-3 px-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-amber-100 p-1.5 dark:bg-amber-900/30 shrink-0">
-                <TrendingUp className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold">{summary.ordersInPeriod || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Orders ({spanDays}d)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-3 pb-3 px-3">
-            <div className="flex items-center gap-2">
-              <div className="rounded-md bg-cyan-100 p-1.5 dark:bg-cyan-900/30 shrink-0">
-                <Clock className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold">
-                  {summary.avgProductionDays ? `${summary.avgProductionDays}d` : "—"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">Avg Time</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <SummaryStats
+        stats={[
+          {
+            label: "Revenue",
+            value: `₹${summary.totalRevenue?.toLocaleString() || 0}`,
+            icon: IndianRupee,
+            color: "green",
+          },
+          {
+            label: `Orders (${spanDays}d)`,
+            value: summary.ordersInPeriod || 0,
+            icon: TrendingUp,
+            color: "amber",
+          },
+          {
+            label: "Avg Time",
+            value: summary.avgProductionDays
+              ? `${summary.avgProductionDays}d`
+              : "—",
+            icon: Clock,
+            color: "cyan",
+          },
+        ]}
+      />
 
       {/* Status Breakdown */}
       {Object.keys(statusBreakdown).length > 0 && (
@@ -146,12 +124,17 @@ export function DashboardReports() {
             <CardTitle className="text-xs font-medium">Outfits by Status</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-1.5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Object.entries(statusBreakdown).map(([status, count]: [string, any]) => (
-                <div key={status} className="flex items-center justify-between rounded border px-2 py-1.5 min-w-0 gap-2">
-                  <OutfitStatusBadge status={status} className="text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)]" responsive={false} />
+                <Link
+                  key={status}
+                  href={`/dashboard/outfits?status=${encodeURIComponent(status.toLowerCase())}`}
+                  aria-label={`View ${count} outfits with status ${status}`}
+                  className="flex items-center justify-between rounded border px-2 py-1.5 min-w-0 gap-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <OutfitStatusBadge status={status} className="text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)]" responsive={true} />
                   <span className="text-xs font-bold shrink-0">{count}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
