@@ -37,18 +37,6 @@ export function SummaryStats({
     return (
         <Card className={cn("overflow-hidden", className)}>
             <div className="p-4 sm:p-5 lg:px-6 lg:py-5">
-                {/* Header */}
-                <div className="mb-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            Business Overview
-                        </p>
-                        <h3 className="mt-0.5 text-sm font-semibold tracking-tight">
-                            Performance snapshot
-                        </h3>
-                    </div>
-                </div>
-
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:items-center lg:gap-0">
 
@@ -66,7 +54,7 @@ export function SummaryStats({
                             </p>
                         </div>
 
-                        <p className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+                        <p className="truncate text-lg font-bold tracking-tight">
                             {primary.value}
                         </p>
                     </div>
@@ -92,7 +80,7 @@ export function SummaryStats({
                                     )}
                                 />
 
-                                <p className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+                                <p className="truncate text-lg font-bold tracking-tight">
                                     {stat.value}
                                 </p>
 

@@ -66,7 +66,7 @@ export function DashboardReports() {
     <div className="space-y-4">
       {/* Header + date range picker */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Business Overview</h3>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Business Overview</p>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1.5">
