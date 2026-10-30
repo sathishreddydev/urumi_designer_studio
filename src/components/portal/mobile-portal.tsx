@@ -245,17 +245,17 @@ export function MobileOrderDetail({
           <p className="text-[11px] text-muted-foreground">
             Placed on {formatDate(order.orderDate ?? order.createdAt)}
           </p>
-          <div className="grid grid-cols-3 items-end gap-2 mt-2">
-            <div>
+          <div className="mt-2 flex items-end justify-end gap-4 text-right">
+            <div className="text-right">
               <p className="text-[9px] text-muted-foreground">Total</p>
               <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
             </div>
-            <div>
+            <div className="text-right">
               <p className="text-[9px] text-muted-foreground">Paid</p>
               <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
             </div>
             {balance > 0 && (
-              <div>
+              <div className="text-right">
                 <p className="text-[9px] text-muted-foreground">Balance</p>
                 <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
               </div>
@@ -398,21 +398,21 @@ export function MobileOutfitDetail({
             <p className="text-[11px] text-muted-foreground">
               Placed on {formatDate(order.orderDate ?? order.createdAt)}
             </p>
-            <div className="grid grid-cols-3 items-end gap-2 mt-2">
+            <div className="mt-2 flex items-end justify-end gap-4 text-right">
               {displayTotal > 0 && (
-                <div>
+                <div className="text-right">
                   <p className="text-[9px] text-muted-foreground">Total</p>
                   <p className="text-[11px] font-semibold tabular-nums">{fmtPrice(displayTotal)}</p>
                 </div>
               )}
               {paid > 0 && (
-                <div>
+                <div className="text-right">
                   <p className="text-[9px] text-muted-foreground">Paid</p>
                   <p className="text-[11px] font-semibold tabular-nums text-green-600">{fmtPrice(paid)}</p>
                 </div>
               )}
               {balance > 0 && (
-                <div>
+                <div className="text-right">
                   <p className="text-[9px] text-muted-foreground">Balance</p>
                   <p className="text-[11px] font-semibold tabular-nums text-destructive">{fmtPrice(balance)}</p>
                 </div>

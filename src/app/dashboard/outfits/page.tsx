@@ -468,7 +468,7 @@ export default function OutfitsPage() {
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Outfit</th>
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th>
+                  {/* <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th> */}
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Material</th>
                   <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Designer</th>
@@ -509,9 +509,9 @@ export default function OutfitsPage() {
                       <td className="px-4 py-3 text-xs text-muted-foreground max-w-[130px] truncate">
                         {outfit.customerName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      {/* <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {outfit.orderNumber || "—"}
-                      </td>
+                      </td> */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           <OutfitStatusBadge status={outfit.status} className="text-[10px]" />
