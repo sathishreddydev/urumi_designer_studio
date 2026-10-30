@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,21 +6,38 @@ import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { OutfitStatusBadge } from "@/components/outfit-status-badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { IndianRupee, TrendingUp, Clock, CalendarRange } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  IndianRupee,
+  TrendingUp,
+  Clock,
+  CalendarRange,
+} from "lucide-react";
+
 import { SummaryStats } from "@/components/dashboard/summary-stats";
+
 // Default: last 30 days
 function defaultRange(): DateRange {
-  return { from: subDays(new Date(), 29), to: new Date() };
+  return {
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  };
 }
 
 function formatRangeLabel(range: DateRange): string {
   if (!range.from) return "Select range";
   if (!range.to) return format(range.from, "dd MMM yyyy");
+
   return `${format(range.from, "dd MMM")} – ${format(range.to, "dd MMM yyyy")}`;
 }
 
@@ -27,54 +45,92 @@ export function DashboardReports() {
   const [range, setRange] = useState<DateRange>(defaultRange);
   const [open, setOpen] = useState(false);
 
-  const fromIso = range.from ? startOfDay(range.from).toISOString() : undefined;
-  const toIso = range.to ? endOfDay(range.to).toISOString() : undefined;
+  const fromIso = range.from
+    ? startOfDay(range.from).toISOString()
+    : undefined;
+
+  const toIso = range.to
+    ? endOfDay(range.to).toISOString()
+    : undefined;
 
   const { data, isLoading } = useQuery({
     queryKey: ["reports", fromIso, toIso],
     queryFn: async () => {
       if (!fromIso || !toIso) return null;
-      const params = new URLSearchParams({ from: fromIso, to: toIso });
+
+      const params = new URLSearchParams({
+        from: fromIso,
+        to: toIso,
+      });
+
       const res = await fetch(`/api/reports?${params}`);
+
       if (!res.ok) return null;
+
       return res.json();
     },
     enabled: !!fromIso && !!toIso,
   });
 
-  // Days span for the label in the Orders card
-  const spanDays = range.from && range.to
-    ? Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000) + 1
-    : 0;
+  const spanDays =
+    range.from && range.to
+      ? Math.round(
+        (range.to.getTime() - range.from.getTime()) / 86_400_000
+      ) + 1
+      : 0;
+
+  const summary = data?.summary || {};
+  const statusBreakdown = data?.statusBreakdown || {};
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
-        ))}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+          <div className="h-8 w-28 animate-pulse rounded-md bg-muted" />
+        </div>
+
+        <div className="h-28 animate-pulse rounded-xl bg-muted sm:h-24" />
+
+        <div className="space-y-3">
+          <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+          <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        </div>
       </div>
     );
   }
 
   if (!data) return null;
 
-  const summary = data.summary || {};
-  const statusBreakdown = data.statusBreakdown || {};
-
   return (
-    <div className="space-y-4">
-      {/* Header + date range picker */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Business Overview</p>
+    <div className="w-full min-w-0 space-y-5">
+
+      {/* Header + Date Range */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Business Overview
+          </p>
+        </div>
+
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 max-w-full gap-1.5 px-2.5 text-xs"
+            >
               <CalendarRange className="h-3.5 w-3.5 shrink-0" />
-              {formatRangeLabel(range)}
+              <span className="truncate">
+                {formatRangeLabel(range)}
+              </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+
+          <PopoverContent
+            className="w-auto max-w-[calc(100vw-2rem)] p-0"
+            align="end"
+          >
             <Calendar
               mode="range"
               selected={range}
@@ -91,7 +147,7 @@ export function DashboardReports() {
         </Popover>
       </div>
 
-      {/* Revenue cards — 1 col on xs, 3 on sm+ */}
+      {/* Summary Stats */}
       <SummaryStats
         stats={[
           {
@@ -119,26 +175,46 @@ export function DashboardReports() {
 
       {/* Status Breakdown */}
       {Object.keys(statusBreakdown).length > 0 && (
-        <Card>
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs font-medium">Outfits by Status</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="grid gap-1.5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Object.entries(statusBreakdown).map(([status, count]: [string, any]) => (
-                <Link
-                  key={status}
-                  href={`/dashboard/outfits?status=${encodeURIComponent(status.toLowerCase())}`}
-                  aria-label={`View ${count} outfits with status ${status}`}
-                  className="flex items-center justify-between rounded border px-2 py-1.5 min-w-0 gap-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <OutfitStatusBadge status={status} className="text-[9px] min-w-0 truncate max-w-[calc(100%-2rem)]" responsive={true} />
-                  <span className="text-xs font-bold shrink-0">{count}</span>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <section className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Outfit Status
+          </p>
+
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {Object.entries(statusBreakdown).map(
+                  ([status, count]: [string, any]) => (
+                    <Link
+                      key={status}
+                      href={`/dashboard/outfits?status=${encodeURIComponent(
+                        status.toLowerCase()
+                      )}`}
+                      aria-label={`View ${count} outfits with status ${status}`}
+                      className="
+                        flex min-w-0 items-center justify-between gap-2
+                        rounded-md border px-2.5 py-2
+                        transition-colors hover:bg-muted/70
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-ring
+                      "
+                    >
+                      <OutfitStatusBadge
+                        status={status}
+                        className="min-w-0 max-w-[calc(100%-1.5rem)] truncate text-[10px]"
+                        responsive={true}
+                      />
+
+                      <span className="shrink-0 text-xs font-bold tabular-nums">
+                        {count}
+                      </span>
+                    </Link>
+                  )
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
       )}
     </div>
   );
