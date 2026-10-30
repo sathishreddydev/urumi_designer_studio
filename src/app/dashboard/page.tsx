@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DeadlineAlerts } from "@/components/deadline-alerts";
-import { DashboardReports } from "@/components/dashboard-reports";
+import { DeadlineAlerts } from "@/components/dashboard/deadline-alerts";
+import { DashboardReports } from "@/components/dashboard/dashboard-reports";
 import {
   Users,
   ShoppingBag,

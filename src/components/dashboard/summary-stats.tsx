@@ -1,56 +1,109 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface SummaryStat {
-  label: string;
-  value: string | number;
-  icon: LucideIcon;
-  color: "green" | "amber" | "cyan" | "blue" | "red" | "purple";
+    label: string;
+    value: string | number;
+    icon: LucideIcon;
+    color?: "green" | "amber" | "cyan" | "blue" | "red" | "purple";
 }
 
 interface SummaryStatsProps {
-  stats: SummaryStat[];
-  className?: string;
+    stats: SummaryStat[];
+    className?: string;
 }
 
-const colorStyles = {
-  green: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  cyan: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
-  blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  red: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  purple: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+const iconColors = {
+    green: "text-green-600 dark:text-green-400",
+    amber: "text-amber-600 dark:text-amber-400",
+    cyan: "text-cyan-600 dark:text-cyan-400",
+    blue: "text-blue-600 dark:text-blue-400",
+    red: "text-red-600 dark:text-red-400",
+    purple: "text-purple-600 dark:text-purple-400",
 };
 
 export function SummaryStats({
-  stats,
-  className,
+    stats,
+    className,
 }: SummaryStatsProps) {
-  return (
-    <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${className || ""}`}>
-      {stats.map((stat, index) => {
-        const Icon = stat.icon;
+    const [primary, ...secondary] = stats;
 
-        return (
-          <Card key={`${stat.label}-${index}`}>
-            <CardContent className="flex items-center gap-3 px-3 py-3 sm:px-4">
-              <div className={`shrink-0 rounded-md p-2 ${colorStyles[stat.color]}`}>
-                <Icon className="h-4 w-4" />
-              </div>
+    if (!primary) return null;
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-bold">
-                  {stat.value}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {stat.label}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
+    const PrimaryIcon = primary.icon;
+
+    return (
+        <Card className={cn("overflow-hidden", className)}>
+            <div className="p-4 sm:p-5 lg:px-6 lg:py-5">
+                {/* Header */}
+                <div className="mb-4 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Business Overview
+                        </p>
+                        <h3 className="mt-0.5 text-sm font-semibold tracking-tight">
+                            Performance snapshot
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:items-center lg:gap-0">
+
+                    {/* Primary stat */}
+                    <div className="col-span-2 flex min-w-0 flex-col gap-2 lg:col-span-2 lg:px-3 lg:py-2">
+                        <div className="flex items-center gap-2">
+                            <PrimaryIcon
+                                className={cn(
+                                    "h-4 w-4 shrink-0",
+                                    iconColors[primary.color || "green"]
+                                )}
+                            />
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {primary.label}
+                            </p>
+                        </div>
+
+                        <p className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+                            {primary.value}
+                        </p>
+                    </div>
+
+                    {/* Secondary stats */}
+                    {secondary.map((stat, index) => {
+                        const Icon = stat.icon;
+
+                        return (
+                            <div
+                                key={`${stat.label}-${index}`}
+                                className={cn(
+                                    "min-w-0 space-y-2 border-t pt-3",
+                                    "lg:border-l lg:border-t-0 lg:px-5 lg:py-2",
+                                    index === 0 && "lg:col-span-1",
+                                    index === 1 && "lg:col-span-2"
+                                )}
+                            >
+                                <Icon
+                                    className={cn(
+                                        "h-4 w-4",
+                                        iconColors[stat.color || "blue"]
+                                    )}
+                                />
+
+                                <p className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+                                    {stat.value}
+                                </p>
+
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                    {stat.label}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </Card>
+    );
 }
