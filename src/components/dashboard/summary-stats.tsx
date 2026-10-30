@@ -36,7 +36,7 @@ export function SummaryStats({
 
     return (
         <Card className={cn("overflow-hidden", className)}>
-            <div className="p-4 sm:p-5 lg:px-6 lg:py-5">
+            <div className="p-4 sm:p-2 lg:p-3">
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:items-center lg:gap-0">
 
