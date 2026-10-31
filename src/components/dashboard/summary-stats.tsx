@@ -32,14 +32,18 @@ export function SummaryStats({
 
     return (
         <Card className={cn("overflow-hidden", className)}>
-            <div className="grid grid-cols-2 gap-2 p-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-0 p-3 lg:grid-cols-4">
                 {stats.map((stat, index) => {
                     const Icon = stat.icon;
 
                     return (
                         <div
                             key={`${stat.label}-${index}`}
-                            className="min-w-0 space-y-1.5 rounded-md border p-2.5 sm:p-3"
+                            className={cn(
+                                "min-w-0 space-y-1.5 px-3 py-2",
+                                index % 2 === 1 && "border-l",
+                                index > 0 && "lg:border-l"
+                            )}
                         >
                             <div className="flex items-center gap-1.5">
                                 <Icon
