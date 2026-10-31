@@ -22,6 +22,8 @@ import {
   TrendingUp,
   Clock,
   CalendarRange,
+  BarChart3,
+  Shirt,
 } from "lucide-react";
 
 import { SummaryStats } from "@/components/dashboard/summary-stats";
@@ -107,7 +109,8 @@ export function DashboardReports() {
 
       {/* Header + Date Range */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <BarChart3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Business Overview
           </p>
@@ -131,18 +134,34 @@ export function DashboardReports() {
             className="w-auto max-w-[calc(100vw-2rem)] p-0"
             align="end"
           >
-            <Calendar
-              mode="range"
-              selected={range}
-              onSelect={(r) => {
-                if (r) setRange(r);
-                if (r?.from && r?.to) setOpen(false);
-              }}
-              toDate={new Date()}
-              fromYear={2020}
-              toYear={new Date().getFullYear()}
-              initialFocus
-            />
+            <div className="p-2">
+              <Calendar
+                mode="range"
+                selected={range}
+                defaultMonth={range.from ?? new Date()}
+                onSelect={(r) => {
+                  if (r) setRange(r);
+                  if (r?.from && r?.to) setOpen(false);
+                }}
+                toDate={new Date()}
+                fromYear={2020}
+                toYear={new Date().getFullYear()}
+                initialFocus
+              />
+              <div className="flex justify-end border-t pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    setRange(defaultRange());
+                    setOpen(false);
+                  }}
+                >
+                  Reset to 30 days
+                </Button>
+              </div>
+            </div>
           </PopoverContent>
         </Popover>
       </div>
@@ -176,7 +195,8 @@ export function DashboardReports() {
       {/* Status Breakdown */}
       {Object.keys(statusBreakdown).length > 0 && (
         <section className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Shirt className="h-3.5 w-3.5 shrink-0" />
             Outfit Status
           </p>
 
