@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DeadlineAlerts } from "@/components/dashboard/deadline-alerts";
 import { DashboardReports } from "@/components/dashboard/dashboard-reports";
 import {
@@ -15,8 +14,11 @@ import {
   AlertTriangle,
   PackageCheck,
 } from "lucide-react";
+import StatCard from "@/components/dashboard/statCard";
 
 export default function DashboardPage() {
+  const outfitStatusHref = (status: string) => `/dashboard/outfits?status=${encodeURIComponent(status.toLowerCase())}`;
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
@@ -49,13 +51,6 @@ export default function DashboardPage() {
   }
 
   if (stats.role === "ADMIN" || stats.role === "STORE_MANAGER" || stats.role === "RECEPTION") {
-    // Post-production items that need attention
-    const postProduction =
-      (stats.productionCompleted || 0) +
-      (stats.pendingTrials || 0) +
-      (stats.alterations || 0) +
-      (stats.qc || 0);
-
     return (
       <div className="space-y-6">
         <div>
@@ -63,47 +58,15 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">Welcome back, {stats.name}</p>
         </div>
 
-        {/* Overview */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Overview</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} href="/dashboard/customers" />
             <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-4 w-4" />} href="/dashboard/orders" />
             <StatCard title="Total Outfits" value={stats.totalOutfits} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" />
-            <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="Delivered" value={stats.delivered} icon={<CheckCircle className="h-4 w-4" />} href={outfitStatusHref("DELIVERED")} />
           </div>
         </div>
-
-        {/* Production pipeline */}
-        {/* <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Production Pipeline</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            <StatCard title="Production Ready" value={stats.productionReady} icon={<Scissors className="h-4 w-4" />} href="/dashboard/production" highlight={stats.productionReady > 0} />
-            <StatCard title="In Production" value={stats.inProduction} icon={<Clock className="h-4 w-4" />} href="/dashboard/production" />
-            <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href="/dashboard/outfits" highlight={stats.readyForDelivery > 0} />
-          </div>
-        </div> */}
-
-        {/* Trials & finishing */}
-        {/* {postProduction > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Trials &amp; Finishing</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {stats.productionCompleted > 0 && (
-                <StatCard title="Schedule Trial" value={stats.productionCompleted} icon={<AlertTriangle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
-              )}
-              {stats.pendingTrials > 0 && (
-                <StatCard title="Active Trials" value={stats.pendingTrials} icon={<Users className="h-4 w-4" />} href="/dashboard/outfits" highlight />
-              )}
-              {stats.alterations > 0 && (
-                <StatCard title="Alterations" value={stats.alterations} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" highlight />
-              )}
-              {stats.qc > 0 && (
-                <StatCard title="QC" value={stats.qc} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
-              )}
-            </div>
-          </div>
-        )} */}
 
         {stats.role === "ADMIN" && <DashboardReports />}
         <DeadlineAlerts />
@@ -135,7 +98,7 @@ export default function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Needs Attention</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {stats.waitingReferences > 0 && (
-                <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+                <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} href={outfitStatusHref("WAITING_FOR_REFERENCES")} highlight />
               )}
               {stats.waitingDependencies > 0 && (
                 <StatCard title="Blocked (Dependencies)" value={stats.waitingDependencies} icon={<AlertTriangle className="h-4 w-4" />} href="/dashboard/blockers" highlight />
@@ -144,16 +107,16 @@ export default function DashboardPage() {
                 <StatCard title="Maggam Review" value={stats.maggamReview} icon={<Scissors className="h-4 w-4" />} href="/dashboard/stitching-maggam" highlight />
               )}
               {stats.productionCompleted > 0 && (
-                <StatCard title="Schedule Trial" value={stats.productionCompleted} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+                <StatCard title="Schedule Trial" value={stats.productionCompleted} icon={<CheckCircle className="h-4 w-4" />} href={outfitStatusHref("PRODUCTION_COMPLETED")} highlight />
               )}
               {stats.trials > 0 && (
-                <StatCard title="Trials" value={stats.trials} icon={<Users className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+                <StatCard title="Trials" value={stats.trials} icon={<Users className="h-4 w-4" />} href={outfitStatusHref("TRIAL")} highlight />
               )}
               {stats.alterations > 0 && (
-                <StatCard title="Alterations" value={stats.alterations} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+                <StatCard title="Alterations" value={stats.alterations} icon={<Shirt className="h-4 w-4" />} href={outfitStatusHref("ALTERATION")} highlight />
               )}
               {stats.qc > 0 && (
-                <StatCard title="QC" value={stats.qc} icon={<CheckCircle className="h-4 w-4" />} href="/dashboard/outfits" highlight />
+                <StatCard title="QC" value={stats.qc} icon={<CheckCircle className="h-4 w-4" />} href={outfitStatusHref("QC")} highlight />
               )}
             </div>
           </div>
@@ -163,10 +126,10 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pipeline</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard title="Unstarted" value={stats.unstarted} icon={<Shirt className="h-4 w-4" />} href="/dashboard/outfits" />
-            <StatCard title="In Design" value={stats.inDesign} icon={<Scissors className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="Unstarted" value={stats.unstarted} icon={<Shirt className="h-4 w-4" />} href={outfitStatusHref("DRAFT")} />
+            <StatCard title="In Design" value={stats.inDesign} icon={<Scissors className="h-4 w-4" />} href={outfitStatusHref("DESIGN_IN_PROGRESS")} />
             <StatCard title="In Production" value={stats.productionReleased} icon={<Clock className="h-4 w-4" />} href="/dashboard/production" />
-            <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href="/dashboard/outfits" />
+            <StatCard title="Ready for Delivery" value={stats.readyForDelivery} icon={<PackageCheck className="h-4 w-4" />} href={outfitStatusHref("READY_FOR_DELIVERY")} />
           </div>
         </div>
 
@@ -244,7 +207,7 @@ export default function DashboardPage() {
                 title="Delivered"
                 value={stats.delivered}
                 icon={<CheckCircle className="h-4 w-4" />}
-                href="/dashboard/outfits?status=DELIVERED"
+                href={outfitStatusHref("DELIVERED")}
               />
             </div>
           </div>
@@ -258,33 +221,4 @@ export default function DashboardPage() {
   return null;
 }
 
-function StatCard({
-  title,
-  value,
-  icon,
-  href,
-  highlight,
-}: {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  href?: string;
-  highlight?: boolean;
-}) {
-  const card = (
-    <Card className={highlight ? "border-primary/50 bg-primary/5" : undefined}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
-        <CardTitle className="text-xs font-medium leading-tight line-clamp-2">{title}</CardTitle>
-        <div className={`shrink-0 ml-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{icon}</div>
-      </CardHeader>
-      <CardContent className="p-3 pt-0">
-        <div className={`text-lg font-bold ${highlight ? "text-primary" : ""}`}>{value}</div>
-      </CardContent>
-    </Card>
-  );
 
-  if (href) {
-    return <Link href={href} className="block hover:opacity-80 transition-opacity">{card}</Link>;
-  }
-  return card;
-}

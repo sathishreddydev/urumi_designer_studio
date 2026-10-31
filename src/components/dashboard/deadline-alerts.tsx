@@ -141,9 +141,7 @@ export function DeadlineAlerts() {
   );
 
   return (
-    <Card className="overflow-hidden">
-
-      {/* Header - Same typography as DashboardReports */}
+    <section className="space-y-3">
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-3">
         <div className="flex min-w-0 items-center gap-2">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -157,142 +155,144 @@ export function DeadlineAlerts() {
           </Badge>
         </div>
       </div>
+      <Card className="overflow-hidden">
 
-      <CardContent className="p-0">
+        <CardContent className="p-0">
 
-        {/* Desktop / Tablet */}
-        <div className="hidden sm:block">
+          {/* Desktop / Tablet */}
+          <div className="hidden sm:block">
 
-          {/* Table Header */}
-          <div className="
+            {/* Table Header */}
+            <div className="
             grid grid-cols-[1rem_minmax(0,1fr)_7rem_4.5rem_4.5rem]
             items-center gap-x-3
             border-y bg-muted/30
             px-4 py-2
             text-[10px] font-semibold uppercase tracking-wide text-muted-foreground
           ">
-            <span />
-            <span>Outfit / Customer</span>
-            <span className="text-right">Status</span>
-            <span className="text-right">Trial</span>
-            <span className="text-right">Delivery</span>
-          </div>
+              <span />
+              <span>Outfit / Customer</span>
+              <span className="text-right">Status</span>
+              <span className="text-right">Trial</span>
+              <span className="text-right">Delivery</span>
+            </div>
 
-          {/* Table Rows */}
-          <div className="divide-y">
-            {rows.map((row) => (
-              <Link
-                key={row.id}
-                href={`/dashboard/outfits/${row.id}?from=outfits`}
-                className="
+            {/* Table Rows */}
+            <div className="divide-y">
+              {rows.map((row) => (
+                <Link
+                  key={row.id}
+                  href={`/dashboard/outfits/${row.id}?from=outfits`}
+                  className="
                   grid grid-cols-[1rem_minmax(0,1fr)_7rem_4.5rem_4.5rem]
                   items-center gap-x-3
                   px-4 py-2.5
                   transition-colors hover:bg-muted/40
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring
                 "
-              >
-                {/* Severity */}
-                <span className="flex justify-center">
-                  {severityIcon(row.severity)}
-                </span>
+                >
+                  {/* Severity */}
+                  <span className="flex justify-center">
+                    {severityIcon(row.severity)}
+                  </span>
 
-                {/* Outfit / Customer */}
-                <div className="min-w-0 space-y-0.5">
-                  <p className="truncate text-xs font-medium">
-                    {row.name}
-                  </p>
+                  {/* Outfit / Customer */}
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate text-xs font-medium">
+                      {row.name}
+                    </p>
 
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {row.customerName} · {row.orderNumber}
-                  </p>
-                </div>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {row.customerName} · {row.orderNumber}
+                    </p>
+                  </div>
 
-                {/* Status */}
-                <div className="flex min-w-0 justify-end">
-                  <OutfitStatusBadge
-                    status={row.status}
-                    className="max-w-full shrink-0 truncate text-[9px]"
-                  />
-                </div>
+                  {/* Status */}
+                  <div className="flex min-w-0 justify-end">
+                    <OutfitStatusBadge
+                      status={row.status}
+                      className="max-w-full shrink-0 truncate text-[9px]"
+                    />
+                  </div>
 
-                {/* Trial */}
-                <span
-                  className={`truncate text-right text-[10px] font-medium ${row.trialDate
+                  {/* Trial */}
+                  <span
+                    className={`truncate text-right text-[10px] font-medium ${row.trialDate
                       ? dateCellColor(row.trialDate)
                       : "text-muted-foreground"
-                    }`}
-                >
-                  {row.trialDate ? dateLabel(row.trialDate) : "—"}
-                </span>
+                      }`}
+                  >
+                    {row.trialDate ? dateLabel(row.trialDate) : "—"}
+                  </span>
 
-                {/* Delivery */}
-                <span
-                  className={`truncate text-right text-[10px] font-medium ${row.deliveryDate
+                  {/* Delivery */}
+                  <span
+                    className={`truncate text-right text-[10px] font-medium ${row.deliveryDate
                       ? dateCellColor(row.deliveryDate)
                       : "text-muted-foreground"
-                    }`}
-                >
-                  {row.deliveryDate ? dateLabel(row.deliveryDate) : "—"}
-                </span>
-              </Link>
-            ))}
+                      }`}
+                  >
+                    {row.deliveryDate ? dateLabel(row.deliveryDate) : "—"}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Mobile */}
-        <div className="divide-y sm:hidden">
-          {rows.map((row) => (
-            <Link
-              key={row.id}
-              href={`/dashboard/outfits/${row.id}?from=outfits`}
-              className="
+          {/* Mobile */}
+          <div className="divide-y sm:hidden">
+            {rows.map((row) => (
+              <Link
+                key={row.id}
+                href={`/dashboard/outfits/${row.id}?from=outfits`}
+                className="
                 block space-y-2.5 px-3 py-3
                 transition-colors hover:bg-muted/40
                 active:bg-muted/60
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring
               "
-            >
-              {/* Outfit Details */}
-              <div className="flex min-w-0 items-start gap-2.5">
+              >
+                {/* Outfit Details */}
+                <div className="flex min-w-0 items-start gap-2.5">
 
-                <div className="mt-0.5 shrink-0">
-                  {severityIcon(row.severity)}
+                  <div className="mt-0.5 shrink-0">
+                    {severityIcon(row.severity)}
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="truncate text-xs font-semibold">
+                      {row.name}
+                    </p>
+
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {row.customerName} · {row.orderNumber}
+                    </p>
+                  </div>
+
+                  <OutfitStatusBadge
+                    status={row.status}
+                    className="max-w-[40%] shrink-0 truncate text-[9px]"
+                  />
                 </div>
 
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="truncate text-xs font-semibold">
-                    {row.name}
-                  </p>
+                {/* Trial & Delivery */}
+                <div className="grid grid-cols-2 gap-2 pl-6">
 
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {row.customerName} · {row.orderNumber}
-                  </p>
+                  <div className="rounded-md bg-muted/50 px-2.5 py-2">
+                    {renderDate("Trial Date", row.trialDate)}
+                  </div>
+
+                  <div className="rounded-md bg-muted/50 px-2.5 py-2">
+                    {renderDate("Delivery Date", row.deliveryDate)}
+                  </div>
+
                 </div>
+              </Link>
+            ))}
+          </div>
 
-                <OutfitStatusBadge
-                  status={row.status}
-                  className="max-w-[40%] shrink-0 truncate text-[9px]"
-                />
-              </div>
-
-              {/* Trial & Delivery */}
-              <div className="grid grid-cols-2 gap-2 pl-6">
-
-                <div className="rounded-md bg-muted/50 px-2.5 py-2">
-                  {renderDate("Trial Date", row.trialDate)}
-                </div>
-
-                <div className="rounded-md bg-muted/50 px-2.5 py-2">
-                  {renderDate("Delivery Date", row.deliveryDate)}
-                </div>
-
-              </div>
-            </Link>
-          ))}
-        </div>
-
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </section>
   );
 }

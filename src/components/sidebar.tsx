@@ -70,9 +70,9 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
   DESIGNER: [
     { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
     { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
+    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
     { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   MASTER: [

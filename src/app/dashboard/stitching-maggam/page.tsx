@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,13 +29,13 @@ import { OutfitTransitionButtons, type OutfitTransition } from "@/components/out
 
 // Tabs shown to all roles
 const ALL_TABS = [
-  { key: "PRODUCTION_READY",  label: "Ready to Start",    short: "Ready",    icon: PackageCheck },
-  { key: "PATTERN_DRAFTING",  label: "Pattern Drafting",  short: "Pattern",  icon: PenTool },
-  { key: "MAGGAM_WORK",       label: "Maggam Work",       short: "Maggam",   icon: Sparkles },
-  { key: "MAGGAM_REVIEW",     label: "Maggam Review",     short: "Review",   icon: CheckCircle },
-  { key: "MAGGAM_REVIEWED",   label: "Maggam Reviewed",   short: "Reviewed", icon: CheckCircle },
-  { key: "FABRIC_CUTTING",    label: "Fabric Cutting",    short: "Cutting",  icon: Scissors },
-  { key: "STITCHING",         label: "Stitching",         short: "Stitch",   icon: Shirt },
+  { key: "PRODUCTION_READY", label: "Ready to Start", short: "Ready", icon: PackageCheck },
+  { key: "PATTERN_DRAFTING", label: "Pattern Drafting", short: "Pattern", icon: PenTool },
+  { key: "MAGGAM_WORK", label: "Maggam Work", short: "Maggam", icon: Sparkles },
+  { key: "MAGGAM_REVIEW", label: "Maggam Review", short: "Review", icon: CheckCircle },
+  { key: "MAGGAM_REVIEWED", label: "Maggam Reviewed", short: "Reviewed", icon: CheckCircle },
+  { key: "FABRIC_CUTTING", label: "Fabric Cutting", short: "Cutting", icon: Scissors },
+  { key: "STITCHING", label: "Stitching", short: "Stitch", icon: Shirt },
 ] as const;
 
 type TabKey = (typeof ALL_TABS)[number]["key"];
@@ -63,9 +56,9 @@ export default function StitchingMaggamPage() {
 
   const syncToUrl = useCallback((overrides: Record<string, string> = {}) => {
     const next = {
-      tab:    overrides.tab    !== undefined ? overrides.tab    : activeTab,
+      tab: overrides.tab !== undefined ? overrides.tab : activeTab,
       search: overrides.search !== undefined ? overrides.search : searchQuery,
-      type:   overrides.type   !== undefined ? overrides.type   : typeFilter,
+      type: overrides.type !== undefined ? overrides.type : typeFilter,
     };
     const params = new URLSearchParams();
     if (next.tab && next.tab !== "PRODUCTION_READY") params.set("tab", next.tab.toLowerCase());
@@ -273,11 +266,10 @@ export default function StitchingMaggamPage() {
               <button
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); syncToUrl({ tab: tab.key }); }}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0 ${
-                  isActive
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0 ${isActive
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
-                }`}
+                  }`}
               >
                 <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -307,17 +299,6 @@ export default function StitchingMaggamPage() {
             className="pl-9"
           />
         </div>
-        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); syncToUrl({ type: v }); }}>
-          <SelectTrigger className="h-9 sm:h-10 sm:w-[160px]">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {outfitTypes.map((type) => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Results */}
