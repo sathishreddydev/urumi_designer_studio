@@ -93,6 +93,24 @@ export function SalaryTab() {
 
     const allAdvances = allAdvancesData ?? {};
 
+    const carryoverMutation = useMutation({
+        mutationFn: async ({ employeeId, sourcePeriodStart, sourcePeriodEnd }: {
+            employeeId: string;
+            sourcePeriodStart: string;
+            sourcePeriodEnd: string;
+        }) => {
+            const response = await fetch(`/api/employees/${employeeId}/salary/carryover`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sourcePeriodStart, sourcePeriodEnd }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error ?? "Failed to carry salary forward");
+            return result;
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payroll"] }),
+    });
+
     const saveMutation = useMutation({
         mutationFn: async ({
             employeeId,
@@ -145,10 +163,13 @@ export function SalaryTab() {
 
     // Salary totals for the selected period
     const totalToPay = payroll.reduce((sum: number, p: any) =>
-        sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : p.calculation.netPayable), 0);
+        sum + (p.paidThisPeriod
+            ? Number(p.paidThisPeriod.netAmount) + p.calculation.carryToNextAmount
+            : p.calculation.netPayable), 0);
     const totalPaid = payroll.reduce((sum: number, p: any) =>
         sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : 0), 0);
-    const totalPending = totalToPay - totalPaid;
+    const totalPending = payroll.reduce((sum: number, p: any) =>
+        sum + (p.paidThisPeriod ? p.calculation.carryToNextAmount : p.calculation.netPayable), 0);
 
     return (
         <div className="space-y-4">
@@ -261,6 +282,11 @@ export function SalaryTab() {
                                                 )}
                                             </span>
                                         )}
+                                        {calculation.carryoverAmount > 0 && (
+                                            <span className="font-medium text-blue-700">
+                                                +₹{calculation.carryoverAmount.toLocaleString("en-IN")} carried from previous period
+                                            </span>
+                                        )}
                                         {/* Breakdown toggle */}
                                         <button
                                             onClick={() => setShowBreakdown((prev: Record<string, boolean>) => ({ ...prev, [emp.id]: !isBreakdownOpen }))}
@@ -275,6 +301,9 @@ export function SalaryTab() {
                                         <div className="rounded-md bg-muted/50 px-3 py-2 text-xs space-y-0.5 text-muted-foreground">
                                             <p>₹{Number(emp.salaryAmount).toLocaleString()} ÷ {pd.workingDays} days = <span className="font-medium text-foreground">₹{calculation.perDay}/day</span></p>
                                             <p>{attendance.effectiveDays} effective days × ₹{calculation.perDay} = <span className="font-medium text-foreground">₹{calculation.grossEarned.toLocaleString()}</span></p>
+                                            {calculation.carryoverAmount > 0 && (
+                                                <p>+ ₹{calculation.carryoverAmount.toLocaleString()} carried forward = <span className="font-semibold text-foreground">₹{calculation.grossPayable.toLocaleString()}</span></p>
+                                            )}
                                             {calculation.outstandingAdvances > 0 && (
                                                 <p>− ₹{calculation.outstandingAdvances.toLocaleString()} advance = <span className="font-semibold text-foreground">₹{calculation.netPayable.toLocaleString()}</span></p>
                                             )}
@@ -321,7 +350,7 @@ export function SalaryTab() {
                                                             employeeId: emp.id,
                                                             periodStart: pd.start,
                                                             periodEnd: pd.end,
-                                                            grossAmount: calculation.grossEarned,
+                                                            grossAmount: calculation.grossPayable,
                                                             netAmount: calculation.netPayable,
                                                             method: getMethod(emp.id),
                                                             note: getNote(emp.id),
@@ -346,6 +375,35 @@ export function SalaryTab() {
                                                     {" "}· {paidThisPeriod.method}
                                                 </span>
                                             </div>
+                                            {calculation.carryToNextAmount > 0 && (
+                                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-2">
+                                                    <span className="text-blue-800">
+                                                        ₹{calculation.carryToNextAmount.toLocaleString("en-IN")} additional earnings to carry to the next period.
+                                                    </span>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={carryoverMutation.isPending}
+                                                        onClick={() => carryoverMutation.mutate({
+                                                            employeeId: emp.id,
+                                                            sourcePeriodStart: pd.start,
+                                                            sourcePeriodEnd: pd.end,
+                                                        })}
+                                                    >
+                                                        {carryoverMutation.isPending ? "Carrying…" : `Carry ₹${calculation.carryToNextAmount.toLocaleString("en-IN")} to next period`}
+                                                    </Button>
+                                                    {carryoverMutation.isError && (
+                                                        <span className="w-full text-right text-[11px] text-destructive">
+                                                            {carryoverMutation.error.message}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {row.sourceCarryover && (
+                                                <p className="text-[11px] text-blue-700">
+                                                    ₹{row.sourceCarryover.amount.toLocaleString("en-IN")} already carried to {row.sourceCarryover.targetPeriodStart}.
+                                                </p>
+                                            )}
                                             {/* Payment breakdown if deductions were made */}
                                             {Number(paidThisPeriod.deductions) > 0 && (
                                                 <div className="rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
@@ -387,7 +445,7 @@ export function SalaryTab() {
                     employee={selectedPayroll.employee}
                     periodStart={selectedPayroll.period.start}
                     periodEnd={selectedPayroll.period.end}
-                    grossAmount={selectedPayroll.calculation.grossEarned}
+                    grossAmount={selectedPayroll.calculation.grossPayable}
                     outstandingAdvances={selectedPayroll.calculation.outstandingAdvances}
                     advances={allAdvances[selectedPayroll.employee.id] ?? []}
                     paymentMethod={getMethod(selectedPayroll.employee.id)}
@@ -397,8 +455,8 @@ export function SalaryTab() {
                             employeeId: selectedPayroll.employee.id,
                             periodStart: selectedPayroll.period.start,
                             periodEnd: selectedPayroll.period.end,
-                            grossAmount: selectedPayroll.calculation.grossEarned,
-                            netAmount: selectedPayroll.calculation.grossEarned - deductionAmount,
+                            grossAmount: selectedPayroll.calculation.grossPayable,
+                            netAmount: selectedPayroll.calculation.grossPayable - deductionAmount,
                             method: getMethod(selectedPayroll.employee.id),
                             note: getNote(selectedPayroll.employee.id),
                             advanceDeduction: deductionAmount,

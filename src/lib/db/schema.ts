@@ -336,6 +336,20 @@ export const employeeSalaryPayments = pgTable("employee_salary_payments", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const employeeSalaryCarryovers = pgTable("employee_salary_carryovers", {
+  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("car")),
+  employeeId: varchar("employee_id", { length: 20 }).notNull().references(() => employees.id),
+  sourcePeriodStart: text("source_period_start").notNull(),
+  sourcePeriodEnd: text("source_period_end").notNull(),
+  targetPeriodStart: text("target_period_start").notNull(),
+  targetPeriodEnd: text("target_period_end").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  salaryPaymentId: varchar("salary_payment_id", { length: 20 }).references(() => employeeSalaryPayments.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  appliedAt: timestamp("applied_at"),
+  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
+});
+
 export const employeeAdvances = pgTable("employee_advances", {
   id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("adv")),
   employeeId: varchar("employee_id", { length: 20 }).references(() => employees.id).notNull(),

@@ -5,6 +5,7 @@ import {
   employees,
   employeeAttendance,
   employeeSalaryPayments,
+  employeeSalaryCarryovers,
   employeeAdvances,
 } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
@@ -70,6 +71,8 @@ export const GET = withPermission(
       .from(employeeSalaryPayments)
       .orderBy(desc(employeeSalaryPayments.paidAt));
 
+    const allCarryovers = await db.select().from(employeeSalaryCarryovers);
+
     const latestPaymentMap = new Map<string, typeof allPayments[0]>();
     for (const p of allPayments) {
       if (!latestPaymentMap.has(p.employeeId)) {
@@ -79,9 +82,29 @@ export const GET = withPermission(
 
     // Check if already paid for this period
     const paidThisPeriodMap = new Map<string, typeof allPayments[0]>();
+    const paidGrossMap = new Map<string, number>();
     for (const p of allPayments) {
       if (p.periodStart === periodStart && p.periodEnd === periodEnd) {
         paidThisPeriodMap.set(p.employeeId, p);
+        paidGrossMap.set(p.employeeId, (paidGrossMap.get(p.employeeId) ?? 0) + Number(p.grossAmount));
+      }
+    }
+
+    const targetCarryoverMap = new Map<string, number>();
+    const sourceCarryoverMap = new Map<string, { amount: number; targetPeriodStart: string }>();
+    for (const carryover of allCarryovers) {
+      if (carryover.targetPeriodStart === periodStart && carryover.targetPeriodEnd === periodEnd) {
+        targetCarryoverMap.set(
+          carryover.employeeId,
+          (targetCarryoverMap.get(carryover.employeeId) ?? 0) + Number(carryover.amount)
+        );
+      }
+      if (carryover.sourcePeriodStart === periodStart && carryover.sourcePeriodEnd === periodEnd) {
+        const existing = sourceCarryoverMap.get(carryover.employeeId);
+        sourceCarryoverMap.set(carryover.employeeId, {
+          amount: (existing?.amount ?? 0) + Number(carryover.amount),
+          targetPeriodStart: carryover.targetPeriodStart,
+        });
       }
     }
 
@@ -131,7 +154,9 @@ export const GET = withPermission(
       const totalAdvances = advanceInfo.total;
       // Don't deduct advances here - that happens in the payment dialog
       // netPayable at this stage is just the gross earned amount
-      const netPayable = grossEarned;
+      const carryoverAmount = targetCarryoverMap.get(emp.id) ?? 0;
+      const grossPayable = Math.round((grossEarned + carryoverAmount) * 100) / 100;
+      const netPayable = grossPayable;
 
       // How many working days have no attendance record yet
       const markedDates = new Set(empAttendance.map((a) => a.date));
@@ -141,14 +166,30 @@ export const GET = withPermission(
       }).length;
 
       const paidRecord = paidThisPeriodMap.get(emp.id) ?? null;
+      const paidGross = paidGrossMap.get(emp.id) ?? 0;
+      const sourceCarryover = sourceCarryoverMap.get(emp.id) ?? null;
+      const alreadyCarried = sourceCarryover?.amount ?? 0;
+      const carryToNextAmount = Math.round(Math.max(grossPayable - paidGross - alreadyCarried, 0) * 100) / 100;
       const latestPayment = latestPaymentMap.get(emp.id) ?? null;
 
       return {
         employee: emp,
         period: { start: periodStart, end: periodEnd, workingDays: divisor },
         attendance: { present, halfDay, absent, holiday, effectiveDays, unmarkedWorkingDays },
-        calculation: { perDay: Math.round(perDay * 100) / 100, grossEarned, outstandingAdvances, totalAdvances, netPayable },
+        calculation: {
+          perDay: Math.round(perDay * 100) / 100,
+          grossEarned,
+          carryoverAmount,
+          grossPayable,
+          paidGross,
+          alreadyCarried,
+          carryToNextAmount,
+          outstandingAdvances,
+          totalAdvances,
+          netPayable,
+        },
         paidThisPeriod: paidRecord,
+        sourceCarryover,
         latestPayment,
       };
     });
