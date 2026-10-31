@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employeeAttendance } from "@/lib/db/schema";
+import { employeeAttendance, employeeEmploymentPeriods } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
+import { isEmployedOnDate } from "@/lib/employee-employment";
 import { z } from "zod";
 
 const attendanceSchema = z.object({
@@ -44,16 +45,18 @@ export const POST = withPermission(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Upsert — one record per employee per day
-    const existing = await db
-      .select({ id: employeeAttendance.id })
-      .from(employeeAttendance)
-      .where(eq(employeeAttendance.employeeId, id))
-      .then((rows) => rows.find((r) => {
-        // filter by date after fetch since we don't have a compound index query helper here
-        return true; // handled below
-      }));
+    const periods = await db
+      .select({ startDate: employeeEmploymentPeriods.startDate, endDate: employeeEmploymentPeriods.endDate })
+      .from(employeeEmploymentPeriods)
+      .where(eq(employeeEmploymentPeriods.employeeId, id));
+    if (!isEmployedOnDate(periods, parsed.data.date)) {
+      return NextResponse.json(
+        { error: "Attendance cannot be recorded outside the employee's employment dates." },
+        { status: 400 }
+      );
+    }
 
+    // Upsert — one record per employee per day
     // Check for existing record for this date
     const existingForDate = await db
       .select()

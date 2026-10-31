@@ -18,18 +18,30 @@ import {
   toYMD,
 } from "./utils";
 import { PeriodNavigator } from "./period-navigator";
+import { isEmployedOnDate } from "@/lib/employee-employment";
 
 function StatusPills({
   status,
   onSelect,
   compact,
   locked,
+  inactive,
 }: {
   status: StatusKey;
   onSelect: (s: StatusKey) => void;
   compact?: boolean; // month mode — show only active + minimal inactive dots
   locked?: boolean;  // salary already paid — read-only
+  inactive?: boolean; // outside an employment period — read-only
 }) {
+  if (inactive) {
+    const saved = PRIMARY_STATUSES.find((s) => s.key === status);
+    return (
+      <span title="Outside employment dates" className="text-xs text-muted-foreground/50">
+        {saved ? saved.label : "—"}
+      </span>
+    );
+  }
+
   // Locked: show a small lock badge instead of interactive pills
   if (locked) {
     const active = PRIMARY_STATUSES.find((s) => s.key === status);
@@ -121,7 +133,9 @@ export function AttendanceTab() {
       return res.json();
     },
   });
-  const employees: any[] = (empData?.employees ?? []).filter((e: any) => e.active);
+  const employees: any[] = (empData?.employees ?? []).filter((employee: any) =>
+    displayDates.some((date) => isEmployedOnDate(employee.employmentPeriods ?? [], toYMD(date)))
+  );
 
   const months = useMemo(
     () => [...new Set<string>(displayDates.map((d) => toYMD(d).slice(0, 7)))],
@@ -221,7 +235,8 @@ export function AttendanceTab() {
     const existing = recMap[key]?.status;
 
     // Auto-mark Sundays as holiday if no status exists
-    if (!existing) {
+    const employee = employees.find((item: any) => item.id === empId);
+    if (!existing && employee && isEmployedOnDate(employee.employmentPeriods ?? [], date)) {
       const dateObj = new Date(date + "T00:00:00");
       if (dateObj.getDay() === 0) { // Sunday = 0
         return "HOLIDAY";
@@ -232,6 +247,8 @@ export function AttendanceTab() {
   }
 
   function handleSelect(empId: string, date: string, status: StatusKey) {
+    const employee = employees.find((item: any) => item.id === empId);
+    if (!employee || !isEmployedOnDate(employee.employmentPeriods ?? [], date)) return;
     if (isLocked(empId, date)) return; // salary paid — no edits
     const key = `${empId}|${date}`;
     setOptimistic((prev) => ({ ...prev, [key]: status }));
@@ -252,7 +269,7 @@ export function AttendanceTab() {
         const existing = recMap[key];
 
         // Only auto-mark if no record exists yet and not in a paid period
-        if (!existing && !optimistic[key] && !isLocked(emp.id, ymd)) {
+        if (isEmployedOnDate(emp.employmentPeriods ?? [], ymd) && !existing && !optimistic[key] && !isLocked(emp.id, ymd)) {
           sundaysToMark.push({ employeeId: emp.id, date: ymd, status: "HOLIDAY" });
         }
       }
@@ -277,7 +294,9 @@ export function AttendanceTab() {
     const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0, HOLIDAY: 0, "": 0 };
     for (const emp of employees) {
       for (const d of displayDates) {
-        const s = getStatus(emp.id, toYMD(d));
+        const date = toYMD(d);
+        if (!isEmployedOnDate(emp.employmentPeriods ?? [], date)) continue;
+        const s = getStatus(emp.id, date);
         counts[s] = (counts[s] ?? 0) + 1;
       }
     }
@@ -374,9 +393,10 @@ export function AttendanceTab() {
                       const isToday = ymd === todayYMD;
                       const isSunday = d.getDay() === 0;
                       const locked = isLocked(emp.id, ymd);
+                      const employed = isEmployedOnDate(emp.employmentPeriods ?? [], ymd);
                       return (
                         <td key={ymd}
-                          className={`text-center border-r ${locked ? "bg-muted/60" :
+                          className={`text-center border-r ${!employed ? "bg-muted/40" : locked ? "bg-muted/60" :
                               isToday ? "bg-primary/5" :
                                 isSunday ? "bg-blue-50/30" :
                                   ""
@@ -388,6 +408,7 @@ export function AttendanceTab() {
                             onSelect={(s) => handleSelect(emp.id, ymd, s)}
                             compact={mode === "monthly"}
                             locked={locked}
+                            inactive={!employed}
                           />
                         </td>
                       );

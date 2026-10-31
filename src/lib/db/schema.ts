@@ -10,6 +10,7 @@ import {
   json,
   jsonb,
   decimal,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 // ─── ENUMS ──────────────────────────────────────────────────────────────────
@@ -297,6 +298,16 @@ export const employees = pgTable("employees", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const employeeEmploymentPeriods = pgTable("employee_employment_periods", {
+  employeeId: varchar("employee_id", { length: 20 })
+    .notNull()
+    .references(() => employees.id, { onDelete: "cascade" }),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.employeeId, table.startDate] }),
+}));
 
 export const employeeAttendance = pgTable("employee_attendance", {
   id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("att")),

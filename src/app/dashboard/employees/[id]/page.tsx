@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,11 +37,12 @@ import {
   TrendingDown,
 } from "lucide-react";
 import Link from "next/link";
+import { currentEmploymentDate, isEmployedOnDate, type EmploymentPeriod } from "@/lib/employee-employment";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function today() {
-  return new Date().toISOString().split("T")[0];
+  return currentEmploymentDate();
 }
 
 function currentMonth() {
@@ -159,6 +160,8 @@ export default function EmployeeDetailPage() {
         </CardContent>
       </Card>
 
+      <EmploymentHistory employeeId={id} periods={emp.employmentPeriods ?? []} />
+
       {/* Tabs */}
       <div className="flex gap-1 border-b">
         {(["attendance", "salary", "advances"] as const).map((t) => (
@@ -176,7 +179,7 @@ export default function EmployeeDetailPage() {
         ))}
       </div>
 
-      {tab === "attendance" && <AttendanceTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} />}
+      {tab === "attendance" && <AttendanceTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} employmentPeriods={emp.employmentPeriods ?? []} />}
       {tab === "salary"     && <SalaryTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} />}
       {tab === "advances"   && <AdvancesTab employeeId={id} />}
 
@@ -204,16 +207,92 @@ export default function EmployeeDetailPage() {
   );
 }
 
+function EmploymentHistory({ employeeId, periods }: { employeeId: string; periods: EmploymentPeriod[] }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<EmploymentPeriod[]>(periods);
+
+  useEffect(() => setDraft(periods), [periods]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/employees/${employeeId}/employment-periods`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periods: draft }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Failed to save employment history");
+      return result;
+    },
+    onSuccess: (updatedPeriods) => {
+      queryClient.setQueryData(["employee", employeeId], (current: any) =>
+        current ? { ...current, employmentPeriods: updatedPeriods, active: updatedPeriods.some(
+          (period: EmploymentPeriod) => isEmployedOnDate([period], today())
+        ) } : current
+      );
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-range"] });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Employment periods</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Attendance is allowed only on dates inside these periods. Leave the end date empty for a current period.
+        </p>
+        {draft.map((period, index) => (
+          <div key={`${index}-${period.startDate}`} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input
+                type="date"
+                value={period.startDate}
+                onChange={(event) => setDraft((items) => items.map((item, i) => i === index ? { ...item, startDate: event.target.value } : item))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Through</Label>
+              <Input
+                type="date"
+                value={period.endDate ?? ""}
+                onChange={(event) => setDraft((items) => items.map((item, i) => i === index ? { ...item, endDate: event.target.value || null } : item))}
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setDraft((items) => items.filter((_, i) => i !== index))}>
+              Remove
+            </Button>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setDraft((items) => [...items, { startDate: today(), endDate: null }])}>
+            Add period
+          </Button>
+          <Button size="sm" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+            {saveMutation.isPending ? "Saving…" : "Save periods"}
+          </Button>
+          {saveMutation.isError && <p className="self-center text-xs text-destructive">{saveMutation.error.message}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Attendance Tab ───────────────────────────────────────────────────────────
 
 function AttendanceTab({
   employeeId,
   payCycle,
   salaryAmount,
+  employmentPeriods,
 }: {
   employeeId: string;
   payCycle: string;
   salaryAmount: number;
+  employmentPeriods: EmploymentPeriod[];
 }) {
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
@@ -256,15 +335,16 @@ function AttendanceTab({
 
   const recordMap: Record<string, any> = {};
   records.forEach((r: any) => { recordMap[r.date] = r; });
+  const validRecords = records.filter((record: any) => isEmployedOnDate(employmentPeriods, record.date));
 
   const days = daysInMonth(month);
   const [y, m] = month.split("-").map(Number);
 
   // Stats
-  const present  = records.filter((r: any) => r.status === "PRESENT").length;
-  const halfDay  = records.filter((r: any) => r.status === "HALF_DAY").length;
-  const absent   = records.filter((r: any) => r.status === "ABSENT").length;
-  const holiday  = records.filter((r: any) => r.status === "HOLIDAY").length;
+  const present  = validRecords.filter((r: any) => r.status === "PRESENT").length;
+  const halfDay  = validRecords.filter((r: any) => r.status === "HALF_DAY").length;
+  const absent   = validRecords.filter((r: any) => r.status === "ABSENT").length;
+  const holiday  = validRecords.filter((r: any) => r.status === "HOLIDAY").length;
   const effectiveDays = present + halfDay * 0.5;
 
   // Estimated salary for the month
@@ -338,11 +418,14 @@ function AttendanceTab({
           const date = `${month}-${String(i + 1).padStart(2, "0")}`;
           const rec = recordMap[date];
           const isToday = date === today();
+          const employed = isEmployedOnDate(employmentPeriods, date);
           return (
             <button
               key={date}
               onClick={() => openDay(date)}
-              className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium transition-colors border
+              disabled={!employed}
+              title={employed ? undefined : "Outside employment dates"}
+              className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium transition-colors border disabled:cursor-not-allowed disabled:opacity-40
                 ${rec ? ATTENDANCE_COLORS[rec.status] + " text-white border-transparent" : "border-border hover:border-primary/40 hover:bg-muted"}
                 ${isToday && !rec ? "border-primary" : ""}
               `}
@@ -365,7 +448,7 @@ function AttendanceTab({
       </div>
 
       {/* Mark attendance dialog */}
-      {selectedDate && (
+      {selectedDate && isEmployedOnDate(employmentPeriods, selectedDate) && (
         <Card className="border-primary/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">

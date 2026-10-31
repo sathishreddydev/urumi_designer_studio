@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { ilike, or, desc, count, eq } from "drizzle-orm";
+import { ilike, or, desc, count, eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employees } from "@/lib/db/schema";
+import { employeeEmploymentPeriods, employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
 import { requiredPhoneSchema } from "@/lib/validations";
 import { normalizePhoneNumber } from "@/lib/phone-utils";
+import { currentEmploymentDate } from "@/lib/employee-employment";
 
 const employeeSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -36,13 +37,22 @@ export const GET = withPermission(
         )
       : undefined;
 
-    const rows = await db
+    const employeeRows = await db
       .select()
       .from(employees)
       .where(condition)
       .orderBy(desc(employees.createdAt))
       .limit(limit)
       .offset(offset);
+
+    const allPeriods = await db.select().from(employeeEmploymentPeriods);
+    const rows = employeeRows.map((employee) => ({
+      ...employee,
+      employmentPeriods: allPeriods
+        .filter((period) => period.employeeId === employee.id)
+        .map(({ startDate, endDate }) => ({ startDate, endDate }))
+        .sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    }));
 
     const [{ total }] = await db.select({ total: count() }).from(employees).where(condition);
 
@@ -68,6 +78,30 @@ export const POST = withPermission(
 
     let deactivatedPrevious: { id: string; name: string } | null = null;
     if (existing) {
+      const today = currentEmploymentDate();
+      const yesterdayDate = new Date(`${today}T00:00:00Z`);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterday = yesterdayDate.toISOString().slice(0, 10);
+      const openPeriod = await db
+        .select()
+        .from(employeeEmploymentPeriods)
+        .where(eq(employeeEmploymentPeriods.employeeId, existing.id))
+        .then((periods) => periods.find((period) => !period.endDate));
+      if (openPeriod) {
+        if (openPeriod.startDate > yesterday) {
+          await db.delete(employeeEmploymentPeriods).where(and(
+            eq(employeeEmploymentPeriods.employeeId, existing.id),
+            eq(employeeEmploymentPeriods.startDate, openPeriod.startDate)
+          ));
+        } else {
+          await db.update(employeeEmploymentPeriods)
+            .set({ endDate: yesterday })
+            .where(and(
+              eq(employeeEmploymentPeriods.employeeId, existing.id),
+              eq(employeeEmploymentPeriods.startDate, openPeriod.startDate)
+            ));
+        }
+      }
       await db
         .update(employees)
         .set({ active: false, updatedAt: new Date() })
@@ -89,6 +123,13 @@ export const POST = withPermission(
         notes: parsed.data.notes ?? null,
       })
       .returning();
+    if (emp.active) {
+      await db.insert(employeeEmploymentPeriods).values({
+        employeeId: emp.id,
+        startDate: currentEmploymentDate(),
+        endDate: null,
+      });
+    }
     return NextResponse.json({ ...emp, deactivatedPrevious }, { status: 201 });
   }
 );

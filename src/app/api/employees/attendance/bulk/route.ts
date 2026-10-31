@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employeeAttendance, employeeSalaryPayments } from "@/lib/db/schema";
+import { employeeAttendance, employeeEmploymentPeriods, employeeSalaryPayments } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
+import { isEmployedOnDate } from "@/lib/employee-employment";
 
 const bulkSchema = z.object({
   records: z.array(
@@ -22,6 +23,25 @@ export const POST = withPermission(
     const parsed = bulkSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const allEmploymentPeriods = await db.select().from(employeeEmploymentPeriods);
+    const inactiveDates = parsed.data.records.filter((record) =>
+      !isEmployedOnDate(
+        allEmploymentPeriods
+          .filter((period) => period.employeeId === record.employeeId)
+          .map(({ startDate, endDate }) => ({ startDate, endDate })),
+        record.date
+      )
+    );
+    if (inactiveDates.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Attendance cannot be recorded outside the employee's employment dates.",
+          inactiveDates: inactiveDates.map(({ employeeId, date }) => ({ employeeId, date })),
+        },
+        { status: 400 }
+      );
     }
 
     // Fetch all salary payments to check for paid periods
