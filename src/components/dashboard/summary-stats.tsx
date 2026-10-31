@@ -36,12 +36,12 @@ export function SummaryStats({
 
     return (
         <Card className={cn("overflow-hidden", className)}>
-            <div className="p-4 sm:p-2 lg:p-3">
+            <div className="p-3 sm:p-3">
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:items-center lg:gap-0">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-5 lg:items-center lg:gap-0">
 
                     {/* Primary stat */}
-                    <div className="col-span-2 flex min-w-0 flex-col gap-2 lg:col-span-2 lg:px-3 lg:py-2">
+                    <div className="col-span-2 flex min-w-0 flex-col gap-1.5 lg:col-span-2 lg:px-2 lg:py-1.5">
                         <div className="flex items-center gap-2">
                             <PrimaryIcon
                                 className={cn(
@@ -67,18 +67,20 @@ export function SummaryStats({
                             <div
                                 key={`${stat.label}-${index}`}
                                 className={cn(
-                                    "min-w-0 space-y-2 border-t pt-3",
-                                    "lg:border-l lg:border-t-0 lg:px-5 lg:py-2",
+                                    "min-w-0 space-y-1.5 border-t pt-2",
+                                    "lg:border-l lg:border-t-0 lg:px-3 lg:py-1.5",
                                     index === 0 && "lg:col-span-1",
                                     index === 1 && "lg:col-span-2"
                                 )}
                             >
-                                <Icon
-                                    className={cn(
-                                        "h-4 w-4",
-                                        iconColors[stat.color || "blue"]
-                                    )}
-                                />
+                                <div className="flex items-center gap-1.5">
+                                    <Icon
+                                        className={cn(
+                                            "h-4 w-4 shrink-0",
+                                            iconColors[stat.color || "blue"]
+                                        )}
+                                    />
+                                </div>
 
                                 <p className="truncate text-lg font-bold tracking-tight">
                                     {stat.value}
