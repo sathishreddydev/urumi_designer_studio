@@ -20,10 +20,10 @@ import {
 import {
   IndianRupee,
   TrendingUp,
-  Clock,
   CalendarRange,
   BarChart3,
   Shirt,
+  Wallet,
 } from "lucide-react";
 
 import { SummaryStats } from "@/components/dashboard/summary-stats";
@@ -181,12 +181,16 @@ export function DashboardReports() {
             color: "amber",
           },
           {
-            label: "Avg Time",
-            value: summary.avgProductionDays
-              ? `${summary.avgProductionDays}d`
-              : "—",
-            icon: Clock,
-            color: "cyan",
+            label: "Salaries Paid",
+            value: `₹${summary.totalSalaries?.toLocaleString() || 0}`,
+            icon: IndianRupee,
+            color: "purple",
+          },
+          {
+            label: "Expenses",
+            value: `₹${summary.totalExpenses?.toLocaleString() || 0}`,
+            icon: Wallet,
+            color: "red",
           },
         ]}
       />
