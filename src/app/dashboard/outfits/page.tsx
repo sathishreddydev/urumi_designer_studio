@@ -218,6 +218,28 @@ export default function OutfitsPage() {
                 </button>
               );
             })}
+            <div>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    data-active={!!customDate}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors text-muted-foreground border-border bg-background data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary"
+                  >
+                    <CalendarIcon className="h-3 w-3" />
+                    {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
+                    {customDate && (
+                      <span role="button" onClick={(e) => { e.stopPropagation(); handleCustomDate(undefined); }} className="ml-0.5 opacity-70">
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
             {hasFilters && (
               <button onClick={clearAll} className="text-xs text-muted-foreground underline underline-offset-2">
                 Clear all filters
@@ -255,34 +277,6 @@ export default function OutfitsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-
-
-          {/* Deadline pills */}
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Deadline</p>            <div className="flex flex-wrap gap-1.5">
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    data-active={!!customDate}
-                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors text-muted-foreground border-border bg-background data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary"
-                  >
-                    <CalendarIcon className="h-3 w-3" />
-                    {customDate ? format(customDate, "dd MMM yyyy") : "Pick a date"}
-                    {customDate && (
-                      <span role="button" onClick={(e) => { e.stopPropagation(); handleCustomDate(undefined); }} className="ml-0.5 opacity-70">
-                        <X className="h-3 w-3" />
-                      </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
           </div>
 
 
