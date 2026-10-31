@@ -112,7 +112,7 @@ export function OutfitTransitionButtons({
                 </span>
               </TooltipTrigger>
               <TooltipContent side={tooltipSide}>
-                {t.blocked && t.reason ? t.reason : `Move to: ${t.label}`}
+                {t.blocked && t.reason ? t.reason : `Update Status: ${t.label}`}
               </TooltipContent>
             </Tooltip>
           );

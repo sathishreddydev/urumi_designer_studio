@@ -56,8 +56,13 @@ export function MobileOutfitList({
                                 href={getOutfitHref(outfit)}
                                 className="flex min-w-0 flex-1 items-start gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                    <Shirt className="h-4 w-4 text-muted-foreground" />
+                                <div
+                                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${outfit.maggamRequired
+                                        ? "bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                                        : "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                                        }`}
+                                >
+                                    {outfit.maggamRequired ? "M" : "S"}
                                 </div>
 
                                 <div className="min-w-0 flex-1 space-y-1">
@@ -91,12 +96,7 @@ export function MobileOutfitList({
                                             </>
                                         )}
 
-                                        {outfit.maggamRequired && (
-                                            <>
-                                                <span>·</span>
-                                                <span>Maggam</span>
-                                            </>
-                                        )}
+
                                     </div>
                                 </div>
                             </Link>

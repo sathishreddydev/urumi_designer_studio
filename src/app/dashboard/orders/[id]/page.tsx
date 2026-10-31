@@ -126,7 +126,7 @@ function OutfitStatusUpdater({
       {!disabled && available.length > 0 && (
         <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-2">
           <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-            Move to
+            Update Status
           </span>
           <OutfitTransitionButtons
             transitions={available}

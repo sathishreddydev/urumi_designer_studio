@@ -36,7 +36,7 @@ export function DesktopOutfitTable({
             <th className="px-4 py-3 text-left font-semibold">Designer</th>
             <th className="px-4 py-3 text-left font-semibold">Master</th>
             <th className="px-4 py-3 text-left font-semibold">Delivery</th>
-            {!isMaster && <th className="px-4 py-3 text-left font-semibold">Move to</th>}
+            {!isMaster && <th className="px-4 py-3 text-left font-semibold">Update Status</th>}
           </tr>
         </thead>
         <tbody className="divide-y">

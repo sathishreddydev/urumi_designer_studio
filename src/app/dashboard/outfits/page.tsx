@@ -44,7 +44,6 @@ export default function OutfitsPage() {
     searchParams.get("customDate") ? new Date(searchParams.get("customDate")!) : undefined
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(!!search);
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
 
   // Sync filters → URL (replace so back button still works correctly)
@@ -158,14 +157,16 @@ export default function OutfitsPage() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              aria-label={searchOpen ? "Close search" : "Open search"}
-              onClick={() => setSearchOpen((open) => !open)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-            </button>
+            <div>
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder="Search outfits..."
+                className="h-9 pl-9"
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </div>
             <button
               type="button"
               aria-label="Toggle advanced filters"
@@ -182,18 +183,7 @@ export default function OutfitsPage() {
           </div>
         </div>
 
-        {searchOpen && (
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              autoFocus
-              placeholder="Search outfits..."
-              className="h-9 pl-9"
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-            />
-          </div>
-        )}
+
 
         <div className="mt-3 -mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max min-w-full flex-nowrap items-center gap-2">
