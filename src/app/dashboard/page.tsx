@@ -13,6 +13,8 @@ import {
   Clock,
   AlertTriangle,
   PackageCheck,
+  LayoutGrid,
+  Workflow,
 } from "lucide-react";
 import StatCard from "@/components/dashboard/statCard";
 
@@ -59,7 +61,10 @@ export default function DashboardPage() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Overview</p>
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Overview
+          </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             <StatCard title="Total Customers" value={stats.customers} icon={<Users className="h-4 w-4" />} href="/dashboard/customers" />
             <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingBag className="h-4 w-4" />} href="/dashboard/orders" />
@@ -95,7 +100,10 @@ export default function DashboardPage() {
         {/* Needs attention */}
         {actionRequired > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Needs Attention</p>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Needs Attention
+            </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {stats.waitingReferences > 0 && (
                 <StatCard title="Waiting for References" value={stats.waitingReferences} icon={<Clock className="h-4 w-4" />} href={outfitStatusHref("WAITING_FOR_REFERENCES")} highlight />
@@ -124,7 +132,10 @@ export default function DashboardPage() {
 
         {/* Pipeline overview */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pipeline</p>
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Workflow className="h-3.5 w-3.5" />
+            Pipeline
+          </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard title="Unstarted" value={stats.unstarted} icon={<Shirt className="h-4 w-4" />} href={outfitStatusHref("DRAFT")} />
             <StatCard title="In Design" value={stats.inDesign} icon={<Scissors className="h-4 w-4" />} href={outfitStatusHref("DESIGN_IN_PROGRESS")} />

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, count, sql, gte, lte, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { outfits, orders, customers, payments, productionLogs } from "@/lib/db/schema";
+import { outfits, orders, customers, payments, employeeSalaryPayments, storeExpenditures } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 
 export const GET = withPermission(
@@ -16,6 +16,8 @@ export const GET = withPermission(
 
     const since = fromParam ? new Date(fromParam) : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const until = toParam   ? new Date(toParam)   : new Date();
+    const sinceIso = since.toISOString().slice(0, 10);
+    const untilIso = until.toISOString().slice(0, 10);
 
     // Run all queries in parallel
     const [
@@ -25,7 +27,8 @@ export const GET = withPermission(
       outfitsByStatus,
       revenueResult,
       recentOrders,
-      avgProductionTime,
+      salaryResult,
+      expenseResult,
     ] = await Promise.all([
       // Total customers
       db.select({ count: count() }).from(customers),
@@ -47,14 +50,15 @@ export const GET = withPermission(
       // Orders in the selected date range
       db.select({ count: count() }).from(orders).where(and(gte(orders.createdAt, since), lte(orders.createdAt, until))),
 
-      // Average production time (from PRODUCTION_READY to PRODUCTION_COMPLETED)
-      db.execute(sql`
-        SELECT AVG(EXTRACT(EPOCH FROM (completed.created_at - started.created_at)) / 86400)::numeric(10,1) as avg_days
-        FROM production_logs completed
-        JOIN production_logs started ON completed.outfit_id = started.outfit_id
-        WHERE completed.status = 'PRODUCTION_COMPLETED'
-        AND started.status = 'PATTERN_DRAFTING'
-      `),
+      // Total salaries paid in the selected period
+      db.select({ total: sql<string>`COALESCE(SUM(gross_amount), 0)` })
+        .from(employeeSalaryPayments)
+        .where(and(gte(employeeSalaryPayments.paidAt, since), lte(employeeSalaryPayments.paidAt, until))),
+
+      // Total business expenses in the selected period
+      db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` })
+        .from(storeExpenditures)
+        .where(and(gte(storeExpenditures.date, sinceIso), lte(storeExpenditures.date, untilIso))),
     ]);
 
     // Outfits by status breakdown
@@ -63,7 +67,8 @@ export const GET = withPermission(
 
     // Calculate key metrics
     const totalRevenue = Number(revenueResult[0]?.total || 0);
-    const avgDays = (avgProductionTime as any)?.rows?.[0]?.avg_days || null;
+    const totalSalaries = Number(salaryResult[0]?.total || 0);
+    const totalExpenses = Number(expenseResult[0]?.total || 0);
 
     return NextResponse.json({
       summary: {
@@ -72,7 +77,8 @@ export const GET = withPermission(
         totalOutfits: totalOutfits[0].count,
         totalRevenue,
         ordersInPeriod: recentOrders[0].count,
-        avgProductionDays: avgDays ? Number(avgDays) : null,
+        totalSalaries,
+        totalExpenses,
       },
       statusBreakdown,
       period: { from: since.toISOString(), to: until.toISOString() },
