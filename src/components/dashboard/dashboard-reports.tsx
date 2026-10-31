@@ -150,9 +150,8 @@ export function DashboardReports() {
               />
               <div className="flex justify-end border-t pt-2">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
+                  variant="link"
+                  className="h-auto rounded-none px-0 py-0 text-xs"
                   onClick={() => {
                     setRange(defaultRange());
                     setOpen(false);
