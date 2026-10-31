@@ -72,45 +72,39 @@ export default function OrdersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex gap-3 items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Orders</h1>
           <p className="text-xs text-muted-foreground">{data?.total || 0} total</p>
         </div>
-        <Link href="/dashboard/orders/new">
-          <Button className="w-full sm:w-auto" size="sm">
-            <Plus className="h-4 w-4 mr-1" /> New Order
-          </Button>
-        </Link>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by order number or customer..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); syncToUrl({ search: e.target.value, page: "1" }); }}
-          />
+        {/* Filters */}
+        <div className="flex flex-col gap-2 sm:flex-row md:w-[min(100%,620px)]">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by order number or customer..."
+              className="pl-9 rounded-full"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); syncToUrl({ search: e.target.value, page: "1" }); }}
+            />
+          </div>
+          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); syncToUrl({ status: v, page: "1" }); }}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {ORDER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasFilters && (
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSearch(""); setStatus(""); setPage(1); router.replace(pathname, { scroll: false }); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); syncToUrl({ status: v, page: "1" }); }}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {ORDER_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {hasFilters && (
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setSearch(""); setStatus(""); setPage(1); router.replace(pathname, { scroll: false }); }}>
-            <X className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
       {/* Content */}
