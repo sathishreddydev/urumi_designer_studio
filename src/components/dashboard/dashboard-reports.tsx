@@ -175,7 +175,7 @@ export function DashboardReports() {
 
       {/* Status Breakdown */}
       {Object.keys(statusBreakdown).length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Outfit Status
           </p>
