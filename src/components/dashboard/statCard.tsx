@@ -19,22 +19,12 @@ export default function StatCard({
 }) {
     const card = (
         <Card className={highlight ? "border-primary/50 bg-primary/5" : undefined}>
-            <CardContent className="flex flex-col items-center justify-center gap-1.5 p-2.5 text-center sm:flex-row sm:items-center sm:gap-2 sm:text-left">
-                <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
-                        highlight ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    }`}
-                >
-                    {icon}
-                </div>
-                <div className="min-w-0 flex flex-col items-center gap-0.5 sm:items-start">
-                    <div className={`text-base font-bold leading-none ${highlight ? "text-primary" : ""}`}>
-                        {value}
-                    </div>
-                    <div className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground leading-tight text-center sm:text-left break-words">
-                        {title}
-                    </div>
-                </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                <CardTitle className="text-xs font-medium leading-tight line-clamp-2">{title}</CardTitle>
+                <div className={`shrink-0 ml-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{icon}</div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+                <div className={`text-lg font-bold ${highlight ? "text-primary" : ""}`}>{value}</div>
             </CardContent>
         </Card>
     );

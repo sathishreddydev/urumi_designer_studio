@@ -103,7 +103,7 @@ export function DashboardReports() {
   if (!data) return null;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-3">
 
       {/* Header + Date Range */}
       <div className="flex flex-wrap items-center justify-between gap-3">
