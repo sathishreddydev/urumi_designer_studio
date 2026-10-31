@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employeeAttendance, employeeEmploymentPeriods, employeeSalaryPayments } from "@/lib/db/schema";
+import { employeeAttendance, employeeEmploymentPeriods } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
 import { isEmployedOnDate } from "@/lib/employee-employment";
@@ -41,37 +41,6 @@ export const POST = withPermission(
           inactiveDates: inactiveDates.map(({ employeeId, date }) => ({ employeeId, date })),
         },
         { status: 400 }
-      );
-    }
-
-    // Fetch all salary payments to check for paid periods
-    const allPayments = await db.select().from(employeeSalaryPayments);
-
-    // Build a set of "employeeId|date" keys that fall inside a paid period
-    const paidKeys = new Set<string>();
-    for (const payment of allPayments) {
-      for (const record of parsed.data.records) {
-        if (
-          record.employeeId === payment.employeeId &&
-          record.date >= payment.periodStart &&
-          record.date <= payment.periodEnd
-        ) {
-          paidKeys.add(`${record.employeeId}|${record.date}`);
-        }
-      }
-    }
-
-    // Reject if any record falls in a paid period
-    const lockedRecords = parsed.data.records.filter(
-      (r) => paidKeys.has(`${r.employeeId}|${r.date}`)
-    );
-    if (lockedRecords.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Cannot edit attendance for periods where salary has already been paid.",
-          lockedDates: lockedRecords.map((r) => r.date),
-        },
-        { status: 403 }
       );
     }
 
