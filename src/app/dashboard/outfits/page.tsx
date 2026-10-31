@@ -7,7 +7,6 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
 import Image from "next/image";
-import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, Clock, SlidersHorizontal, ChevronDown, ImageOff } from "lucide-react";
+import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, Clock, SlidersHorizontal, ImageOff } from "lucide-react";
 import { ImageViewer } from "@/components/image-viewer";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -119,11 +118,11 @@ export default function OutfitsPage() {
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [deadline, setDeadline] = useState(searchParams.get("deadline") || "");
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get("priority") || "");
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(!!searchParams.get("search"));
   const [customDate, setCustomDate] = useState<Date | undefined>(
     searchParams.get("customDate") ? new Date(searchParams.get("customDate")!) : undefined
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(!!search);
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
 
   // Sync filters → URL (replace so back button still works correctly)
@@ -194,29 +193,6 @@ export default function OutfitsPage() {
   function handleCustomDate(d: Date | undefined) { setCustomDate(d); setDeadline(""); setPage(1); syncToUrl({ customDate: d?.toISOString() ?? "", deadline: "", page: "1" }); }
   function handlePage(p: number) { setPage(p); syncToUrl({ page: String(p) }); }
 
-  function handleQuickFilter(value: string) {
-    if (value === "all") {
-      clearAll();
-      return;
-    }
-    if (value === "next") {
-      const nextPriority = priorityFilter === "1" ? "" : "1";
-      setPriorityFilter(nextPriority);
-      setDeadline("");
-      setCustomDate(undefined);
-      setPage(1);
-      syncToUrl({ priority: nextPriority, deadline: "", customDate: "", page: "1" });
-      return;
-    }
-
-    const nextDeadline = deadline === value ? "" : value;
-    setDeadline(nextDeadline);
-    setCustomDate(undefined);
-    setPriorityFilter("");
-    setPage(1);
-    syncToUrl({ deadline: nextDeadline, customDate: "", priority: "", page: "1" });
-  }
-
   function clearAll() {
     setStatus(""); setSearch(""); setDeadline(""); setCustomDate(undefined); setPriorityFilter(""); setPage(1);
     router.replace(pathname, { scroll: false });
@@ -251,87 +227,109 @@ export default function OutfitsPage() {
 
   return (
     <div className="space-y-4">
-      {/* Mobile header and quick filters stay visible above the scrolling list. */}
-      <div className="sticky top-14 z-30 -mx-3 border-b bg-background px-3 pb-2 pt-1 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
-        <div className="flex items-start justify-between gap-2 sm:block">
-          <div>
-            <h1 className="text-2xl font-bold">Outfits</h1>
+      {/* Mobile: sticky header, search and one-line quick filters */}
+      <div className="sticky top-0 z-30 -mx-4 sm:hidden border-b bg-background/95 px-4 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold leading-tight">Outfits</h1>
             <p className="text-xs text-muted-foreground">{total} total</p>
           </div>
-          <div className="flex items-center gap-1 sm:hidden">
-            <Button
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={mobileSearchOpen ? "Close outfit search" : "Search outfits"}
-              aria-expanded={mobileSearchOpen}
-              className="h-9 w-9"
-              onClick={() => setMobileSearchOpen((open) => !open)}
+              aria-label={searchOpen ? "Close search" : "Open search"}
+              onClick={() => setSearchOpen((open) => !open)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-            </Button>
-            <Button
+              {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              aria-label={filtersOpen ? "Close filters" : "More filters"}
+              aria-label="Toggle advanced filters"
               aria-expanded={filtersOpen}
-              className="h-8 gap-1 px-2"
               onClick={() => setFiltersOpen((open) => !open)}
+              className={`relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted ${
+                filtersOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+              }`}
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-            </Button>
+              <SlidersHorizontal className="h-4 w-4" />
+              {(deadline || customDate || status || priorityFilter) && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+              )}
+            </button>
           </div>
         </div>
 
-        {mobileSearchOpen && (
-          <div className="relative mt-2 sm:hidden">
+        {searchOpen && (
+          <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               autoFocus
               placeholder="Search outfits..."
-              className="pl-9"
+              className="h-9 pl-9"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
         )}
 
-        <div
-          aria-label="Quick outfit filters"
-          className="scrollbar-hide -mx-1 mt-2 flex snap-x snap-mandatory gap-1.5 overflow-x-auto px-1 sm:hidden"
-        >
-          {[{ value: "all", label: "All" }, ...DEADLINE_PILLS, { value: "next", label: "Next" }].map((filter) => {
-            const isActive = filter.value === "all"
-              ? !status && !search && !deadline && !customDate && !priorityFilter
-              : filter.value === "next"
-                ? priorityFilter === "1"
-                : deadline === filter.value;
-            const toneClass = filter.value === "all"
-              ? "border-border bg-background text-foreground data-[active=true]:border-primary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
-              : filter.value === "next"
-                ? (PRIORITY_PILLS.find((pill) => pill.value === "1")?.className ?? "")
-                : (DEADLINE_PILLS.find((pill) => pill.value === filter.value)?.className ?? "");
-            const icon = filter.value === "all" || filter.value === "next"
-              ? null
-              : DEADLINE_PILLS.find((pill) => pill.value === filter.value)?.icon;
+        <div className="mt-3 -mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max min-w-full flex-nowrap items-center gap-2">
+            <button
+              type="button"
+              data-active={!deadline && !customDate && !priorityFilter && (!status || status === "all")}
+              onClick={() => {
+                setDeadline("");
+                setCustomDate(undefined);
+                setPriorityFilter("");
+                setStatus("");
+                setPage(1);
+                syncToUrl({ deadline: "", customDate: "", priority: "", status: "", page: "1" });
+              }}
+              className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors data-[active=true]:border-primary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
+            >
+              All
+            </button>
 
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                data-active={isActive}
-                aria-pressed={isActive}
-                onClick={() => handleQuickFilter(filter.value)}
-                className={`inline-flex shrink-0 snap-start items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${toneClass}`}
-              >
-                {icon}
-                {filter.label}
-              </button>
-            );
-          })}
+            {DEADLINE_PILLS.map((pill) => {
+              const isActive = deadline === pill.value;
+              return (
+                <button
+                  key={pill.value}
+                  type="button"
+                  data-active={isActive}
+                  onClick={() => handleDeadline(isActive ? "" : pill.value)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${pill.className}`}
+                >
+                  {pill.icon}
+                  {pill.label}
+                </button>
+              );
+            })}
+
+            {PRIORITY_PILLS.filter((pill) => pill.label.toLowerCase() === "next").map((pill) => {
+              const isActive = priorityFilter === pill.value;
+              return (
+                <button
+                  key={pill.value}
+                  type="button"
+                  data-active={isActive}
+                  onClick={() => handlePriority(isActive ? "" : pill.value)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${pill.className}`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      </div>
+
+      {/* Desktop heading */}
+      <div className="hidden sm:block">
+        <h1 className="text-2xl font-bold">Outfits</h1>
+        <p className="text-xs text-muted-foreground">{total} total</p>
       </div>
 
       {/* ── FILTERS ─────────────────────────────────────────────────────── */}
