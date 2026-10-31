@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,97 +16,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination } from "@/components/pagination";
-import Image from "next/image";
-import { Shirt, Calendar as CalendarIcon, AlertTriangle, Search, X, Clock, SlidersHorizontal, ImageOff } from "lucide-react";
+import { Calendar as CalendarIcon, AlertTriangle, Search, X, Clock, SlidersHorizontal } from "lucide-react";
 import { ImageViewer } from "@/components/image-viewer";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { formatStatus } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getPriorityOption, PRIORITY_OPTIONS } from "@/components/outfit-form-fields";
-import {
-  OutfitTransitionButtons,
-  type OutfitTransition,
-} from "@/components/outfit-transition-buttons";
-import { OutfitStatusBadge, formatStatusShort, ALL_OUTFIT_STATUSES } from "@/components/outfit-status-badge";
+import { formatStatusShort, ALL_OUTFIT_STATUSES } from "@/components/outfit-status-badge";
+import { DesktopOutfitTable } from "./_components/desktop-outfit-table";
+import { MobileOutfitList } from "./_components/mobile-outfit-list";
+import type { OutfitListItem } from "./_components/outfit-list-types";
 
 const LIMIT = 20;
-
-// ─── Per-Outfit Status Updater ───────────────────────────────────────────────
-
-function OutfitStatusUpdater({
-  outfitId,
-  onSuccess,
-  listQueryKey,
-}: {
-  outfitId: string;
-  onSuccess?: () => void;
-  listQueryKey?: unknown[];
-}) {
-  const queryClient = useQueryClient();
-
-  const { data: transitions } = useQuery({
-    queryKey: ["outfit-transitions", outfitId],
-    queryFn: async () => {
-      const res = await fetch(`/api/outfits/${outfitId}/transition`);
-      if (!res.ok) return { availableTransitions: [] };
-      return res.json();
-    },
-  });
-
-  const transitionMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
-      const res = await fetch(`/api/outfits/${outfitId}/transition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newStatus }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Transition failed");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      // Invalidate per-outfit transitions so the button updates immediately
-      queryClient.invalidateQueries({ queryKey: ["outfit-transitions", outfitId] });
-      // Also refresh the list if a query key was provided
-      if (listQueryKey) {
-        queryClient.invalidateQueries({ queryKey: listQueryKey });
-      }
-      // Notify parent (e.g. to refresh its own state)
-      onSuccess?.();
-      toast({ title: "Status updated" });
-    },
-    onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Failed", description: error.message });
-    },
-  });
-
-  const available: OutfitTransition[] = transitions?.availableTransitions ?? [];
-
-  return (
-    <OutfitTransitionButtons
-      transitions={available}
-      onTransition={(status) => {
-        transitionMutation.mutate(status);
-      }}
-      pendingStatus={
-        transitionMutation.isPending
-          ? (transitionMutation.variables ?? null)
-          : null
-      }
-      responsive={true}
-      emptyPlaceholder={<span className="text-[11px] text-muted-foreground">—</span>}
-    />
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 
 export default function OutfitsPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { isMaster } = usePermissions();
 
@@ -128,12 +50,12 @@ export default function OutfitsPage() {
   // Sync filters → URL (replace so back button still works correctly)
   const syncToUrl = useCallback((overrides: Record<string, string | undefined> = {}) => {
     const next: Record<string, string> = {
-      status:     overrides.status     !== undefined ? overrides.status     : status,
-      search:     overrides.search     !== undefined ? overrides.search     : search,
-      deadline:   overrides.deadline   !== undefined ? overrides.deadline   : deadline,
-      priority:   overrides.priority   !== undefined ? overrides.priority   : priorityFilter,
+      status: overrides.status !== undefined ? overrides.status : status,
+      search: overrides.search !== undefined ? overrides.search : search,
+      deadline: overrides.deadline !== undefined ? overrides.deadline : deadline,
+      priority: overrides.priority !== undefined ? overrides.priority : priorityFilter,
       customDate: overrides.customDate !== undefined ? overrides.customDate : (customDate?.toISOString() ?? ""),
-      page:       overrides.page       !== undefined ? overrides.page       : String(page),
+      page: overrides.page !== undefined ? overrides.page : String(page),
     };
     const params = new URLSearchParams();
     // Store status lowercase in URL
@@ -181,7 +103,7 @@ export default function OutfitsPage() {
     },
   });
 
-  const outfits = data?.outfits || [];
+  const outfits: OutfitListItem[] = data?.outfits || [];
   const total = data?.total || 0;
   const hasFilters = status || search || deadline || customDate || priorityFilter;
 
@@ -212,10 +134,10 @@ export default function OutfitsPage() {
   }
 
   const DEADLINE_PILLS = [
-    { value: "overdue",  label: "Overdue",   icon: <AlertTriangle className="h-3 w-3" />, className: "text-red-600 border-red-300 bg-red-50 hover:bg-red-100 data-[active=true]:bg-red-600 data-[active=true]:text-white data-[active=true]:border-red-600" },
-    { value: "today",    label: "Today",     icon: <Clock className="h-3 w-3" />,         className: "text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500" },
-    { value: "tomorrow", label: "Tomorrow",  icon: <CalendarIcon className="h-3 w-3" />,  className: "text-blue-600 border-blue-300 bg-blue-50 hover:bg-blue-100 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600" },
-    { value: "week",     label: "This Week", icon: <CalendarIcon className="h-3 w-3" />,  className: "text-violet-600 border-violet-300 bg-violet-50 hover:bg-violet-100 data-[active=true]:bg-violet-600 data-[active=true]:text-white data-[active=true]:border-violet-600" },
+    { value: "overdue", label: "Overdue", icon: <AlertTriangle className="h-3 w-3" />, className: "text-red-600 border-red-300 bg-red-50 hover:bg-red-100 data-[active=true]:bg-red-600 data-[active=true]:text-white data-[active=true]:border-red-600" },
+    { value: "today", label: "Today", icon: <Clock className="h-3 w-3" />, className: "text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500" },
+    { value: "tomorrow", label: "Tomorrow", icon: <CalendarIcon className="h-3 w-3" />, className: "text-blue-600 border-blue-300 bg-blue-50 hover:bg-blue-100 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600" },
+    { value: "week", label: "This Week", icon: <CalendarIcon className="h-3 w-3" />, className: "text-violet-600 border-violet-300 bg-violet-50 hover:bg-violet-100 data-[active=true]:bg-violet-600 data-[active=true]:text-white data-[active=true]:border-violet-600" },
   ];
 
   // Priority filter pills — only "Next" and "Today" are meaningful to filter by
@@ -249,9 +171,8 @@ export default function OutfitsPage() {
               aria-label="Toggle advanced filters"
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen((open) => !open)}
-              className={`relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted ${
-                filtersOpen ? "bg-muted text-foreground" : "text-muted-foreground"
-              }`}
+              className={`relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted ${filtersOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+                }`}
             >
               <SlidersHorizontal className="h-4 w-4" />
               {(deadline || customDate || status || priorityFilter) && (
@@ -297,31 +218,21 @@ export default function OutfitsPage() {
               return (
                 <button
                   key={pill.value}
-                  type="button"
                   data-active={isActive}
                   onClick={() => handleDeadline(isActive ? "" : pill.value)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${pill.className}`}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
                 >
                   {pill.icon}
                   {pill.label}
+                  {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
                 </button>
               );
             })}
-
-            {PRIORITY_PILLS.filter((pill) => pill.label.toLowerCase() === "next").map((pill) => {
-              const isActive = priorityFilter === pill.value;
-              return (
-                <button
-                  key={pill.value}
-                  type="button"
-                  data-active={isActive}
-                  onClick={() => handlePriority(isActive ? "" : pill.value)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${pill.className}`}
-                >
-                  {pill.label}
-                </button>
-              );
-            })}
+            {hasFilters && (
+              <button onClick={clearAll} className="text-xs text-muted-foreground underline underline-offset-2">
+                Clear all filters
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -356,47 +267,12 @@ export default function OutfitsPage() {
             </Select>
           </div>
 
-          {/* Priority pills */}
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Priority</p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRIORITY_PILLS.map((pill) => {
-                const isActive = priorityFilter === pill.value;
-                return (
-                  <button
-                    key={pill.value}
-                    data-active={isActive}
-                    onClick={() => handlePriority(isActive ? "" : pill.value)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
-                  >
-                    {pill.label}
-                    {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+
 
           {/* Deadline pills */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Deadline</p>            <div className="flex flex-wrap gap-1.5">
-              {DEADLINE_PILLS.map((pill) => {
-                const isActive = deadline === pill.value;
-                return (
-                  <button
-                    key={pill.value}
-                    data-active={isActive}
-                    onClick={() => handleDeadline(isActive ? "" : pill.value)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${pill.className}`}
-                  >
-                    {pill.icon}
-                    {pill.label}
-                    {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
-                  </button>
-                );
-              })}
 
-              {/* Date picker */}
               <Popover>
                 <PopoverTrigger asChild>
                   <button
@@ -419,12 +295,7 @@ export default function OutfitsPage() {
             </div>
           </div>
 
-          {/* Clear all */}
-          {hasFilters && (
-            <button onClick={clearAll} className="text-xs text-muted-foreground underline underline-offset-2">
-              Clear all filters
-            </button>
-          )}
+
         </div>
       )}
 
@@ -532,218 +403,25 @@ export default function OutfitsPage() {
         </Card>
       ) : (
         <>
-          {/* Desktop Table */}
-          <div className="hidden md:block rounded-lg border overflow-x-auto">
-            <table className="w-full text-xs min-w-[800px]">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium">Outfit</th>
-                  <th className="text-left px-4 py-3 font-medium">Customer</th>
-                  {/* <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Order</th> */}
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Material</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Designer</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Master</th>
-                  <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Delivery</th>
-                  {!isMaster && <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Move to</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {outfits.map((outfit: any) => {
-                  const isBlocked = outfit.status === "WAITING_FOR_DEPENDENCIES";
-                  const isUrgent =
-                    outfit.deliveryDate &&
-                    new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-
-                  return (
-                    <tr
-                      key={outfit.id}
-                      className="hover:bg-muted/30 cursor-pointer"
-                      onClick={() => router.push(`/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`)}
-                    >
-                      <td className="px-4 py-3 max-w-[180px]">
-                        <p className="font-medium truncate">{outfit.name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-[10px] text-muted-foreground">
-                            {outfit.type}{outfit.maggamRequired && " · M"}
-                          </p>
-                          {outfit.priority > 0 && (() => {
-                            const opt = getPriorityOption(outfit.priority);
-                            return (
-                              <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 ${opt.className}`}>
-                                {opt.label}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[130px] truncate">
-                        {outfit.customerName || "—"}
-                      </td>
-                      {/* <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {outfit.orderNumber || "—"}
-                      </td> */}
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          <OutfitStatusBadge status={outfit.status} className="text-[10px]" />
-                          {isBlocked && (
-                            <Badge variant="destructive" className="text-[10px] whitespace-nowrap">BLOCKED</Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td
-                        className="px-4 py-3"
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                      >
-                        {outfit.customerMaterialImageUrl ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); openViewer(outfit.customerMaterialImages, 0); }}
-                            className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            <Image
-                              src={outfit.customerMaterialImageUrl}
-                              alt="Customer material"
-                              fill
-                              sizes="40px"
-                              className="object-cover"
-                            />
-                            {outfit.customerMaterialImages?.length > 1 && (
-                              <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
-                                {outfit.customerMaterialImages.length}
-                              </span>
-                            )}
-                          </button>
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
-                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-[100px] truncate">
-                        {outfit.designerName || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-[100px] truncate">
-                        {outfit.masterName || "—"}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={isUrgent ? "text-red-600 font-medium text-xs" : "text-muted-foreground text-xs"}>
-                          {formatDate(outfit.deliveryDate)}
-                          {isUrgent && <AlertTriangle className="inline h-3 w-3 ml-1" />}
-                        </span>
-                      </td>
-                      {!isMaster && (
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <OutfitStatusUpdater
-                            outfitId={outfit.id}
-                            listQueryKey={queryKey}
-                          />
-                        </td>
-                      )}
-                    </tr>                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden flex flex-col gap-3">
-            {outfits.map((outfit: any) => {
-              const isBlocked = outfit.status === "WAITING_FOR_DEPENDENCIES";
-              const isUrgent =
-                outfit.deliveryDate &&
-                new Date(outfit.deliveryDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-
-              return (
-                <div key={outfit.id} className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md">
-                  {/* Top row: name + status badge */}
-                  <Link href={`/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`} className="block">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <Shirt className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <p className="font-semibold text-sm truncate">{outfit.name}</p>
-                          {outfit.priority > 0 && (() => {
-                            const opt = getPriorityOption(outfit.priority);
-                            return (
-                              <span className={`shrink-0 inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 ${opt.className}`}>
-                                {opt.label}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-5 truncate">
-                          {outfit.customerName && `${outfit.customerName} · `}
-                          {outfit.type}
-                          {outfit.maggamRequired && " · Maggam"}
-                        </p>
-                        {outfit.orderNumber && (
-                          <p className="text-[10px] text-muted-foreground ml-5">{outfit.orderNumber}</p>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <OutfitStatusBadge status={outfit.status} className="text-[10px] max-w-[120px] truncate" />
-                        {isBlocked && (
-                          <Badge variant="destructive" className="text-[10px]">BLOCKED</Badge>
-                        )}
-                        {outfit.customerMaterialImageUrl ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(outfit.customerMaterialImages, 0); }}
-                            className="relative mt-1 block h-10 w-10 overflow-hidden rounded border border-border bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            <Image
-                              src={outfit.customerMaterialImageUrl}
-                              alt="Customer material"
-                              fill
-                              sizes="40px"
-                              className="object-cover"
-                            />
-                            {outfit.customerMaterialImages?.length > 1 && (
-                              <span className="absolute bottom-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-tl bg-black/70 px-0.5 text-[9px] font-bold text-white leading-none">
-                                {outfit.customerMaterialImages.length}
-                              </span>
-                            )}
-                          </button>
-                        ) : (
-                          <div className="mt-1 flex h-10 w-10 items-center justify-center rounded border border-dashed border-border bg-muted/40">
-                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground/50" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Delivery + master */}
-                    <div className="flex items-center gap-x-3 ml-5 mb-2">
-                      {outfit.deliveryDate && (
-                        <span className={`text-[11px] flex items-center gap-0.5 whitespace-nowrap ${isUrgent ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                          <CalendarIcon className="h-3 w-3 shrink-0" />
-                          {formatDate(outfit.deliveryDate)}
-                          {isUrgent && <AlertTriangle className="h-3 w-3 ml-0.5" />}
-                        </span>
-                      )}
-                      {outfit.masterName && (
-                        <p className="text-[11px] text-muted-foreground ml-auto truncate max-w-[100px]">
-                          M: {outfit.masterName}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-
-                  {/* Move to row — outside Link to prevent navigation; hidden for MASTER */}
-                  {!isMaster && (
-                    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 mt-1">
-                      <span className="text-[11px] font-medium text-muted-foreground shrink-0">Move to</span>
-                      <OutfitStatusUpdater
-                        outfitId={outfit.id}
-                        listQueryKey={queryKey}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {/* Responsive outfit lists */}
+          <DesktopOutfitTable
+            outfits={outfits}
+            isMaster={isMaster}
+            listQueryKey={queryKey}
+            onSelectOutfit={(outfit) =>
+              router.push(`/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`)
+            }
+            onOpenMaterial={(images) => openViewer(images, 0)}
+          />
+          <MobileOutfitList
+            outfits={outfits}
+            isMaster={isMaster}
+            listQueryKey={queryKey}
+            getOutfitHref={(outfit) =>
+              `/dashboard/outfits/${outfit.id}?from=outfits&returnTo=${encodeURIComponent(buildReturnUrl())}`
+            }
+            onOpenMaterial={(images) => openViewer(images, 0)}
+          />
 
           <Pagination page={page} total={total} limit={LIMIT} onPageChange={handlePage} />
         </>
