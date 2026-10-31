@@ -42,6 +42,7 @@ export function SummaryStats({
                             className={cn(
                                 "min-w-0 space-y-1.5 px-3 py-2",
                                 index % 2 === 1 && "border-l",
+                                index >= 2 && "border-t lg:border-t-0",
                                 index > 0 && "lg:border-l"
                             )}
                         >
