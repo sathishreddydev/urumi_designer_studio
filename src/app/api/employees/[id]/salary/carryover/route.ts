@@ -92,11 +92,10 @@ export const POST = withPermission(
         let workingDays = 0;
         let effectiveDays = 0;
         for (let date = new Date(start); date <= end; date = addDays(date, 1)) {
-          if (date.getUTCDay() === 0) continue;
-          workingDays++;
           const attendance = sourceAttendance.find((record) => record.date === ymd(date));
           if (attendance?.status === "PRESENT") effectiveDays++;
           if (attendance?.status === "HALF_DAY") effectiveDays += 0.5;
+          if (date.getUTCDay() !== 0) workingDays++;
         }
 
         const divisor = employee.payCycle === "WEEKLY" ? 6 : workingDays;
