@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employeeAttendance, employeeEmploymentPeriods } from "@/lib/db/schema";
+import { employeeAttendance, employeeEmploymentPeriods, employeeSalaryPayments } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { isEmployedOnDate } from "@/lib/employee-employment";
 import { z } from "zod";
@@ -52,6 +52,17 @@ export const POST = withPermission(
     if (!isEmployedOnDate(periods, parsed.data.date)) {
       return NextResponse.json(
         { error: "Attendance cannot be recorded outside the employee's employment dates." },
+        { status: 400 }
+      );
+    }
+
+    const salaryPayments = await db
+      .select({ periodStart: employeeSalaryPayments.periodStart, periodEnd: employeeSalaryPayments.periodEnd })
+      .from(employeeSalaryPayments)
+      .where(eq(employeeSalaryPayments.employeeId, id));
+    if (salaryPayments.some((payment) => parsed.data.date >= payment.periodStart && parsed.data.date <= payment.periodEnd)) {
+      return NextResponse.json(
+        { error: "Attendance is locked because salary for this period has been paid." },
         { status: 400 }
       );
     }
