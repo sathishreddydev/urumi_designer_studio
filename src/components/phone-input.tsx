@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { 
-  parsePhoneNumber, 
-  getCountries, 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  parsePhoneNumber,
+  getCountries,
   getCountryCallingCode,
   getExampleNumber,
   AsYouType
@@ -35,21 +35,27 @@ interface PhoneInputProps {
 }
 
 // Popular countries to show first
-const POPULAR_COUNTRIES = ["IN", "US", "GB", "AU", "AE", "CA", "SG"];
 
 export function PhoneInput({
   value = "",
   onChange,
   placeholder = "Enter phone number",
-  disabled = false,
   defaultCountry = "IN",
-  className,
 }: PhoneInputProps) {
   const [selectedCountry, setSelectedCountry] = useState(defaultCountry);
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Parse E.164 and local-format values when the form loads or changes externally.
+  // Track if we are making an internal update to prevent useEffect loop
+  const isInternalUpdate = useRef(false);
+
+  // Parse E.164 and local-format values only for external changes
   useEffect(() => {
+    // Skip if this is our own update
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
+    }
+
     if (value) {
       try {
         const parsed = parsePhoneNumber(value, defaultCountry as any);
@@ -74,13 +80,13 @@ export function PhoneInput({
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value.replace(/[^\d]/g, ""); // Only allow digits
-    
+
     // Get the maximum length for the selected country from library
     const maxLength = getMaxLengthForCountry(selectedCountry);
-    
+
     // Restrict to max length if we can determine it
     const restrictedInput = maxLength ? input.slice(0, maxLength) : input;
-    
+
     setPhoneNumber(restrictedInput);
     updatePhoneValue(selectedCountry, restrictedInput);
   };
@@ -89,13 +95,13 @@ export function PhoneInput({
     try {
       // Get example mobile number for the country from the library
       const exampleNumber = getExampleNumber(country as any, examples);
-      
+
       if (exampleNumber) {
         // Get the national number length
         const nationalNumber = exampleNumber.nationalNumber;
         return nationalNumber.length;
       }
-      
+
       return null;
     } catch {
       // If we can't get example, return null (no restriction)
@@ -107,12 +113,12 @@ export function PhoneInput({
     try {
       // Get example mobile number for the country from the library
       const exampleNumber = getExampleNumber(country as any, examples);
-      
+
       if (exampleNumber) {
         // Return the national number as placeholder
         return exampleNumber.nationalNumber;
       }
-      
+
       return placeholder;
     } catch {
       return placeholder;
@@ -126,6 +132,8 @@ export function PhoneInput({
     }
 
     try {
+      // Mark this as an internal update before calling onChange
+      isInternalUpdate.current = true;
       const callingCode = getCountryCallingCode(country as any);
       const fullNumber = `+${callingCode}${number}`;
       onChange(fullNumber);
@@ -176,8 +184,7 @@ export function PhoneInput({
             ))}
             {popularCountries.length > 0 && otherCountries.length > 0 && (
               <div className="border-t my-1" />
-            )}
-            {/* Other Countries */}
+            )}{/* Other Countries */}
             {otherCountries.map((country) => (
               <SelectItem key={country} value={country}>
                 {country} {getCountryCode(country)} - {getCountryName(country)}
