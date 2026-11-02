@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   parsePhoneNumber,
   getCountries,
   getCountryCallingCode,
   getExampleNumber,
-  AsYouType
 } from "libphonenumber-js";
 import examples from "libphonenumber-js/mobile/examples";
 import countries from "i18n-iso-countries";
@@ -20,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
 
 // Register the locale for country names
 countries.registerLocale(enLocale);
@@ -41,105 +39,96 @@ export function PhoneInput({
   value = "",
   onChange,
   placeholder = "Enter phone number",
+  disabled = false,
   defaultCountry = "IN",
+  className,
 }: PhoneInputProps) {
-  const [selectedCountry, setSelectedCountry] = useState(defaultCountry);
-  const [phoneNumber, setPhoneNumber] = useState("");
+  // Parse initial value once
+  const parseInitialValue = (val: string) => {
+    if (!val) return { country: defaultCountry, number: "" };
+    
+    try {
+      const parsed = parsePhoneNumber(val, defaultCountry as any);
+      if (parsed && parsed.country) {
+        return { country: parsed.country, number: parsed.nationalNumber };
+      }
+      // If not parseable as E.164, treat as raw digits
+      return { country: defaultCountry, number: val.replace(/[^\d]/g, "") };
+    } catch {
+      return { country: defaultCountry, number: val.replace(/[^\d]/g, "") };
+    }
+  };
 
-  // Track if we are making an internal update to prevent useEffect loop
-  const isInternalUpdate = useRef(false);
+  const initial = parseInitialValue(value);
+  const [selectedCountry, setSelectedCountry] = useState(initial.country);
+  const [phoneNumber, setPhoneNumber] = useState(initial.number);
 
-  // Parse E.164 and local-format values only for external changes
+  // Only sync when value is cleared externally or changed to a completely different number
   useEffect(() => {
-    // Skip if this is our own update
-    if (isInternalUpdate.current) {
-      isInternalUpdate.current = false;
+    // If external value is empty, clear our state
+    if (!value) {
+      setPhoneNumber("");
       return;
     }
 
-    if (value) {
-      try {
-        const parsed = parsePhoneNumber(value, defaultCountry as any);
-        if (parsed) {
-          if (parsed.country) setSelectedCountry(parsed.country);
-          setPhoneNumber(parsed.nationalNumber);
-        } else {
-          setPhoneNumber(value.replace(/[^\d]/g, ""));
-        }
-      } catch {
-        setPhoneNumber(value.replace(/[^\d]/g, ""));
-      }
-    } else if (!value) {
-      setPhoneNumber("");
+    // If the current value we're holding would produce the external value, don't re-parse
+    // (this prevents the loop when we call onChange ourselves)
+    const currentE164 = phoneNumber 
+      ? `+${getCountryCallingCode(selectedCountry as any)}${phoneNumber}`
+      : "";
+    
+    if (currentE164 === value) {
+      // This is our own value, don't re-parse
+      return;
     }
-  }, [value, defaultCountry]);
+
+    // External change detected (e.g., form reset or programmatic update)
+    const parsed = parseInitialValue(value);
+    setSelectedCountry(parsed.country);
+    setPhoneNumber(parsed.number);
+  }, [value]);
 
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
-    updatePhoneValue(country, phoneNumber);
+    if (phoneNumber) {
+      const callingCode = getCountryCallingCode(country as any);
+      onChange(`+${callingCode}${phoneNumber}`);
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value.replace(/[^\d]/g, ""); // Only allow digits
 
-    // Get the maximum length for the selected country from library
+    // Get the maximum length for the selected country
     const maxLength = getMaxLengthForCountry(selectedCountry);
-
-    // Restrict to max length if we can determine it
     const restrictedInput = maxLength ? input.slice(0, maxLength) : input;
 
     setPhoneNumber(restrictedInput);
-    updatePhoneValue(selectedCountry, restrictedInput);
+
+    // Send E.164 format to parent
+    if (restrictedInput) {
+      const callingCode = getCountryCallingCode(selectedCountry as any);
+      onChange(`+${callingCode}${restrictedInput}`);
+    } else {
+      onChange("");
+    }
   };
 
   const getMaxLengthForCountry = (country: string): number | null => {
     try {
-      // Get example mobile number for the country from the library
       const exampleNumber = getExampleNumber(country as any, examples);
-
-      if (exampleNumber) {
-        // Get the national number length
-        const nationalNumber = exampleNumber.nationalNumber;
-        return nationalNumber.length;
-      }
-
-      return null;
+      return exampleNumber ? exampleNumber.nationalNumber.length : null;
     } catch {
-      // If we can't get example, return null (no restriction)
       return null;
     }
   };
 
   const getPlaceholderForCountry = (country: string): string => {
     try {
-      // Get example mobile number for the country from the library
       const exampleNumber = getExampleNumber(country as any, examples);
-
-      if (exampleNumber) {
-        // Return the national number as placeholder
-        return exampleNumber.nationalNumber;
-      }
-
-      return placeholder;
+      return exampleNumber ? exampleNumber.nationalNumber : placeholder;
     } catch {
       return placeholder;
-    }
-  };
-
-  const updatePhoneValue = (country: string, number: string) => {
-    if (!number) {
-      onChange("");
-      return;
-    }
-
-    try {
-      // Mark this as an internal update before calling onChange
-      isInternalUpdate.current = true;
-      const callingCode = getCountryCallingCode(country as any);
-      const fullNumber = `+${callingCode}${number}`;
-      onChange(fullNumber);
-    } catch {
-      onChange("");
     }
   };
 
@@ -152,14 +141,15 @@ export function PhoneInput({
   };
 
   const getCountryName = (countryCode: string): string => {
-    // Get country name from i18n-iso-countries library
     const name = countries.getName(countryCode, "en");
     return name || countryCode;
   };
 
   // Get all countries and sort them
   const allCountries = getCountries();
-  const popularCountries = POPULAR_COUNTRIES.filter((c) => allCountries.includes(c as any));
+  const popularCountries = POPULAR_COUNTRIES.filter((c) =>
+    allCountries.includes(c as any)
+  );
   const otherCountries = allCountries
     .filter((c) => !POPULAR_COUNTRIES.includes(c))
     .sort((a, b) => getCountryName(a).localeCompare(getCountryName(b)));
@@ -168,7 +158,11 @@ export function PhoneInput({
     <div className={cn("relative flex items-center", className)}>
       {/* Country Selector - Positioned as prefix inside input */}
       <div className="absolute left-0 inset-y-0 flex items-center">
-        <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={disabled}>
+        <Select
+          value={selectedCountry}
+          onValueChange={handleCountryChange}
+          disabled={disabled}
+        >
           <SelectTrigger className="h-full border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0 pl-3 pr-1 gap-1">
             <SelectValue>
               <span className="flex items-center gap-1 text-sm">
@@ -185,7 +179,8 @@ export function PhoneInput({
             ))}
             {popularCountries.length > 0 && otherCountries.length > 0 && (
               <div className="border-t my-1" />
-            )}{/* Other Countries */}
+            )}
+            {/* Other Countries */}
             {otherCountries.map((country) => (
               <SelectItem key={country} value={country}>
                 {country} {getCountryCode(country)} - {getCountryName(country)}
