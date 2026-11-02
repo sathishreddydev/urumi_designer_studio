@@ -35,6 +35,7 @@ interface PhoneInputProps {
 }
 
 // Popular countries to show first
+const POPULAR_COUNTRIES = ["IN", "US", "GB", "AU", "AE", "CA", "SG"];
 
 export function PhoneInput({
   value = "",
