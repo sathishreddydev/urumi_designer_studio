@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { storeExpenditures } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -19,6 +19,7 @@ const updateSchema = z.object({
 export const PATCH = withPermission(
   { resource: "expenditure", action: "update" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
@@ -50,6 +51,7 @@ export const PATCH = withPermission(
 export const DELETE = withPermission(
   { resource: "expenditure", action: "delete" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     await db.delete(storeExpenditures).where(eq(storeExpenditures.id, id));
     return NextResponse.json({ success: true });

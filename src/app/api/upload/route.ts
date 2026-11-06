@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { sanitizeFilename } from "@/lib/utils";
+import { isCloudinaryConfigured, uploadImageToCloudinary } from "@/lib/cloudinary/upload";
 
 export async function POST(request: Request) {
   try {
@@ -40,8 +41,8 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(bytes);
 
     // Use Cloudinary if configured, otherwise local storage
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      const url = await uploadToCloudinary(buffer, file.name);
+    if (await isCloudinaryConfigured()) {
+      const url = await uploadImageToCloudinary(buffer, file.name);
       return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
     }
 
@@ -60,40 +61,4 @@ export async function POST(request: Request) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-}
-
-async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
-  const apiKey = process.env.CLOUDINARY_API_KEY!;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET!;
-
-  const timestamp = Math.round(Date.now() / 1000);
-  const folder = "urumi-by-mounika";
-
-  // Generate signature
-  const crypto = await import("crypto");
-  const signatureStr = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
-  const signature = crypto.createHash("sha1").update(signatureStr).digest("hex");
-
-  // Upload via Cloudinary REST API (no SDK needed)
-  const formData = new FormData();
-  formData.append("file", new Blob([new Uint8Array(buffer)]), originalName);
-  formData.append("api_key", apiKey);
-  formData.append("timestamp", String(timestamp));
-  formData.append("signature", signature);
-  formData.append("folder", folder);
-
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("Cloudinary error:", err);
-    throw new Error("Cloudinary upload failed");
-  }
-
-  const data = await res.json();
-  return data.secure_url;
 }

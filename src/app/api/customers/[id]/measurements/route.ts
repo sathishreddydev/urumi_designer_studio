@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { customerMeasurements } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -10,6 +10,7 @@ import { eventBus } from "@/lib/events";
 export const GET = withPermission(
   { resource: "measurement", action: "read" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     const allMeasurements = await db
@@ -26,6 +27,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "measurement", action: "create" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = measurementSchema.safeParse(body);

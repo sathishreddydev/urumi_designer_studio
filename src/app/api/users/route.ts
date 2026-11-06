@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { desc } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { users } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { userSchema } from "@/lib/validations";
@@ -10,6 +10,7 @@ import { normalizePhoneNumber } from "@/lib/phone-utils";
 export const GET = withPermission(
   { resource: "user", action: "read" },
   async () => {
+    const db = await getStudioDb();
     const allUsers = await db
       .select({
         id: users.id,
@@ -30,6 +31,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "user", action: "create" },
   async (request) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = userSchema.safeParse(body);
 

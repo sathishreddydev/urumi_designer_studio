@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employeeAttendance, employeeEmploymentPeriods, employeeSalaryPayments } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { isEmployedOnDate } from "@/lib/employee-employment";
@@ -17,6 +17,7 @@ const attendanceSchema = z.object({
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month"); // "YYYY-MM"
@@ -38,6 +39,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "employee", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = attendanceSchema.safeParse(body);

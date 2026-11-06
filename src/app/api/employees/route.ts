@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ilike, or, desc, count, eq, and } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employeeEmploymentPeriods, employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -23,6 +23,7 @@ const employeeSchema = z.object({
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async (request) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const page = parseInt(searchParams.get("page") || "1");
@@ -63,6 +64,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "employee", action: "create" },
   async (request) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = employeeSchema.safeParse(body);
     if (!parsed.success) {

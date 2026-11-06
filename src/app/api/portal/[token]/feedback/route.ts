@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { customers, referenceImages, outfits, orders } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 
 const CUSTOMER_REVIEW_STATUSES = [
   "DRAFT",
@@ -26,6 +26,9 @@ export async function POST(
   }
 
   const { token } = await params;
+
+  // Get the correct database for this studio
+  const db = await getStudioDb();
 
   // Verify the token belongs to a real customer
   const [customer] = await db

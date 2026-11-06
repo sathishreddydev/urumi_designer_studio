@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages } from "@/lib/db/schema";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { sanitizeFilename } from "@/lib/utils";
 import { uploadLimiter, getClientIp } from "@/lib/rate-limit";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
+import { isCloudinaryConfigured, uploadImageToCloudinary } from "@/lib/cloudinary/upload";
 
 const CUSTOMER_UPLOAD_STATUSES = [
   "DRAFT",
@@ -31,6 +32,9 @@ export async function POST(
     }
 
     const { token } = await params;
+
+    // Get the correct database for this studio
+    const db = await getStudioDb();
 
     // Validate portal token
     const [customer] = await db
@@ -105,8 +109,8 @@ export async function POST(
     const filename = sanitizeFilename(file.name);
 
     // Use Cloudinary if configured
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      url = await uploadToCloudinary(buffer, filename);
+    if (await isCloudinaryConfigured()) {
+      url = await uploadImageToCloudinary(buffer, filename, "customer-uploads");
     } else {
       // Local fallback
       const ext = path.extname(file.name) || ".jpg";
@@ -152,6 +156,9 @@ export async function DELETE(
 ) {
   try {
     const { token } = await params;
+
+    // Get the correct database for this studio
+    const db = await getStudioDb();
 
     // Validate portal token
     const [customer] = await db
@@ -239,33 +246,4 @@ export async function DELETE(
     console.error("Portal delete error:", error);
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
-}
-
-async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
-  const apiKey = process.env.CLOUDINARY_API_KEY!;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET!;
-
-  const timestamp = Math.round(Date.now() / 1000);
-  const folder = "urumi-by-mounika/customer-uploads";
-
-  const crypto = await import("crypto");
-  const signatureStr = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
-  const signature = crypto.createHash("sha1").update(signatureStr).digest("hex");
-
-  const formData = new FormData();
-  formData.append("file", new Blob([new Uint8Array(buffer)]), originalName);
-  formData.append("api_key", apiKey);
-  formData.append("timestamp", String(timestamp));
-  formData.append("signature", signature);
-  formData.append("folder", folder);
-
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) throw new Error("Cloudinary upload failed");
-  const data = await res.json();
-  return data.secure_url;
 }

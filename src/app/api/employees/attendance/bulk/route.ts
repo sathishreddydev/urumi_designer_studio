@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employeeAttendance, employeeEmploymentPeriods, employeeSalaryPayments } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -19,6 +19,7 @@ const bulkSchema = z.object({
 export const POST = withPermission(
   { resource: "employee", action: "update" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = bulkSchema.safeParse(body);
     if (!parsed.success) {

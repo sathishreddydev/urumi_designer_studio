@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { payments, orders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -7,6 +7,7 @@ import { withPermission } from "@/lib/api-guard";
 export const DELETE = withPermission(
   { resource: "payment", action: "delete" },
   async (_request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     // Only ADMIN and STORE_MANAGER can delete payments

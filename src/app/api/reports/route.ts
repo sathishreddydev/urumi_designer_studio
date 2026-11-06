@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { eq, count, sql, gte, lte, and } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, orders, customers, payments, employeeSalaryPayments, storeExpenditures } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 
 export const GET = withPermission(
   { resource: "customer", action: "read" }, // Admin can view reports
   async (request) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
 
     // Prefer explicit from/to ISO params (calendar picker); fall back to legacy `days`

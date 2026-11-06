@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { payments, orders, outfits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -8,6 +8,7 @@ import { paymentSchema } from "@/lib/validations";
 export const POST = withPermission(
   { resource: "payment", action: "create" },
   async (request) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = paymentSchema.safeParse(body);
 

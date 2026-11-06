@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { consultations, customers, users, orders, outfits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -9,6 +9,7 @@ import { eventBus } from "@/lib/events";
 export const GET = withPermission(
   { resource: "order", action: "read" },
   async (_req, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const [consultation] = await db
       .select()
@@ -33,6 +34,7 @@ export const GET = withPermission(
 export const PATCH = withPermission(
   { resource: "order", action: "update" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -57,6 +59,7 @@ export const PATCH = withPermission(
 export const POST = withPermission(
   { resource: "order", action: "create" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -134,6 +137,7 @@ export const POST = withPermission(
 export const DELETE = withPermission(
   { resource: "order", action: "delete" },
   async (_req, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     await db.update(consultations)
       .set({ status: "cancelled", updatedAt: new Date() })

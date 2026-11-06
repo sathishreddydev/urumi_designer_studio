@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employees, employeeSalaryPayments } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async () => {
+    const db = await getStudioDb();
     // Fetch all active employees
     const allEmployees = await db
       .select()

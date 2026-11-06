@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { desc, count, sum, gte, lte, eq, and } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { storeExpenditures } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -22,6 +22,7 @@ const expenditureSchema = z.object({
 export const GET = withPermission(
   { resource: "expenditure", action: "read" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     const month    = searchParams.get("month");   // "YYYY-MM"  — filter by month
     const from     = searchParams.get("from");    // "YYYY-MM-DD"
@@ -80,6 +81,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "expenditure", action: "create" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = expenditureSchema.safeParse(body);
     if (!parsed.success) {

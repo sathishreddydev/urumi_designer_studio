@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { customers, orders, outfits, payments, customerMeasurements, referenceImages } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -8,6 +8,7 @@ import { customerSchema, customerBaseSchema } from "@/lib/validations";
 export const GET = withPermission(
   { resource: "customer", action: "read" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     const [customer] = await db
@@ -71,6 +72,7 @@ export const GET = withPermission(
 export const PATCH = withPermission(
   { resource: "customer", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = customerBaseSchema.partial().safeParse(body);
@@ -141,6 +143,7 @@ export const PATCH = withPermission(
 export const DELETE = withPermission(
   { resource: "customer", action: "delete" },
   async (_request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     // Check if customer has orders

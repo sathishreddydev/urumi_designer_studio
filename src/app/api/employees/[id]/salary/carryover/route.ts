@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import {
   employeeAttendance,
   employeeSalaryCarryovers,
@@ -33,6 +33,7 @@ function ymd(date: Date): string {
 export const POST = withPermission(
   { resource: "employee", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {

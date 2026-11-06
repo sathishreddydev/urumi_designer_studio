@@ -43,6 +43,9 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Multi-tenant studio colors (set via CSS variables in layout.tsx)
+        "studio-primary": "var(--studio-primary)",
+        "studio-secondary": "var(--studio-secondary)",
       },
       keyframes: {
         "accordion-down": {

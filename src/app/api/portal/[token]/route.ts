@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq, desc, and } from "drizzle-orm";
-import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages, payments, customerMeasurements, invoices } from "@/lib/db/schema";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 
 export async function GET(
   _request: Request,
@@ -20,6 +20,9 @@ export async function GET(
     }
 
     const { token } = await params;
+
+    // Get the correct database for this studio (tenant DB in multi-tenant mode)
+    const db = await getStudioDb();
 
     // Find customer by portal token
     const [customer] = await db

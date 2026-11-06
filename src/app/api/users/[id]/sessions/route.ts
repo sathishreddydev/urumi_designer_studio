@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { sessions } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
 
@@ -16,6 +16,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+    const db = await getStudioDb();
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
@@ -42,6 +43,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+    const db = await getStudioDb();
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 

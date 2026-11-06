@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { users } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { userUpdateSchema } from "@/lib/validations";
@@ -10,6 +10,7 @@ import { normalizePhoneNumber } from "@/lib/phone-utils";
 export const PATCH = withPermission(
   { resource: "user", action: "update" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = userUpdateSchema.safeParse(body);

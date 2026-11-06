@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { referenceImages, orders } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { withPermission, withAuth } from "@/lib/api-guard";
 
 // GET — all authenticated users can read (Master sees only LOCKED)
 export const GET = withAuth(async (_request, { params, session }) => {
+    const db = await getStudioDb();
   const { id } = await params;
 
   let refs = await db
@@ -26,6 +27,7 @@ export const GET = withAuth(async (_request, { params, session }) => {
 export const POST = withPermission(
   { resource: "reference", action: "upload" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -54,6 +56,7 @@ export const POST = withPermission(
 export const PATCH = withPermission(
   { resource: "reference", action: "select" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
 
     if (body.action === "select") {

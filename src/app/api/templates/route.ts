@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { measurementTemplates } from "@/lib/db/schema";
 import { withAuth, withPermission } from "@/lib/api-guard";
 import { eq } from "drizzle-orm";
 
 export const GET = withAuth(async () => {
+  const db = await getStudioDb();
   const templates = await db
     .select()
     .from(measurementTemplates)
@@ -16,6 +17,7 @@ export const GET = withAuth(async () => {
 export const POST = withPermission(
   { resource: "user", action: "create" }, // admin-only
   async (request) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const { name, type, fields } = body;
 

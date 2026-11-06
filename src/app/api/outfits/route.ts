@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, orders, customers, users, customerMeasurements, referenceImages } from "@/lib/db/schema";
 import { eq, count, desc, asc, inArray, ilike, or, and as drizzleAnd, gte, lt, isNotNull } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -9,6 +9,7 @@ import { eventBus } from "@/lib/events";
 export const GET = withPermission(
   { resource: "outfit", action: "read" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get("orderId") || "";
     const status = searchParams.get("status") || "";
@@ -214,6 +215,7 @@ function seedGarmentMeasurements(type: string): Record<string, string> {
 export const POST = withPermission(
   { resource: "outfit", action: "create" },
   async (request) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = outfitSchema.safeParse(body);
 

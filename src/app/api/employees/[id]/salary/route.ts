@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, desc, and, ne, sql, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employeeSalaryCarryovers, employeeSalaryPayments, employeeAdvances } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -24,6 +24,7 @@ const salarySchema = z.object({
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const rows = await db
       .select()
@@ -37,6 +38,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "employee", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = salarySchema.safeParse(body);

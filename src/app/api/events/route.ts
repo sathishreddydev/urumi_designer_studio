@@ -1,6 +1,6 @@
 import { eventBus, type AppEvent } from "@/lib/events";
 import { getSession } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
  * Responds in under 1ms — no open connections, no serverless timeout risk.
  */
 export async function GET(request: Request) {
+    const db = await getStudioDb();
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });

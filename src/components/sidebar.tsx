@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/contexts/studio-context";
 import {
   LayoutDashboard,
   Users,
@@ -88,6 +89,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
   const navItems = roleNavItems[role] || [];
   const [open, setOpen] = useState(false);
+  const studio = useStudio();
 
   return (
     <>
@@ -97,8 +99,14 @@ export function Sidebar({ role, userName }: SidebarProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="ml-2 flex items-center gap-2 min-w-0">
-          <Scissors className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-bold text-sm truncate">urumi by mounika</span>
+          {studio.logoUrl ? (
+            <img src={studio.logoUrl} alt={studio.brandName} className="h-7 w-auto max-w-[120px] object-contain" />
+          ) : (
+            <>
+              <Scissors className="h-4 w-4 text-primary shrink-0" />
+              <span className="font-bold text-sm truncate">{studio.brandName}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -119,8 +127,14 @@ export function Sidebar({ role, userName }: SidebarProps) {
       >
         <div className="flex h-14 items-center justify-between border-b px-4 lg:h-16 lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-            <Scissors className="h-6 w-6 text-primary" />
-            <span className="text-lg font-bold">urumi by mounika</span>
+            {studio.logoUrl ? (
+              <img src={studio.logoUrl} alt={studio.brandName} className="h-8 w-auto max-w-[140px] object-contain" />
+            ) : (
+              <>
+                <Scissors className="h-6 w-6 text-primary" />
+                <span className="text-lg font-bold">{studio.brandName}</span>
+              </>
+            )}
           </Link>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(false)}>
             <X className="h-5 w-5" />

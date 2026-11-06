@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, orders, customers } from "@/lib/db/schema";
 import { eq, and, lt, lte, isNotNull, notInArray } from "drizzle-orm";
 import { withAuth } from "@/lib/api-guard";
 
 export const GET = withAuth(async (_request, { session }) => {
+    const db = await getStudioDb();
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 

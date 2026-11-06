@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, referenceImages, dependencies, productionLogs, orders, customers, users, customerMeasurements } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -7,6 +7,7 @@ import { withPermission } from "@/lib/api-guard";
 export const GET = withPermission(
   { resource: "outfit", action: "read" },
   async (_request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     const [outfit] = await db.select().from(outfits).where(eq(outfits.id, id)).limit(1);
@@ -92,6 +93,7 @@ export const GET = withPermission(
 export const PATCH = withPermission(
   { resource: "outfit", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -209,6 +211,7 @@ export const PATCH = withPermission(
 export const DELETE = withPermission(
   { resource: "outfit", action: "delete" },
   async (_request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     // Get orderId + customerId before deleting for event emission

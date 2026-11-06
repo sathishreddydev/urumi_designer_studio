@@ -1,7 +1,7 @@
 import { eventBus, type AppEvent } from "@/lib/events";
-import { db } from "@/lib/db";
 import { customers, orders, outfits } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,9 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+
+  // Get the correct database for this studio
+  const db = await getStudioDb();
 
   // Verify portal token
   const [customer] = await db

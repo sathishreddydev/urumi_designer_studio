@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, ilike, or, desc, count } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { customers, orders } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { customerSchema } from "@/lib/validations";
@@ -9,6 +9,7 @@ import { generateId, generatePortalToken } from "@/lib/id";
 export const GET = withPermission(
   { resource: "customer", action: "read" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const page = parseInt(searchParams.get("page") || "1");
@@ -61,6 +62,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "customer", action: "create" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const parsed = customerSchema.safeParse(body);
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { consultations, customers, users } from "@/lib/db/schema";
 import { eq, desc, and, ilike, or } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -7,6 +7,7 @@ import { withPermission } from "@/lib/api-guard";
 export const GET = withPermission(
   { resource: "order", action: "read" },
   async (request) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "draft";
     const search = searchParams.get("search") || "";
@@ -61,6 +62,7 @@ export const GET = withPermission(
 export const POST = withPermission(
   { resource: "order", action: "create" },
   async (request, { session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
     const { customerId, notes, outfitIdeas, estimatedAmount, consultationDate, expectedDeliveryDate, expectedTrialDate } = body;
 

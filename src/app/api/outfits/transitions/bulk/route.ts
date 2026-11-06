@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, inArray } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, orders, payments } from "@/lib/db/schema";
 import { withAuth } from "@/lib/api-guard";
 import { getAvailableTransitions, type OutfitStatus } from "@/lib/workflow";
@@ -15,6 +15,7 @@ import type { Role } from "@/lib/permissions";
  * for all visible outfits in a single request instead of per-row calls.
  */
 export const POST = withAuth(async (request, { session }) => {
+    const db = await getStudioDb();
   const body = await request.json();
   const { outfitIds } = body as { outfitIds: string[] };
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { employeeEmploymentPeriods, employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
 import { z } from "zod";
@@ -23,6 +23,7 @@ const updateSchema = z.object({
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const [emp] = await db.select().from(employees).where(eq(employees.id, id)).limit(1);
     if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -38,6 +39,7 @@ export const GET = withPermission(
 export const PATCH = withPermission(
   { resource: "employee", action: "update" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
@@ -105,6 +107,7 @@ export const PATCH = withPermission(
 export const DELETE = withPermission(
   { resource: "employee", action: "delete" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     await db.delete(employees).where(eq(employees.id, id));
     return NextResponse.json({ success: true });

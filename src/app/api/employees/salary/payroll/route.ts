@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import {
   employees,
   employeeAttendance,
@@ -39,6 +39,7 @@ function getWeekDates(weekStart: string): string[] {
 export const GET = withPermission(
   { resource: "employee", action: "read" },
   async (request) => {
+    const db = await getStudioDb();
     const { searchParams } = new URL(request.url);
     // period = "YYYY-MM" for monthly, "YYYY-MM-DD" (monday) for weekly
     const period = searchParams.get("period") ?? new Date().toISOString().slice(0, 7);

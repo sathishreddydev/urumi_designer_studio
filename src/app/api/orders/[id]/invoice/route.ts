@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { orders, customers, outfits, payments, invoices } from "@/lib/db/schema";
 import { generateInvoiceNumber } from "@/lib/utils";
 import { withPermission } from "@/lib/api-guard";
@@ -7,6 +7,7 @@ import { eq, desc } from "drizzle-orm";
 import { withAuth } from "@/lib/api-guard";
 
 export const GET = withAuth(async (_request, { params }) => {
+    const db = await getStudioDb();
   const { id } = await params;
 
   // Get order with customer
@@ -121,6 +122,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withPermission(
   { resource: "order", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);

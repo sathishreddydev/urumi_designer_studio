@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { orders, outfits, payments, customers, referenceImages, dependencies, productionLogs, invoices } from "@/lib/db/schema";
 import { eq, inArray, asc } from "drizzle-orm";
 import { withPermission } from "@/lib/api-guard";
@@ -7,6 +7,7 @@ import { withPermission } from "@/lib/api-guard";
 export const GET = withPermission(
   { resource: "order", action: "read" },
   async (_request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
@@ -55,6 +56,7 @@ export const GET = withPermission(
 export const PATCH = withPermission(
   { resource: "order", action: "update" },
   async (request, { params }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -102,6 +104,7 @@ export const PATCH = withPermission(
 export const DELETE = withPermission(
   { resource: "order", action: "delete" },
   async (_request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
 
     // Fetch order to validate it exists and capture customerId

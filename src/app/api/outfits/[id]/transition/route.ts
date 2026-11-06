@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { outfits, orders, payments } from "@/lib/db/schema";
 import { withAuth } from "@/lib/api-guard";
 import {
@@ -12,6 +12,7 @@ import {
 import type { Role } from "@/lib/permissions";
 
 export const POST = withAuth(async (request, { params, session }) => {
+    const db = await getStudioDb();
   const { id } = await params;
   const { newStatus, notes } = await request.json();
 
@@ -180,6 +181,7 @@ export const POST = withAuth(async (request, { params, session }) => {
 
 // GET — returns available transitions for the current user
 export const GET = withAuth(async (_request, { params, session }) => {
+    const db = await getStudioDb();
   const { id } = await params;
 
   const [outfit] = await db

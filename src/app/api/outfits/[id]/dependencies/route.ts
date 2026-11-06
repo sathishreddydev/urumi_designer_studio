@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { dependencies } from "@/lib/db/schema";
 import { eq, ne, count, and } from "drizzle-orm";
 import { withPermission, withAuth } from "@/lib/api-guard";
 
 // GET — viewable by all authenticated staff
 export const GET = withAuth(async (_request, { params }) => {
+    const db = await getStudioDb();
   const { id } = await params;
 
   const deps = await db
@@ -20,6 +21,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withPermission(
   { resource: "dependency", action: "create" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const { id } = await params;
     const body = await request.json();
 
@@ -50,6 +52,7 @@ export const POST = withPermission(
 export const PATCH = withPermission(
   { resource: "dependency", action: "update" },
   async (request, { params, session }) => {
+    const db = await getStudioDb();
     const body = await request.json();
 
     await db

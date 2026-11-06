@@ -11,9 +11,11 @@ import {
   inProductionCount,
   deliveredCount,
 } from "@/components/portal/portal-utils";
+import { useStudio } from "@/contexts/studio-context";
 
 export default function CustomerPortalPage() {
   const params = useParams();
+  const studio = useStudio();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -158,7 +160,7 @@ export default function CustomerPortalPage() {
           <h3 className="text-lg font-semibold">Access Error</h3>
           <p className="text-sm text-muted-foreground">{error}</p>
           <p className="text-xs text-muted-foreground">
-            Please contact the Urumi by Mounika team to request a fresh portal link.
+            Please contact the {studio.brandName} team to request a fresh portal link.
           </p>
         </div>
       </div>
@@ -198,13 +200,16 @@ export default function CustomerPortalPage() {
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Scissors className="h-5 w-5 text-primary" />
+              {studio.logoUrl ? (
+                <img src={studio.logoUrl} alt={studio.brandName} className="h-6 w-6 object-contain" />
+              ) : (
+                <Scissors className="h-5 w-5 text-primary" />
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-extrabold tracking-tight leading-none text-foreground">
-                URUMI
+                {studio.brandName}
               </p>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">by Mounika</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
