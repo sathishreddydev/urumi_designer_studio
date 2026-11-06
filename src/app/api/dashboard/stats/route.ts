@@ -5,8 +5,9 @@ import { eq, count, ne } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 export async function GET() {
+  try {
     const db = await getStudioDb();
-  const session = await getSession();
+    const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -119,4 +120,8 @@ export async function GET() {
   }
 
   return NextResponse.json({ role: session.role, name: session.name });
+  } catch (error) {
+    console.error("Dashboard stats error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

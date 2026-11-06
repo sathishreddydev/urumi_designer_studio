@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * Responds in under 1ms — no open connections, no serverless timeout risk.
  */
 export async function GET(request: Request) {
-    const db = await getStudioDb();
+  const db = await getStudioDb();
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });

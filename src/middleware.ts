@@ -148,6 +148,9 @@ export async function middleware(request: NextRequest) {
           cloudinaryCloudName: studio.cloudinaryCloudName,
           cloudinaryApiKey: studio.cloudinaryApiKey,
           // ⚠️ Never forward cloudinaryApiSecret to client-side headers
+          // Database account type (for fast BYODB detection)
+          databaseAccountType: (studio as any).databaseAccountType ?? "shared",
+          // ⚠️ Never forward databaseUrl (encrypted secret) to client-side headers
         })
       );
 

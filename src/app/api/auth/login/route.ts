@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { getStudioDb } from "@/lib/multi-tenant/studio";
 import { users } from "@/lib/db/schema";
 import { createSession, createToken, type SessionUser } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
@@ -11,7 +10,6 @@ import { resolveStudioFromHeaders } from "@/lib/multi-tenant/domain-resolver";
 import { headers } from "next/headers";
 
 export async function POST(request: Request) {
-    const db = await getStudioDb();
   try {
     // ── Rate limiting ────────────────────────────────────────────────────────
     const ip = getClientIp(request);
@@ -80,11 +78,14 @@ export async function POST(request: Request) {
     }
 
     // ── Query the correct database ───────────────────────────────────────────
-    // Multi-tenant → tenant DB; Single-tenant → default DB
-    const queryDb =
-      databaseName && isMultiTenant
-        ? getTenantDb(databaseName)
-        : db;
+    // Multi-tenant → tenant DB; Single-tenant → default db
+    let queryDb;
+    if (databaseName && isMultiTenant) {
+      queryDb = getTenantDb(databaseName);
+    } else {
+      const { db } = await import("@/lib/db");
+      queryDb = db;
+    }
 
     const [user] = await queryDb
       .select()

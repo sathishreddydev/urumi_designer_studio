@@ -84,17 +84,45 @@ export function getTenantDb(
 /**
  * Resolves the correct tenant database for the current request.
  *
- * This is the main entry point used by `getStudioDb()` in studio.ts.
- * It checks if the studio has their own database (BYODB) or uses shared.
+ * Uses middleware headers to determine if studio has own DB (BYODB) or shared —
+ * avoids an extra master DB query on every request.
  *
- * @param studioId     The studio ID
- * @param databaseName The default database name (from studio record)
+ * Falls back to querying master DB only when headers are not set.
  */
 export async function resolveTenantDb(
   studioId: string,
   databaseName: string
 ): Promise<NodePgDatabase<typeof tenantSchema>> {
-  // Check if studio has their own database connection (BYODB)
+  // Fast path: try to read database account type from middleware headers
+  // The middleware already resolved the studio and put it in x-studio-data
+  try {
+    const { headers } = await import("next/headers");
+    const headersList = await headers();
+    const raw = headersList.get("x-studio-data");
+    if (raw) {
+      const studioData = JSON.parse(raw) as {
+        databaseAccountType?: string;
+        databaseUrl?: string; // not present in headers (secret)
+      };
+
+      if (studioData.databaseAccountType === "own") {
+        // Headers don't carry the encrypted URL — must query master DB
+        // But only do this once per connection (cached)
+        const cacheKey = `own_${studioId}`;
+        if (connectionCache.has(cacheKey)) {
+          return connectionCache.get(cacheKey)!;
+        }
+        // Fall through to query master DB below
+      } else {
+        // Shared mode — fast path, no master DB query needed
+        return getTenantDb(databaseName);
+      }
+    }
+  } catch {
+    // headers() not available (e.g. in scripts) — fall through
+  }
+
+  // Slow path: query master DB to check BYODB
   const [studio] = await masterDb
     .select({
       databaseAccountType: (studios as any).databaseAccountType,
@@ -119,7 +147,7 @@ export async function resolveTenantDb(
     }
   }
 
-  // Shared mode: use DATABASE_BASE_URL + databaseName
+  // Shared mode
   return getTenantDb(databaseName);
 }
 
