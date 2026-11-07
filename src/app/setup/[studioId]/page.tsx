@@ -32,8 +32,24 @@ export default async function SetupPage({
     .from(dnsRecords)
     .where(eq(dnsRecords.studioId, studioId));
 
-  // Build the DNS instructions
-  const proxyHost = process.env.PROXY_HOST || "proxy.yourplatform.com";
+  // Build DNS instructions from the studio's actual domain
+  // e.g. "studio.urumibymounika.com" → subdomain: "studio", rootDomain: "urumibymounika.com"
+  const domainParts = studio.domain.split(".");
+  const subdomain = domainParts.length > 2 ? domainParts[0] : "@";
+  const rootDomain = domainParts.length > 2
+    ? domainParts.slice(1).join(".")
+    : studio.domain;
+
+  // CNAME target — use the actual Vercel deployment URL
+  // This is what customers point their CNAME to
+  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL    // auto-set by Vercel
+    || process.env.NEXT_PUBLIC_APP_URL                            // manually set
+    || process.env.PROXY_HOST                                     // fallback
+    || "cname.vercel-dns.com";
+
+  // Strip https:// if present
+  const cnameTarget = vercelUrl.replace(/^https?:\/\//, "");
+
   const verificationToken =
     records.find((r) => r.recordType === "TXT")?.recordValue || "";
 
@@ -49,7 +65,9 @@ export default async function SetupPage({
         status: studio.status,
       }}
       dns={{
-        proxyHost,
+        proxyHost: cnameTarget,
+        subdomain,
+        rootDomain,
         verificationToken,
       }}
     />

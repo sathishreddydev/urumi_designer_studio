@@ -34,6 +34,8 @@ interface StudioInfo {
 
 interface DnsInfo {
   proxyHost: string;
+  subdomain: string;
+  rootDomain: string;
   verificationToken: string;
 }
 
@@ -67,13 +69,10 @@ export function SetupWizard({
       const data = await res.json();
 
       if (data.verified) {
-        setVerifyResult("✅ DNS verified! Your domain is ready.");
+        setVerifyResult("✅ Domain verified! Your studio is ready.");
         router.refresh();
       } else {
-        setVerifyResult(
-          data.message ||
-            "DNS records not found yet. Please allow 5-10 minutes after adding them."
-        );
+        setVerifyResult(data.message || "DNS not verified yet. Please try again in a few minutes.");
       }
     } catch {
       setVerifyResult("Verification failed. Please try again.");
@@ -144,40 +143,38 @@ export function SetupWizard({
             ) : (
               <>
                 <div className="rounded-lg border p-4 space-y-3">
-                  <div className="text-sm font-medium">DNS Records to Add:</div>
-
-                  {/* CNAME record */}
-                  <div className="grid grid-cols-[80px_1fr_auto] gap-2 items-center text-sm">
-                    <span className="text-muted-foreground">CNAME</span>
-                    <code className="rounded bg-muted px-2 py-1 text-xs">
-                      designer → {dns.proxyHost}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        copyToClipboard(`designer ${dns.proxyHost}`)
-                      }
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                  <div className="text-sm font-medium">Add this DNS record at your domain registrar:</div>
+                  <div className="text-xs text-muted-foreground">
+                    Domain: <span className="font-mono font-medium">{dns.rootDomain}</span>
                   </div>
 
-                  {/* TXT record */}
-                  <div className="grid grid-cols-[80px_1fr_auto] gap-2 items-center text-sm">
-                    <span className="text-muted-foreground">TXT</span>
-                    <code className="rounded bg-muted px-2 py-1 text-xs break-all">
-                      _studio-verify → {dns.verificationToken}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        copyToClipboard(dns.verificationToken)
-                      }
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                  {/* CNAME record */}
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground font-medium">CNAME Record:</div>
+                    <div className="grid grid-cols-[60px_1fr_auto] gap-2 items-center bg-muted rounded p-2">
+                      <span className="text-xs font-mono text-muted-foreground">Name</span>
+                      <code className="text-xs font-mono font-bold">{dns.subdomain}</code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(dns.subdomain)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-[60px_1fr_auto] gap-2 items-center bg-muted rounded p-2">
+                      <span className="text-xs font-mono text-muted-foreground">Value</span>
+                      <code className="text-xs font-mono font-bold break-all">{dns.proxyHost}</code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(dns.proxyHost)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -292,21 +289,18 @@ export function SetupWizard({
         )}
 
         {/* Access Studio */}
-        <div className="pt-4 pb-8">
+        <div className="pt-4 pb-8 space-y-2">
           <Button
             size="lg"
             className="w-full"
-            onClick={() =>
-              router.push(`https://${studio.domain}/login`)
-            }
-            disabled={!studio.dnsVerified}
+            onClick={() => window.open(`https://${studio.domain}/login`, "_blank")}
           >
             Access Your Studio
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
           {!studio.dnsVerified && (
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Complete Step 1 (DNS verification) to access your studio
+            <p className="text-xs text-center text-muted-foreground">
+              ⚠️ DNS not yet verified — verify above first so your domain works
             </p>
           )}
         </div>

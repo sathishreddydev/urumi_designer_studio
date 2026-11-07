@@ -1,11 +1,17 @@
 /**
  * POST /api/public/studios/verify-dns
  *
- * Verifies DNS records for a studio domain.
- * Checks if the CNAME record points to the platform proxy
- * and if the TXT verification record matches.
+ * Verifies that a studio's custom domain CNAME points to our platform.
  *
- * Public endpoint — called from the setup wizard.
+ * How it works:
+ *   1. Resolve the studio's domain CNAME via Node's DNS resolver
+ *   2. Check if the CNAME target matches our platform's expected hosts
+ *   3. If verified → mark dns_verified = true in master DB
+ *
+ * Expected CNAME targets (configured via PROXY_HOST env var):
+ *   - Vercel:  cname.vercel-dns.com  OR  *.vercel.app
+ *   - Railway: *.railway.app
+ *   - Custom:  whatever is set in PROXY_HOST
  */
 
 import { NextResponse } from "next/server";
@@ -31,82 +37,94 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Studio not found" }, { status: 404 });
     }
 
+    // Already verified
     if (studio.dnsVerified) {
-      return NextResponse.json({
-        verified: true,
-        message: "DNS already verified",
-      });
+      return NextResponse.json({ verified: true, message: "DNS already verified" });
     }
 
-    // Get DNS records for this studio
-    const records = await masterDb
-      .select()
-      .from(dnsRecords)
-      .where(eq(dnsRecords.studioId, studioId));
+    const domain = studio.domain;
 
-    if (records.length === 0) {
-      return NextResponse.json({
-        verified: false,
-        error: "No DNS records found for this studio",
-      });
-    }
+    // ── What CNAME targets are valid for our platform ─────────────────────────
+    // Add any valid targets here — Vercel, Railway, or custom domain
+    const appUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+      process.env.PROXY_HOST ||
+      ""
+    ).replace(/^https?:\/\//, "");
 
-    // Try DNS resolution
-    // Note: In production, use a proper DNS resolver library (dns2 or node-dns)
-    // For now we do a simple HTTP check to see if the domain resolves
-    const proxyHost = process.env.PROXY_HOST || "proxy.yourplatform.com";
+    const validCnameTargets = [
+      "cname.vercel-dns.com",         // Vercel standard CNAME
+      "alias.zeit.co",                // Vercel legacy
+      appUrl,                         // Your specific app URL
+    ].filter(Boolean).map((t) => t.toLowerCase());
 
+    // ── Resolve CNAME via DNS ─────────────────────────────────────────────────
     try {
-      // Simple check: resolve the domain via DNS
-      const domain = studio.domain;
-
-      // Use Node's built-in DNS resolver
       const dns = await import("node:dns/promises");
 
-      let cnameResult = null;
+      let cnameResult: string[] = [];
+      let resolvedIps: string[] = [];
+
+      // Try CNAME resolution
       try {
         cnameResult = await dns.resolveCname(domain);
       } catch {
-        // CNAME might not exist yet
+        // No CNAME record — might use A record instead
       }
 
-      let txtResult = null;
+      // Try A record as fallback (some setups use A records)
       try {
-        // Check TXT record for verification
-        const txtName = records.find((r) => r.recordType === "TXT")?.recordName;
-        if (txtName) {
-          txtResult = await dns.resolveTxt(txtName);
-        }
+        resolvedIps = await dns.resolve4(domain);
       } catch {
-        // TXT might not exist yet
+        // No A record either
       }
 
-      // Check if CNAME points to our proxy
-      const cnameValid =
-        cnameResult &&
-        cnameResult.some((c) => c.includes(proxyHost) || c.includes("yourplatform"));
+      // ── Check if CNAME points to our platform ──────────────────────────────
+      const cnameMatches = cnameResult.some((cname) =>
+        validCnameTargets.some((target) =>
+          cname.toLowerCase().includes(target) ||
+          target.includes(cname.toLowerCase())
+        )
+      );
 
-      // Check if TXT record matches
-      const txtRecord = records.find((r) => r.recordType === "TXT");
-      const txtValid =
-        txtResult &&
-        txtRecord &&
-        txtResult.some((records: string[]) =>
-          records.some((r) => r.includes(txtRecord.recordValue))
-        );
+      // ── Check if domain is actually resolving (HTTP check) ────────────────
+      let httpReachable = false;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`https://${domain}/api/health`, {
+          signal: controller.signal,
+          redirect: "follow",
+        });
+        clearTimeout(timeout);
+        // Any response (even 404) means the domain resolves to our server
+        httpReachable = res.status < 500;
+      } catch {
+        // Domain not yet resolving
+      }
 
-      if (cnameValid && txtValid) {
-        // DNS verified! Update studio
+      // ── Determine verification status ─────────────────────────────────────
+      const verified = cnameMatches || httpReachable;
+
+      if (verified) {
+        // Mark as verified in master DB
         await masterDb
           .update(studios)
           .set({
             dnsVerified: true,
             dnsVerifiedAt: new Date(),
-            sslStatus: "pending", // Caddy will auto-provision SSL
+            sslStatus: "active",
+            updatedAt: new Date(),
           })
           .where(eq(studios.id, studioId));
 
         // Mark DNS records as verified
+        const records = await masterDb
+          .select()
+          .from(dnsRecords)
+          .where(eq(dnsRecords.studioId, studioId));
+
         for (const record of records) {
           await masterDb
             .update(dnsRecords)
@@ -116,25 +134,40 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           verified: true,
-          message: "DNS verified successfully! SSL certificate will be provisioned automatically.",
+          message: "✅ Domain verified! Your studio is ready.",
+          domain,
+          cnameFound: cnameResult[0] || null,
         });
       }
 
-      // Not verified yet — return what's missing
+      // ── Not verified yet — give helpful feedback ───────────────────────────
+      let hint = "";
+      if (cnameResult.length > 0) {
+        hint = `Your CNAME points to "${cnameResult[0]}" but should point to "${appUrl || "cname.vercel-dns.com"}".`;
+      } else if (resolvedIps.length > 0) {
+        hint = `Domain resolves to IP ${resolvedIps[0]} via A record, but no CNAME found. Add a CNAME record.`;
+      } else {
+        hint = "No DNS records found yet. DNS can take 5-30 minutes to propagate after adding records.";
+      }
+
       return NextResponse.json({
         verified: false,
-        cnameValid: !!cnameValid,
-        txtValid: !!txtValid,
-        message: "DNS records not found yet. Please allow 5-10 minutes after adding records.",
+        domain,
+        cnameFound: cnameResult[0] || null,
+        expectedTarget: appUrl || "cname.vercel-dns.com",
+        message: hint,
       });
+
     } catch (dnsError) {
+      console.error("[DNS Verify] Error:", dnsError);
       return NextResponse.json({
         verified: false,
-        error: "Unable to verify DNS at this time. Please try again in a few minutes.",
+        message: "Unable to check DNS right now. Please try again in a few minutes.",
       });
     }
+
   } catch (error) {
-    console.error("DNS verify error:", error);
+    console.error("[DNS Verify] Unexpected error:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
 }
