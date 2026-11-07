@@ -43,7 +43,7 @@ export default async function SetupPage({
   // CNAME target — use the actual Vercel deployment URL
   // This is what customers point their CNAME to
   const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL    // auto-set by Vercel
-    || process.env.NEXT_PUBLIC_APP_URL                            // manually set
+    || process.env.APP_URL                                        // set in Vercel env vars (no NEXT_PUBLIC_ needed — server only)
     || process.env.PROXY_HOST                                     // fallback
     || "cname.vercel-dns.com";
 
