@@ -227,6 +227,14 @@ export function StudioDetailClient({
               {studio.cloudinaryAccountType}
             </span>
           </div>
+
+          {/* Verify DNS button — always shown so admin can re-check */}
+          {!studio.dnsVerified && (
+            <DnsVerifyButton studioId={studio.id} onVerified={() => router.refresh()} />
+          )}
+          {studio.dnsVerified && (
+            <DnsVerifyButton studioId={studio.id} onVerified={() => router.refresh()} recheck />
+          )}
         </CardContent>
       </Card>
 
@@ -657,6 +665,76 @@ function DatabaseForm({ studioId }: { studioId: string }) {
 
       {result && (
         <p className="text-sm text-center text-muted-foreground">{result}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * DnsVerifyButton — checks if the studio's domain CNAME is configured correctly.
+ * Admin can trigger this at any time from the studio detail page.
+ */
+function DnsVerifyButton({
+  studioId,
+  onVerified,
+  recheck = false,
+}: {
+  studioId: string;
+  onVerified: () => void;
+  recheck?: boolean;
+}) {
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState("");
+
+  async function handleVerify() {
+    setChecking(true);
+    setResult("");
+
+    try {
+      const res = await fetch("/api/public/studios/verify-dns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studioId }),
+      });
+
+      const data = await res.json();
+
+      if (data.verified) {
+        setResult("✅ " + (data.message || "DNS verified!"));
+        onVerified();
+      } else {
+        setResult("❌ " + (data.message || "DNS not verified yet."));
+      }
+    } catch {
+      setResult("❌ Network error. Try again.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 pt-1">
+      <Button
+        variant={recheck ? "outline" : "default"}
+        size="sm"
+        onClick={handleVerify}
+        disabled={checking}
+        className="w-full"
+      >
+        {checking ? (
+          <>
+            <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+            Checking DNS...
+          </>
+        ) : recheck ? (
+          "Re-check DNS"
+        ) : (
+          "Verify DNS Now"
+        )}
+      </Button>
+
+      {result && (
+        <p className="text-xs text-center text-muted-foreground">{result}</p>
       )}
     </div>
   );
