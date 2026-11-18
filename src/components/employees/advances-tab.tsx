@@ -5,6 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,6 +40,7 @@ import {
   ChevronDown,
   DollarSign,
   Plus,
+  Trash2,
   TrendingDown
 } from "lucide-react";
 import Link from "next/link";
@@ -191,7 +202,30 @@ function EmployeeAdvanceAccordion({
   totalIssued: number;
   totalRecovered: number;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [advanceToDelete, setAdvanceToDelete] = useState<{
+    id: string;
+    amount: number;
+  } | null>(null);
+  const deleteMutation = useMutation({
+    mutationFn: async ({ advanceId, employeeId }: { advanceId: string; employeeId: string }) => {
+      const response = await fetch(`/api/employees/${employeeId}/advances`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ advanceId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(typeof result.error === "string" ? result.error : "Failed to delete advance");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["advances", emp.id] });
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
 
   return (
     <Card className={outstanding > 0 ? "border-orange-200" : "opacity-70"}>
@@ -252,7 +286,9 @@ function EmployeeAdvanceAccordion({
           <div className="space-y-2">
             {advances.map((adv) => {
               const remaining = Number(adv.amount) - Number(adv.recoveredAmount);
+              const recoveredAmount = Number(adv.recoveredAmount ?? 0);
               const isRecovered = adv.status === "RECOVERED";
+              const canDelete = Number.isFinite(recoveredAmount) && recoveredAmount <= 0;
 
               return (
                 <div
@@ -290,7 +326,8 @@ function EmployeeAdvanceAccordion({
                     </p>
                   </div>
 
-                  <div className="text-right">
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
                     {!isRecovered && (
                       <>
                         <p className="font-medium text-orange-600">
@@ -305,13 +342,70 @@ function EmployeeAdvanceAccordion({
                         ₹{Math.min(Number(adv.amount), Number(adv.recoveredAmount)).toLocaleString("en-IN")} recovered
                       </p>
                     )}
+                    </div>
+                    {canDelete && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 shrink-0 gap-1 border-destructive/40 px-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        aria-label={`Delete advance of ₹${Number(adv.amount).toLocaleString("en-IN")}`}
+                        title="Delete unrecovered advance"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          deleteMutation.reset();
+                          setAdvanceToDelete({ id: adv.id, amount: Number(adv.amount) });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
+          {deleteMutation.isError && (
+            <p className="text-xs text-destructive" role="alert">{deleteMutation.error.message}</p>
+          )}
         </CardContent>
       )}
+      <AlertDialog
+        open={advanceToDelete !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !deleteMutation.isPending) setAdvanceToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete advance?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete the ₹{advanceToDelete?.amount.toLocaleString("en-IN")} advance for {emp.name}? This action cannot be undone.
+            </AlertDialogDescription>
+            {deleteMutation.isError && (
+              <p className="text-sm text-destructive" role="alert">{deleteMutation.error.message}</p>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!advanceToDelete || deleteMutation.isPending) return;
+                deleteMutation.mutate(
+                  { advanceId: advanceToDelete.id, employeeId: emp.id },
+                  { onSuccess: () => setAdvanceToDelete(null) }
+                );
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete advance"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

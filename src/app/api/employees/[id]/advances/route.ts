@@ -106,3 +106,42 @@ export const PATCH = withPermission(
     return NextResponse.json(result.advance);
   }
 );
+
+export const DELETE = withPermission(
+  { resource: "employee", action: "update" },
+  async (request, { params }) => {
+    const { id } = await params;
+    const parsed = z.object({
+      advanceId: z.string().min(1),
+    }).safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [advance] = await tx
+        .select()
+        .from(employeeAdvances)
+        .where(and(
+          eq(employeeAdvances.id, parsed.data.advanceId),
+          eq(employeeAdvances.employeeId, id)
+        ))
+        .for("update")
+        .limit(1);
+      if (!advance) return { error: "Advance not found.", status: 404 as const };
+      if (Number(advance.recoveredAmount) > 0) {
+        return { error: "An advance cannot be deleted after any amount has been recovered.", status: 400 as const };
+      }
+
+      await tx
+        .delete(employeeAdvances)
+        .where(eq(employeeAdvances.id, advance.id));
+      return { success: true };
+    });
+
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    return NextResponse.json({ success: true });
+  }
+);
