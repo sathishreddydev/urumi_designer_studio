@@ -62,7 +62,11 @@ export function SalaryTab() {
     const payroll: any[] = payrollData?.payroll ?? [];
 
     // Fetch employee advances for those with outstanding
-    const { data: allAdvancesData } = useQuery({
+    const {
+        data: allAdvancesData,
+        isLoading: advancesLoading,
+        isError: advancesError,
+    } = useQuery({
         queryKey: ["all-advances-for-salary", period],
         enabled: payroll.length > 0,
         queryFn: async () => {
@@ -72,7 +76,7 @@ export function SalaryTab() {
             const results = await Promise.all(
                 employeesWithAdvances.map(async (p: any) => {
                     const res = await fetch(`/api/employees/${p.employee.id}/advances`);
-                    if (!res.ok) return { employeeId: p.employee.id, advances: [] };
+                    if (!res.ok) throw new Error(`Failed to load advances for ${p.employee.name}`);
                     const advances = await res.json();
                     return {
                         employeeId: p.employee.id,
@@ -92,24 +96,6 @@ export function SalaryTab() {
     });
 
     const allAdvances = allAdvancesData ?? {};
-
-    const carryoverMutation = useMutation({
-        mutationFn: async ({ employeeId, sourcePeriodStart, sourcePeriodEnd }: {
-            employeeId: string;
-            sourcePeriodStart: string;
-            sourcePeriodEnd: string;
-        }) => {
-            const response = await fetch(`/api/employees/${employeeId}/salary/carryover`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sourcePeriodStart, sourcePeriodEnd }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error ?? "Failed to carry salary forward");
-            return result;
-        },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payroll"] }),
-    });
 
     const saveMutation = useMutation({
         mutationFn: async ({
@@ -148,7 +134,13 @@ export function SalaryTab() {
                     advancesToRecover: advancesToRecover.length > 0 ? advancesToRecover : undefined,
                 }),
             });
-            if (!res.ok) throw new Error("Failed");
+            if (!res.ok) {
+                const result = await res.json();
+                const message = typeof result.error === "string"
+                    ? result.error
+                    : "Failed to record salary payment";
+                throw new Error(message);
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["payroll", period] });
@@ -163,13 +155,11 @@ export function SalaryTab() {
 
     // Salary totals for the selected period
     const totalToPay = payroll.reduce((sum: number, p: any) =>
-        sum + (p.paidThisPeriod
-            ? Number(p.paidThisPeriod.netAmount) + p.calculation.carryToNextAmount
-            : p.calculation.netPayable), 0);
+        sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : p.calculation.netPayable), 0);
     const totalPaid = payroll.reduce((sum: number, p: any) =>
         sum + (p.paidThisPeriod ? Number(p.paidThisPeriod.netAmount) : 0), 0);
     const totalPending = payroll.reduce((sum: number, p: any) =>
-        sum + (p.paidThisPeriod ? p.calculation.carryToNextAmount : p.calculation.netPayable), 0);
+        sum + (p.paidThisPeriod ? 0 : p.calculation.netPayable), 0);
 
     return (
         <div className="space-y-4">
@@ -207,6 +197,15 @@ export function SalaryTab() {
                 <p className="text-xs text-muted-foreground">
                     Monthly view shows only monthly-cycle employees. Weekly employees are paid via the Weekly view.
                 </p>
+            )}
+            {advancesError && (
+                <p className="flex items-center gap-1 text-xs text-destructive" role="alert">
+                    <AlertCircle className="h-3 w-3" />
+                    Could not load advance balances. Retry before recording a salary payment.
+                </p>
+            )}
+            {saveMutation.isError && (
+                <p className="text-xs text-destructive" role="alert">{saveMutation.error.message}</p>
             )}
 
             {/* ── Payroll cards ── */}
@@ -263,12 +262,13 @@ export function SalaryTab() {
                                         </div>
                                     </div>
 
-                                    {/* ── Attendance summary row ── */}
+                                    {/* ── Hours summary row ── */}
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                                        <span className="text-green-600 font-medium">{attendance.present}P</span>
-                                        {attendance.halfDay > 0 && <span className="text-yellow-600 font-medium">{attendance.halfDay}½</span>}
-                                        {attendance.absent > 0 && <span className="text-red-500 font-medium">{attendance.absent}A</span>}
-                                        <span className="text-muted-foreground">/ {pd.workingDays} days</span>
+                                        <span className="text-green-700 font-medium">{calculation.regularHours} regular h</span>
+                                        <span className="text-amber-700 font-medium">{calculation.overtimeHours} OT h</span>
+                                        {attendance.absent > 0 && <span className="text-red-500 font-medium">{attendance.absent} absent</span>}
+                                        {attendance.publicHoliday > 0 && <span className="text-blue-700 font-medium">{attendance.publicHoliday} paid public holidays</span>}
+                                        {calculation.legacyEarnings > 0 && <span className="text-muted-foreground">₹{calculation.legacyEarnings} legacy attendance</span>}
                                         {hasUnmarked && !isPaid && (
                                             <span className="text-amber-600 font-medium">⚠ {attendance.unmarkedWorkingDays} unmarked</span>
                                         )}
@@ -280,11 +280,6 @@ export function SalaryTab() {
                                                         (₹{(calculation.totalAdvances - calculation.outstandingAdvances).toLocaleString("en-IN")} recovered)
                                                     </span>
                                                 )}
-                                            </span>
-                                        )}
-                                        {calculation.carryoverAmount > 0 && (
-                                            <span className="font-medium text-blue-700">
-                                                +₹{calculation.carryoverAmount.toLocaleString("en-IN")} carried from previous period
                                             </span>
                                         )}
                                         {/* Breakdown toggle */}
@@ -299,11 +294,11 @@ export function SalaryTab() {
                                     {/* ── Breakdown (collapsible) ── */}
                                     {isBreakdownOpen && (
                                         <div className="rounded-md bg-muted/50 px-3 py-2 text-xs space-y-0.5 text-muted-foreground">
-                                            <p>₹{Number(emp.salaryAmount).toLocaleString()} ÷ {pd.workingDays} days = <span className="font-medium text-foreground">₹{calculation.perDay}/day</span></p>
-                                            <p>{attendance.effectiveDays} effective days × ₹{calculation.perDay} = <span className="font-medium text-foreground">₹{calculation.grossEarned.toLocaleString()}</span></p>
-                                            {calculation.carryoverAmount > 0 && (
-                                                <p>+ ₹{calculation.carryoverAmount.toLocaleString()} carried forward = <span className="font-semibold text-foreground">₹{calculation.grossPayable.toLocaleString()}</span></p>
-                                            )}
+                                            <p>Regular: {calculation.regularHours} h × ₹{calculation.hourlyRate}/h = <span className="font-medium text-foreground">₹{calculation.regularEarnings.toLocaleString("en-IN")}</span></p>
+                                            <p>OT: {calculation.overtimeHours} h × ₹{calculation.hourlyRate}/h = <span className="font-medium text-foreground">₹{calculation.overtimeEarnings.toLocaleString("en-IN")}</span></p>
+                                            {calculation.publicHolidayEarnings > 0 && <p>{attendance.publicHoliday} paid public holidays = <span className="font-medium text-foreground">₹{calculation.publicHolidayEarnings.toLocaleString("en-IN")}</span></p>}
+                                            {calculation.legacyEarnings > 0 && <p>Legacy attendance earnings = <span className="font-medium text-foreground">₹{calculation.legacyEarnings.toLocaleString("en-IN")}</span></p>}
+                                            <p>Gross earnings = <span className="font-semibold text-foreground">₹{calculation.grossEarned.toLocaleString("en-IN")}</span></p>
                                             {calculation.outstandingAdvances > 0 && (
                                                 <p>− ₹{calculation.outstandingAdvances.toLocaleString()} advance = <span className="font-semibold text-foreground">₹{calculation.netPayable.toLocaleString()}</span></p>
                                             )}
@@ -338,7 +333,11 @@ export function SalaryTab() {
                                             <Button
                                                 size="sm"
                                                 className="h-7 shrink-0"
-                                                disabled={saveMutation.isPending || calculation.netPayable <= 0}
+                                                disabled={
+                                                    saveMutation.isPending ||
+                                                    calculation.netPayable <= 0 ||
+                                                    (calculation.outstandingAdvances > 0 && (advancesLoading || advancesError))
+                                                }
                                                 onClick={() => {
                                                     // If employee has outstanding advances, show confirmation dialog
                                                     if (calculation.outstandingAdvances > 0) {
@@ -350,7 +349,7 @@ export function SalaryTab() {
                                                             employeeId: emp.id,
                                                             periodStart: pd.start,
                                                             periodEnd: pd.end,
-                                                            grossAmount: calculation.grossPayable,
+                                                            grossAmount: calculation.grossEarned,
                                                             netAmount: calculation.netPayable,
                                                             method: getMethod(emp.id),
                                                             note: getNote(emp.id),
@@ -375,35 +374,6 @@ export function SalaryTab() {
                                                     {" "}· {paidThisPeriod.method}
                                                 </span>
                                             </div>
-                                            {calculation.carryToNextAmount > 0 && (
-                                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-2">
-                                                    <span className="text-blue-800">
-                                                        ₹{calculation.carryToNextAmount.toLocaleString("en-IN")} additional earnings to carry to the next period.
-                                                    </span>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={carryoverMutation.isPending}
-                                                        onClick={() => carryoverMutation.mutate({
-                                                            employeeId: emp.id,
-                                                            sourcePeriodStart: pd.start,
-                                                            sourcePeriodEnd: pd.end,
-                                                        })}
-                                                    >
-                                                        {carryoverMutation.isPending ? "Carrying…" : `Carry ₹${calculation.carryToNextAmount.toLocaleString("en-IN")} to next period`}
-                                                    </Button>
-                                                    {carryoverMutation.isError && (
-                                                        <span className="w-full text-right text-[11px] text-destructive">
-                                                            {carryoverMutation.error.message}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {row.sourceCarryover && (
-                                                <p className="text-[11px] text-blue-700">
-                                                    ₹{row.sourceCarryover.amount.toLocaleString("en-IN")} already carried to {row.sourceCarryover.targetPeriodStart}.
-                                                </p>
-                                            )}
                                             {/* Payment breakdown if deductions were made */}
                                             {Number(paidThisPeriod.deductions) > 0 && (
                                                 <div className="rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
@@ -445,7 +415,7 @@ export function SalaryTab() {
                     employee={selectedPayroll.employee}
                     periodStart={selectedPayroll.period.start}
                     periodEnd={selectedPayroll.period.end}
-                    grossAmount={selectedPayroll.calculation.grossPayable}
+                    grossAmount={selectedPayroll.calculation.grossEarned}
                     outstandingAdvances={selectedPayroll.calculation.outstandingAdvances}
                     advances={allAdvances[selectedPayroll.employee.id] ?? []}
                     paymentMethod={getMethod(selectedPayroll.employee.id)}
@@ -455,8 +425,8 @@ export function SalaryTab() {
                             employeeId: selectedPayroll.employee.id,
                             periodStart: selectedPayroll.period.start,
                             periodEnd: selectedPayroll.period.end,
-                            grossAmount: selectedPayroll.calculation.grossPayable,
-                            netAmount: selectedPayroll.calculation.grossPayable - deductionAmount,
+                            grossAmount: selectedPayroll.calculation.grossEarned,
+                            netAmount: selectedPayroll.calculation.grossEarned - deductionAmount,
                             method: getMethod(selectedPayroll.employee.id),
                             note: getNote(selectedPayroll.employee.id),
                             advanceDeduction: deductionAmount,

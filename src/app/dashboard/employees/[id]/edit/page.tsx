@@ -26,8 +26,6 @@ interface EmployeeForm {
   jobRole: string;
   payCycle: "WEEKLY" | "MONTHLY";
   salaryAmount: string;
-  shiftStart: string;
-  shiftEnd: string;
   active: boolean;
   notes: string;
 }
@@ -63,8 +61,6 @@ function EditForm({ emp, id }: { emp: any; id: string }) {
       jobRole: emp.jobRole,
       payCycle: emp.payCycle,
       salaryAmount: String(emp.salaryAmount),
-      shiftStart: emp.shiftStart ?? "",
-      shiftEnd: emp.shiftEnd ?? "",
       active: emp.active,
       notes: emp.notes ?? "",
     },
@@ -78,8 +74,6 @@ function EditForm({ emp, id }: { emp: any; id: string }) {
         body: JSON.stringify({
           ...data,
           salaryAmount: parseFloat(data.salaryAmount),
-          shiftStart: data.shiftStart || null,
-          shiftEnd: data.shiftEnd || null,
           notes: data.notes || null,
         }),
       });
@@ -153,14 +147,6 @@ function EditForm({ emp, id }: { emp: any; id: string }) {
               <div className="space-y-2">
                 <Label>Salary Amount (₹)</Label>
                 <Input type="number" min={0} step={0.01} {...register("salaryAmount")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Shift Start</Label>
-                <Input type="time" {...register("shiftStart")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Shift End</Label>
-                <Input type="time" {...register("shiftEnd")} />
               </div>
             </div>
 

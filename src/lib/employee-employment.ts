@@ -14,6 +14,11 @@ export function currentEmploymentDate(): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
+export function isValidYmdDate(value: string): boolean {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 export function isEmployedOnDate(
   periods: EmploymentPeriod[],
   date: string

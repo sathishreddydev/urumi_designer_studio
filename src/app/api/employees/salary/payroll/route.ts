@@ -5,10 +5,14 @@ import {
   employees,
   employeeAttendance,
   employeeSalaryPayments,
-  employeeSalaryCarryovers,
   employeeAdvances,
+  employeePayrollSettings,
+  employeeEmploymentPeriods,
+  employeePublicHolidays,
 } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
+import { calculateEmployeePeriodEarnings, DEFAULT_WORK_SCHEDULE } from "@/lib/employee-hours";
+import { currentEmploymentDate, isEmployedOnDate, isValidYmdDate } from "@/lib/employee-employment";
 
 // Count Mon–Sat days in a given YYYY-MM period (or a week range)
 function countWorkingDays(dates: string[]): number {
@@ -28,10 +32,11 @@ function getMonthDates(ym: string): string[] {
 }
 
 function getWeekDates(weekStart: string): string[] {
-  const start = new Date(weekStart + "T00:00:00");
+  const [year, month, day] = weekStart.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day));
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
-    d.setDate(start.getDate() + i);
+    d.setUTCDate(start.getUTCDate() + i);
     return d.toISOString().split("T")[0];
   });
 }
@@ -41,8 +46,21 @@ export const GET = withPermission(
   async (request) => {
     const { searchParams } = new URL(request.url);
     // period = "YYYY-MM" for monthly, "YYYY-MM-DD" (monday) for weekly
-    const period = searchParams.get("period") ?? new Date().toISOString().slice(0, 7);
-    const isWeek = period.length === 10; // YYYY-MM-DD means week mode
+    const period = searchParams.get("period") ?? currentEmploymentDate().slice(0, 7);
+    const isWeek = /^\d{4}-\d{2}-\d{2}$/.test(period);
+    const isMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(period);
+    if (
+      (!isWeek && !isMonth) ||
+      (isWeek && (
+        !isValidYmdDate(period) ||
+        new Date(`${period}T00:00:00.000Z`).getUTCDay() !== 1
+      ))
+    ) {
+      return NextResponse.json(
+        { error: "Period must be a valid month or a Monday date for weekly payroll." },
+        { status: 400 }
+      );
+    }
 
     // Build the date strings for the period
     const periodDates = isWeek ? getWeekDates(period) : getMonthDates(period);
@@ -50,12 +68,12 @@ export const GET = withPermission(
     const periodEnd   = periodDates[periodDates.length - 1];
     const workingDays = countWorkingDays(periodDates); // Mon–Sat count
 
-    // All active employees
+    // Include inactive employees when they have payroll history in this period.
     const allEmployees = await db
       .select()
       .from(employees)
-      .where(eq(employees.active, true))
       .orderBy(employees.name);
+    const allEmploymentPeriods = await db.select().from(employeeEmploymentPeriods);
 
     // All attendance in this period for all employees
     const allAttendance = await db
@@ -70,8 +88,14 @@ export const GET = withPermission(
       .select()
       .from(employeeSalaryPayments)
       .orderBy(desc(employeeSalaryPayments.paidAt));
+    const publicHolidays = await db.select().from(employeePublicHolidays);
 
-    const allCarryovers = await db.select().from(employeeSalaryCarryovers);
+    const [savedSettings] = await db
+      .select()
+      .from(employeePayrollSettings)
+      .where(eq(employeePayrollSettings.id, "default"))
+      .limit(1);
+    const workSchedule = savedSettings ?? { id: "default", ...DEFAULT_WORK_SCHEDULE };
 
     const latestPaymentMap = new Map<string, typeof allPayments[0]>();
     for (const p of allPayments) {
@@ -82,43 +106,22 @@ export const GET = withPermission(
 
     // Check if already paid for this period
     const paidThisPeriodMap = new Map<string, typeof allPayments[0]>();
-    const paidGrossMap = new Map<string, number>();
     for (const p of allPayments) {
-      if (p.periodStart === periodStart && p.periodEnd === periodEnd) {
-        paidThisPeriodMap.set(p.employeeId, p);
-        paidGrossMap.set(p.employeeId, (paidGrossMap.get(p.employeeId) ?? 0) + Number(p.grossAmount));
-      }
-    }
-
-    const targetCarryoverMap = new Map<string, number>();
-    const sourceCarryoverMap = new Map<string, { amount: number; targetPeriodStart: string }>();
-    for (const carryover of allCarryovers) {
-      if (carryover.targetPeriodStart === periodStart && carryover.targetPeriodEnd === periodEnd) {
-        targetCarryoverMap.set(
-          carryover.employeeId,
-          (targetCarryoverMap.get(carryover.employeeId) ?? 0) + Number(carryover.amount)
-        );
-      }
-      if (carryover.sourcePeriodStart === periodStart && carryover.sourcePeriodEnd === periodEnd) {
-        const existing = sourceCarryoverMap.get(carryover.employeeId);
-        sourceCarryoverMap.set(carryover.employeeId, {
-          amount: (existing?.amount ?? 0) + Number(carryover.amount),
-          targetPeriodStart: carryover.targetPeriodStart,
-        });
+      if (p.periodStart <= periodEnd && p.periodEnd >= periodStart) {
+        if (!paidThisPeriodMap.has(p.employeeId)) {
+          paidThisPeriodMap.set(p.employeeId, p);
+        }
       }
     }
 
     // Outstanding advances per employee
     const allAdvances = await db
       .select()
-      .from(employeeAdvances)
-      .then((rows) =>
-        rows.filter((r) => r.status !== "RECOVERED")
-      );
+      .from(employeeAdvances);
 
     const advanceMap = new Map<string, { outstanding: number; total: number }>();
     for (const a of allAdvances) {
-      const outstanding = Number(a.amount) - Number(a.recoveredAmount);
+      const outstanding = Math.max(Number(a.amount) - Number(a.recoveredAmount), 0);
       const total = Number(a.amount);
       const existing = advanceMap.get(a.employeeId) ?? { outstanding: 0, total: 0 };
       advanceMap.set(a.employeeId, {
@@ -131,65 +134,96 @@ export const GET = withPermission(
     const payroll = allEmployees
       // In monthly view, only show monthly-cycle employees.
       // Weekly employees are paid week-by-week and should only appear in weekly view.
-      .filter((emp) => isWeek || emp.payCycle === "MONTHLY")
+      .filter((emp) => emp.payCycle === (isWeek ? "WEEKLY" : "MONTHLY"))
+      .filter((emp) => emp.active ||
+        allPayments.some((payment) =>
+          payment.employeeId === emp.id &&
+          payment.periodStart <= periodEnd &&
+          payment.periodEnd >= periodStart
+        )
+      )
       .map((emp) => {
       const empAttendance = allAttendance.filter((a) => a.employeeId === emp.id);
+      const employmentPeriods = allEmploymentPeriods
+        .filter((employmentPeriod) => employmentPeriod.employeeId === emp.id)
+        .map(({ startDate, endDate }) => ({ startDate, endDate }));
+      const publicHolidayDates = publicHolidays
+        .filter((holiday) =>
+          holiday.date >= periodStart &&
+          holiday.date <= periodEnd &&
+          isEmployedOnDate(employmentPeriods, holiday.date)
+        )
+        .map((holiday) => holiday.date);
+      const publicHolidaySet = new Set(publicHolidayDates);
+      const payableAttendance = empAttendance.filter((record) => !publicHolidaySet.has(record.date));
 
-      const present  = empAttendance.filter((a) => a.status === "PRESENT").length;
-      const halfDay  = empAttendance.filter((a) => a.status === "HALF_DAY").length;
-      const absent   = empAttendance.filter((a) => a.status === "ABSENT").length;
-      const holiday  = empAttendance.filter((a) => a.status === "HOLIDAY").length;
+      const present  = payableAttendance.filter((a) => a.status === "PRESENT").length;
+      const halfDay  = payableAttendance.filter((a) => a.status === "HALF_DAY").length;
+      const absent   = payableAttendance.filter((a) => a.status === "ABSENT").length;
+      const holiday  = payableAttendance.filter((a) => a.status === "HOLIDAY").length;
 
-      // Universal per-day rate:
-      // Weekly employees: weeklyAmount ÷ 6 (Mon–Sat)
-      // Monthly employees: monthlyAmount ÷ working days in the period
       const divisor = emp.payCycle === "WEEKLY" ? 6 : workingDays;
       const perDay = divisor > 0 ? Number(emp.salaryAmount) / divisor : 0;
-
       const effectiveDays = present + halfDay * 0.5;
-      const grossEarned = Math.round(effectiveDays * perDay * 100) / 100;
+      const earnings = calculateEmployeePeriodEarnings(
+        payableAttendance,
+        Number(emp.salaryAmount),
+        emp.payCycle,
+        workingDays,
+        workSchedule,
+        publicHolidayDates
+      );
+      const grossEarned = earnings.grossEarned;
 
       const advanceInfo = advanceMap.get(emp.id) ?? { outstanding: 0, total: 0 };
       const outstandingAdvances = advanceInfo.outstanding;
       const totalAdvances = advanceInfo.total;
       // Don't deduct advances here - that happens in the payment dialog
       // netPayable at this stage is just the gross earned amount
-      const carryoverAmount = targetCarryoverMap.get(emp.id) ?? 0;
-      const grossPayable = Math.round((grossEarned + carryoverAmount) * 100) / 100;
-      const netPayable = grossPayable;
+      const netPayable = grossEarned;
 
       // How many working days have no attendance record yet
       const markedDates = new Set(empAttendance.map((a) => a.date));
       const unmarkedWorkingDays = periodDates.filter((d) => {
         const day = new Date(d + "T00:00:00").getDay();
-        return day !== 0 && !markedDates.has(d); // not Sunday and not marked
+        return day !== 0 &&
+          isEmployedOnDate(employmentPeriods, d) &&
+          !publicHolidaySet.has(d) &&
+          !markedDates.has(d);
       }).length;
 
       const paidRecord = paidThisPeriodMap.get(emp.id) ?? null;
-      const paidGross = paidGrossMap.get(emp.id) ?? 0;
-      const sourceCarryover = sourceCarryoverMap.get(emp.id) ?? null;
-      const alreadyCarried = sourceCarryover?.amount ?? 0;
-      const carryToNextAmount = Math.round(Math.max(grossPayable - paidGross - alreadyCarried, 0) * 100) / 100;
       const latestPayment = latestPaymentMap.get(emp.id) ?? null;
 
       return {
         employee: emp,
         period: { start: periodStart, end: periodEnd, workingDays: divisor },
-        attendance: { present, halfDay, absent, holiday, effectiveDays, unmarkedWorkingDays },
+        attendance: {
+          present,
+          halfDay,
+          absent,
+          holiday,
+          publicHoliday: earnings.paidHolidayDays,
+          effectiveDays,
+          unmarkedWorkingDays,
+          regularHours: earnings.regularHours,
+          overtimeHours: earnings.overtimeHours,
+        },
         calculation: {
           perDay: Math.round(perDay * 100) / 100,
+          hourlyRate: earnings.hourlyRate,
+          regularHours: earnings.regularHours,
+          overtimeHours: earnings.overtimeHours,
+          regularEarnings: earnings.regularEarnings,
+          overtimeEarnings: earnings.overtimeEarnings,
+          legacyEarnings: earnings.legacyEarnings,
+          publicHolidayEarnings: earnings.publicHolidayEarnings,
           grossEarned,
-          carryoverAmount,
-          grossPayable,
-          paidGross,
-          alreadyCarried,
-          carryToNextAmount,
           outstandingAdvances,
           totalAdvances,
           netPayable,
         },
         paidThisPeriod: paidRecord,
-        sourceCarryover,
         latestPayment,
       };
     });

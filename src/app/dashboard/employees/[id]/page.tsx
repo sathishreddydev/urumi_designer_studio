@@ -29,7 +29,6 @@ import {
   ArrowLeft,
   Briefcase,
   Phone,
-  Clock,
   Pencil,
   Trash2,
   CalendarDays,
@@ -38,6 +37,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { currentEmploymentDate, isEmployedOnDate, type EmploymentPeriod } from "@/lib/employee-employment";
+import { calculateEmployeePeriodEarnings, calculateWorkedHours, DEFAULT_WORK_SCHEDULE, getRegularShiftHours, WorkScheduleSettings } from "@/lib/employee-hours";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -146,11 +146,6 @@ export default function EmployeeDetailPage() {
             {emp.phone && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4" />{emp.phone}
-              </div>
-            )}
-            {emp.shiftStart && emp.shiftEnd && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />{emp.shiftStart} – {emp.shiftEnd}
               </div>
             )}
             {emp.notes && (
@@ -294,13 +289,7 @@ function AttendanceTab({
   salaryAmount: number;
   employmentPeriods: EmploymentPeriod[];
 }) {
-  const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("PRESENT");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [notes, setNotes] = useState("");
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", employeeId, month],
@@ -310,26 +299,20 @@ function AttendanceTab({
       return res.json();
     },
   });
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/employees/${employeeId}/attendance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: selectedDate,
-          status,
-          checkIn: checkIn || undefined,
-          checkOut: checkOut || undefined,
-          notes: notes || undefined,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
+  const { data: schedule = DEFAULT_WORK_SCHEDULE } = useQuery<WorkScheduleSettings>({
+    queryKey: ["employee-payroll-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/payroll-settings");
+      if (!response.ok) throw new Error("Failed to load work schedule");
+      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", employeeId, month] });
-      setSelectedDate(null);
-      setNotes("");
+  });
+  const { data: publicHolidays = [], isError: publicHolidaysError } = useQuery<{ date: string; name: string }[]>({
+    queryKey: ["employee-public-holidays"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/public-holidays");
+      if (!response.ok) throw new Error("Failed to load public holidays");
+      return response.json();
     },
   });
 
@@ -339,26 +322,28 @@ function AttendanceTab({
 
   const days = daysInMonth(month);
   const [y, m] = month.split("-").map(Number);
-
-  // Stats
-  const present  = validRecords.filter((r: any) => r.status === "PRESENT").length;
-  const halfDay  = validRecords.filter((r: any) => r.status === "HALF_DAY").length;
-  const absent   = validRecords.filter((r: any) => r.status === "ABSENT").length;
-  const holiday  = validRecords.filter((r: any) => r.status === "HOLIDAY").length;
-  const effectiveDays = present + halfDay * 0.5;
-
-  // Estimated salary for the month
-  const perDay = payCycle === "MONTHLY" ? salaryAmount / days : salaryAmount / 7;
-  const estimated = Math.round(effectiveDays * perDay);
-
-  function openDay(date: string) {
-    setSelectedDate(date);
-    const existing = recordMap[date];
-    setStatus(existing?.status ?? "PRESENT");
-    setCheckIn(existing?.checkIn ?? "");
-    setCheckOut(existing?.checkOut ?? "");
-    setNotes(existing?.notes ?? "");
-  }
+  const workingDays = Array.from({ length: days }, (_, index) => new Date(y, m - 1, index + 1))
+    .filter((date) => date.getDay() !== 0).length;
+  const publicHolidayDates = publicHolidays
+    .filter((holiday) =>
+      holiday.date.startsWith(month) &&
+      isEmployedOnDate(employmentPeriods, holiday.date)
+    )
+    .map((holiday) => holiday.date);
+  const publicHolidayDateSet = new Set(publicHolidayDates);
+  const payableRecords = validRecords.filter((record: any) => !publicHolidayDateSet.has(record.date));
+  const publicHolidayMap = new Map(publicHolidays.map((holiday) => [holiday.date, holiday]));
+  const earnings = calculateEmployeePeriodEarnings(
+    payableRecords,
+    salaryAmount,
+    payCycle === "WEEKLY" ? "WEEKLY" : "MONTHLY",
+    workingDays,
+    schedule,
+    publicHolidayDates
+  );
+  const absent   = payableRecords.filter((r: any) => r.status === "ABSENT").length;
+  const holiday  = payableRecords.filter((r: any) => r.status === "HOLIDAY").length;
+  const legacyRecords = payableRecords.filter((record: any) => !record.entryMode).length;
 
   // Navigate months
   function prevMonth() {
@@ -381,13 +366,23 @@ function AttendanceTab({
         <Button variant="outline" size="sm" onClick={nextMonth}>›</Button>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        Attendance is entered in the team table. <Link href="/dashboard/employees" className="font-medium text-primary underline">Open team attendance</Link>
+      </p>
+      {publicHolidaysError && (
+        <p className="text-xs text-destructive" role="alert">
+          Could not load public holidays. This gross estimate may not include paid holidays.
+        </p>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Present", value: present, color: "text-green-600" },
-          { label: "Half Day", value: halfDay, color: "text-yellow-600" },
+          { label: "Regular hours", value: earnings.regularHours, color: "text-green-600" },
+          { label: "OT hours", value: earnings.overtimeHours, color: "text-amber-600" },
           { label: "Absent", value: absent, color: "text-red-600" },
           { label: "Holiday", value: holiday, color: "text-blue-600" },
+          { label: "Paid public holidays", value: earnings.paidHolidayDays, color: "text-blue-600" },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-3 text-center">
@@ -400,8 +395,9 @@ function AttendanceTab({
 
       <Card>
         <CardContent className="p-3">
-          <p className="text-xs text-muted-foreground">Effective days: <span className="font-semibold text-foreground">{effectiveDays}</span></p>
-          <p className="text-xs text-muted-foreground">Estimated pay: <span className="font-semibold text-foreground">₹{estimated.toLocaleString()}</span></p>
+          <p className="text-xs text-muted-foreground">Base hourly rate: <span className="font-semibold text-foreground">₹{earnings.hourlyRate.toLocaleString("en-IN")}</span></p>
+          <p className="text-xs text-muted-foreground">Estimated gross: <span className="font-semibold text-foreground">₹{earnings.grossEarned.toLocaleString("en-IN")}</span></p>
+          {legacyRecords > 0 && <p className="text-xs text-muted-foreground">Includes {legacyRecords} legacy day-based records.</p>}
         </CardContent>
       </Card>
 
@@ -419,81 +415,38 @@ function AttendanceTab({
           const rec = recordMap[date];
           const isToday = date === today();
           const employed = isEmployedOnDate(employmentPeriods, date);
+          const publicHoliday = publicHolidayMap.get(date);
+          const workedHours = rec?.entryMode ? calculateWorkedHours(rec, schedule.breakMinutes) : null;
+          const regularShiftHours = getRegularShiftHours(schedule);
           return (
-            <button
+            <div
               key={date}
-              onClick={() => openDay(date)}
-              disabled={!employed}
-              title={employed ? undefined : "Outside employment dates"}
-              className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium transition-colors border disabled:cursor-not-allowed disabled:opacity-40
-                ${rec ? ATTENDANCE_COLORS[rec.status] + " text-white border-transparent" : "border-border hover:border-primary/40 hover:bg-muted"}
+              title={!employed
+                ? "Outside employment dates"
+                : publicHoliday
+                ? `${publicHoliday.name}${new Date(`${date}T00:00:00.000Z`).getUTCDay() === 0 ? " — Sunday (unpaid)" : " — paid public holiday"}`
+                : rec?.entryMode
+                ? `${workedHours} worked hours`
+                : rec
+                ? ATTENDANCE_LABEL[rec.status]
+                : "No entry"}
+              className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium border
+                ${!employed ? "border-border bg-muted/40 text-muted-foreground/50" : publicHoliday ? "border-blue-300 bg-blue-100 text-blue-800" : rec?.entryMode ? (workedHours! > regularShiftHours ? "border-amber-300 bg-amber-100 text-amber-800" : "border-green-300 bg-green-100 text-green-800") : rec ? ATTENDANCE_COLORS[rec.status] + " text-white border-transparent" : "border-border text-muted-foreground"}
                 ${isToday && !rec ? "border-primary" : ""}
               `}
             >
               <span>{i + 1}</span>
-              {rec && <span className="text-[8px] leading-none opacity-80">{rec.status === "HALF_DAY" ? "½" : rec.status === "HOLIDAY" ? "H" : ""}</span>}
-            </button>
+              {publicHoliday
+                ? <span className="text-[8px] leading-none">{new Date(`${date}T00:00:00.000Z`).getUTCDay() === 0 ? "Sun · unpaid" : "Public holiday"}</span>
+                : rec?.entryMode && workedHours !== null
+                ? <span className="text-[8px] leading-none">{workedHours}h</span>
+                : rec && <span className="text-[8px] leading-none opacity-80">{rec.status === "HALF_DAY" ? "½ · old" : rec.status === "HOLIDAY" ? "H" : rec.status === "ABSENT" ? "A" : "old"}</span>}
+            </div>
           );
         })}
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-xs">
-        {Object.entries(ATTENDANCE_LABEL).map(([k, v]) => (
-          <span key={k} className="flex items-center gap-1">
-            <span className={`h-3 w-3 rounded-sm ${ATTENDANCE_COLORS[k]}`} />
-            {v}
-          </span>
-        ))}
-      </div>
-
-      {/* Mark attendance dialog */}
-      {selectedDate && isEmployedOnDate(employmentPeriods, selectedDate) && (
-        <Card className="border-primary/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">
-              Mark Attendance — {formatDate(selectedDate)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(["PRESENT", "HALF_DAY", "ABSENT", "HOLIDAY"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatus(s)}
-                  className={`rounded-md border py-2 text-xs font-medium transition-colors ${
-                    status === s
-                      ? ATTENDANCE_COLORS[s] + " text-white border-transparent"
-                      : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  {ATTENDANCE_LABEL[s]}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Check In</Label>
-                <Input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Check Out</Label>
-                <Input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="h-8 text-xs" />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Notes</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-8 text-xs" placeholder="Optional note" />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setSelectedDate(null)}>Cancel</Button>
-              <Button size="sm" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-                {saveMutation.isPending ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <p className="text-xs text-muted-foreground">Green shows regular hours; amber indicates a day with overtime. Legacy attendance remains unchanged.</p>
     </div>
   );
 }
@@ -527,7 +480,18 @@ function SalaryTab({
     },
   });
 
-  const net = Math.max(0, parseFloat(gross || "0") - parseFloat(deductions || "0"));
+  const grossAmount = Number(gross);
+  const deductionAmount = Number(deductions || "0");
+  const net = grossAmount - deductionAmount;
+  const isPaymentValid =
+    Number.isFinite(grossAmount) &&
+    grossAmount > 0 &&
+    Number.isFinite(deductionAmount) &&
+    deductionAmount >= 0 &&
+    deductionAmount <= grossAmount &&
+    !!periodStart &&
+    !!periodEnd &&
+    periodEnd >= periodStart;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -537,14 +501,17 @@ function SalaryTab({
         body: JSON.stringify({
           periodStart,
           periodEnd,
-          grossAmount: parseFloat(gross),
-          deductions: parseFloat(deductions || "0"),
+          grossAmount,
+          deductions: deductionAmount,
           netAmount: net,
           method,
           notes: notes || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(typeof result.error === "string" ? result.error : "Failed to save salary payment");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["salary", employeeId] });
@@ -619,12 +586,13 @@ function SalaryTab({
               <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
               <Button
                 size="sm"
-                disabled={saveMutation.isPending || !periodStart || !periodEnd}
+                disabled={saveMutation.isPending || !isPaymentValid}
                 onClick={() => saveMutation.mutate()}
               >
                 {saveMutation.isPending ? "Saving…" : "Record Payment"}
               </Button>
             </div>
+            {saveMutation.isError && <p className="text-xs text-destructive" role="alert">{saveMutation.error.message}</p>}
           </CardContent>
         </Card>
       )}
@@ -696,7 +664,10 @@ function AdvancesTab({ employeeId }: { employeeId: string }) {
           notes: notes || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(typeof result.error === "string" ? result.error : "Failed to save advance");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["advances", employeeId] });
@@ -708,21 +679,19 @@ function AdvancesTab({ employeeId }: { employeeId: string }) {
   });
 
   const recoverMutation = useMutation({
-    mutationFn: async ({
-      advanceId,
-      recoveredAmount,
-      status,
-    }: {
+    mutationFn: async ({ advanceId, recoveredAmount }: {
       advanceId: string;
       recoveredAmount: number;
-      status: string;
     }) => {
       const res = await fetch(`/api/employees/${employeeId}/advances`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ advanceId, recoveredAmount, status }),
+        body: JSON.stringify({ advanceId, recoveredAmount }),
       });
-      if (!res.ok) throw new Error("Failed to update");
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(typeof result.error === "string" ? result.error : "Failed to update advance");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["advances", employeeId] });
@@ -731,7 +700,7 @@ function AdvancesTab({ employeeId }: { employeeId: string }) {
 
   const outstanding = advances
     .filter((a: any) => a.status !== "RECOVERED")
-    .reduce((sum: number, a: any) => sum + Number(a.amount) - Number(a.recoveredAmount), 0);
+    .reduce((sum: number, a: any) => sum + Math.max(Number(a.amount) - Number(a.recoveredAmount), 0), 0);
 
   const STATUS_COLORS: Record<string, string> = {
     OUTSTANDING: "bg-red-100 text-red-700",
@@ -790,6 +759,8 @@ function AdvancesTab({ employeeId }: { employeeId: string }) {
           </CardContent>
         </Card>
       )}
+      {issueMutation.isError && <p className="text-xs text-destructive" role="alert">{issueMutation.error.message}</p>}
+      {recoverMutation.isError && <p className="text-xs text-destructive" role="alert">{recoverMutation.error.message}</p>}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -804,8 +775,8 @@ function AdvancesTab({ employeeId }: { employeeId: string }) {
               key={a.id}
               advance={a}
               statusColors={STATUS_COLORS}
-              onRecover={({ recoveredAmount, status }) =>
-                recoverMutation.mutate({ advanceId: a.id, recoveredAmount, status })
+              onRecover={({ recoveredAmount }) =>
+                recoverMutation.mutate({ advanceId: a.id, recoveredAmount })
               }
             />
           ))}
@@ -822,26 +793,20 @@ function AdvanceCard({
 }: {
   advance: any;
   statusColors: Record<string, string>;
-  onRecover: (data: { recoveredAmount: number; status: string }) => void;
+  onRecover: (data: { recoveredAmount: number }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [recovered, setRecovered] = useState(String(advance.recoveredAmount));
 
-  function computeStatus(rec: number) {
-    if (rec >= Number(advance.amount)) return "RECOVERED";
-    if (rec > 0) return "PARTIALLY_RECOVERED";
-    return "OUTSTANDING";
-  }
-
   function save() {
     const r = Math.min(parseFloat(recovered || "0"), Number(advance.amount));
-    onRecover({ recoveredAmount: r, status: computeStatus(r) });
+    onRecover({ recoveredAmount: r });
     setEditing(false);
     setOpen(false);
   }
 
-  const balance = Number(advance.amount) - Number(advance.recoveredAmount);
+  const balance = Math.max(Number(advance.amount) - Number(advance.recoveredAmount), 0);
 
   return (
     <Card>

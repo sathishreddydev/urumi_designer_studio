@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employeeAdvances } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
@@ -13,7 +13,6 @@ const advanceSchema = z.object({
 
 const recoverSchema = z.object({
   recoveredAmount: z.number().min(0),
-  status: z.enum(["OUTSTANDING", "PARTIALLY_RECOVERED", "RECOVERED"]),
 });
 
 export const GET = withPermission(
@@ -25,7 +24,14 @@ export const GET = withPermission(
       .from(employeeAdvances)
       .where(eq(employeeAdvances.employeeId, id))
       .orderBy(desc(employeeAdvances.issuedAt));
-    return NextResponse.json(rows);
+    return NextResponse.json(rows.map((advance) => ({
+      ...advance,
+      status: Number(advance.recoveredAmount) >= Number(advance.amount)
+        ? "RECOVERED"
+        : Number(advance.recoveredAmount) > 0
+        ? "PARTIALLY_RECOVERED"
+        : "OUTSTANDING",
+    })));
   }
 );
 
@@ -58,25 +64,45 @@ export const POST = withPermission(
 export const PATCH = withPermission(
   { resource: "employee", action: "update" },
   async (request, { params }) => {
-    const body = await request.json();
-    const { advanceId, ...rest } = body;
-    if (!advanceId) {
-      return NextResponse.json({ error: "advanceId required" }, { status: 400 });
-    }
-    const parsed = recoverSchema.safeParse(rest);
+    const { id } = await params;
+    const parsed = z.object({
+      advanceId: z.string().min(1),
+    }).and(recoverSchema).safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const [updated] = await db
-      .update(employeeAdvances)
-      .set({
-        recoveredAmount: String(parsed.data.recoveredAmount),
-        status: parsed.data.status,
-      })
-      .where(eq(employeeAdvances.id, advanceId))
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [advance] = await tx
+        .select()
+        .from(employeeAdvances)
+        .where(and(
+          eq(employeeAdvances.id, parsed.data.advanceId),
+          eq(employeeAdvances.employeeId, id)
+        ))
+        .for("update")
+        .limit(1);
+      if (!advance) return { error: "Advance not found.", status: 404 as const };
+      if (parsed.data.recoveredAmount > Number(advance.amount)) {
+        return { error: "Recovered amount cannot exceed the advance amount.", status: 400 as const };
+      }
 
-    return NextResponse.json(updated);
+      const status = parsed.data.recoveredAmount >= Number(advance.amount)
+        ? "RECOVERED"
+        : parsed.data.recoveredAmount > 0
+        ? "PARTIALLY_RECOVERED"
+        : "OUTSTANDING";
+      const [updated] = await tx
+        .update(employeeAdvances)
+        .set({ recoveredAmount: String(parsed.data.recoveredAmount), status })
+        .where(eq(employeeAdvances.id, advance.id))
+        .returning();
+      return { advance: updated };
+    });
+
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    return NextResponse.json(result.advance);
   }
 );

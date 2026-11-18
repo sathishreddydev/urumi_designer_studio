@@ -11,6 +11,7 @@ import {
   jsonb,
   decimal,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ─── ENUMS ──────────────────────────────────────────────────────────────────
@@ -316,8 +317,29 @@ export const employeeAttendance = pgTable("employee_attendance", {
   status: attendanceStatusEnum("status").notNull(),
   checkIn: text("check_in"),                    // "HH:MM" (optional)
   checkOut: text("check_out"),                  // "HH:MM" (optional)
+  workedHours: decimal("worked_hours", { precision: 5, scale: 2 }),
+  regularShiftHours: decimal("regular_shift_hours", { precision: 5, scale: 2 }),
+  entryMode: text("entry_mode"),
   notes: text("notes"),
   recordedBy: varchar("recorded_by", { length: 20 }).references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  employeeDateUnique: uniqueIndex("idx_attendance_employee_date").on(table.employeeId, table.date),
+}));
+
+export const employeePayrollSettings = pgTable("employee_payroll_settings", {
+  id: varchar("id", { length: 20 }).primaryKey(),
+  shiftStart: text("shift_start").notNull(),
+  shiftEnd: text("shift_end").notNull(),
+  breakMinutes: integer("break_minutes").notNull().default(30),
+  updatedBy: varchar("updated_by", { length: 20 }).references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const employeePublicHolidays = pgTable("employee_public_holidays", {
+  date: text("date").primaryKey(),
+  name: text("name").notNull(),
+  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -334,20 +356,6 @@ export const employeeSalaryPayments = pgTable("employee_salary_payments", {
   paidBy: varchar("paid_by", { length: 20 }).references(() => users.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const employeeSalaryCarryovers = pgTable("employee_salary_carryovers", {
-  id: varchar("id", { length: 20 }).primaryKey().$defaultFn(() => generatePrefixedId("car")),
-  employeeId: varchar("employee_id", { length: 20 }).notNull().references(() => employees.id),
-  sourcePeriodStart: text("source_period_start").notNull(),
-  sourcePeriodEnd: text("source_period_end").notNull(),
-  targetPeriodStart: text("target_period_start").notNull(),
-  targetPeriodEnd: text("target_period_end").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  salaryPaymentId: varchar("salary_payment_id", { length: 20 }).references(() => employeeSalaryPayments.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  appliedAt: timestamp("applied_at"),
-  createdBy: varchar("created_by", { length: 20 }).references(() => users.id),
 });
 
 export const employeeAdvances = pgTable("employee_advances", {

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Briefcase, Phone, Clock, Pencil, ToggleLeft, ToggleRight } from "lucide-react";
+import { Search, Briefcase, Phone, Pencil, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export function StaffTab() {
@@ -129,7 +129,6 @@ export function StaffTab() {
 
                 <div className="mt-2 ml-[52px] flex flex-wrap gap-4 text-xs text-muted-foreground">
                   {emp.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{emp.phone}</span>}
-                  {emp.shiftStart && emp.shiftEnd && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{emp.shiftStart} – {emp.shiftEnd}</span>}
                 </div>
               </CardContent>
             </Card>

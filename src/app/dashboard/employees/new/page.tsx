@@ -26,8 +26,6 @@ interface EmployeeForm {
   jobRole: string;
   payCycle: "WEEKLY" | "MONTHLY";
   salaryAmount: string;
-  shiftStart: string;
-  shiftEnd: string;
   notes: string;
 }
 
@@ -49,8 +47,6 @@ export default function NewEmployeePage() {
         body: JSON.stringify({
           ...data,
           salaryAmount: parseFloat(data.salaryAmount),
-          shiftStart: data.shiftStart || undefined,
-          shiftEnd: data.shiftEnd || undefined,
           notes: data.notes || undefined,
         }),
       });
@@ -167,17 +163,6 @@ export default function NewEmployeePage() {
                 {errors.salaryAmount && <p className="text-xs text-destructive">{errors.salaryAmount.message}</p>}
               </div>
 
-              {/* Shift Start */}
-              <div className="space-y-2">
-                <Label>Shift Start <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input type="time" {...register("shiftStart")} />
-              </div>
-
-              {/* Shift End */}
-              <div className="space-y-2">
-                <Label>Shift End <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input type="time" {...register("shiftEnd")} />
-              </div>
             </div>
 
             {/* Notes */}

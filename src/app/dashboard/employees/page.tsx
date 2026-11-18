@@ -100,7 +100,7 @@ export default function EmployeesPage() {
       </div>
 
       {tab === "staff"      && <StaffTab />}
-      {tab === "attendance" && <AttendanceTab />}
+      {tab === "attendance" && <AttendanceTab isAdmin={authData?.role === "ADMIN"} />}
       {tab === "salary"     && <SalaryTab />}
       {tab === "advances"   && <AdvancesTab />}
     </div>

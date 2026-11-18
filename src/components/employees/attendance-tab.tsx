@@ -1,110 +1,418 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LockIcon,
 } from "lucide-react";
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   currentWeekMonday,
   currentYearMonth,
   getMonthDates,
   getWeekDates,
-  PILL_COLORS,
-  PRIMARY_STATUSES,
-  StatusKey,
   toYMD,
 } from "./utils";
 import { PeriodNavigator } from "./period-navigator";
 import { isEmployedOnDate } from "@/lib/employee-employment";
+import {
+  AttendanceEntryMode,
+  AttendanceHoursRecord,
+  calculateWorkedHours,
+  DEFAULT_WORK_SCHEDULE,
+  getRegularShiftHours,
+  WorkScheduleSettings,
+} from "@/lib/employee-hours";
 
-function StatusPills({
-  status,
-  onSelect,
-  compact,
-  locked,
-  inactive,
-}: {
-  status: StatusKey;
-  onSelect: (s: StatusKey) => void;
-  compact?: boolean; // month mode — show only active + minimal inactive dots
-  locked?: boolean;  // salary already paid — read-only
-  inactive?: boolean; // outside an employment period — read-only
-}) {
-  if (inactive) {
-    const saved = PRIMARY_STATUSES.find((s) => s.key === status);
-    return (
-      <span title="Outside employment dates" className="text-xs text-muted-foreground/50">
-        {saved ? saved.label : "—"}
-      </span>
-    );
-  }
+type AttendanceSaveRecord = {
+  employeeId: string;
+  date: string;
+  status: "PRESENT" | "ABSENT" | "HOLIDAY";
+  entryMode?: AttendanceEntryMode;
+  workedHours?: number;
+  checkIn?: string;
+  checkOut?: string;
+  notes?: string;
+};
 
-  // Locked: show a small lock badge instead of interactive pills
-  if (locked) {
-    const active = PRIMARY_STATUSES.find((s) => s.key === status);
-    return (
-      <div className="flex flex-col items-center gap-0.5" title="Salary paid — attendance locked">
-        {active ? (
-          <span className={`h-5 w-5 rounded text-[9px] font-bold border flex items-center justify-center opacity-60 ${active.active}`}>
-            {active.label}
-          </span>
-        ) : (
-          <span className="h-5 w-5 rounded text-[9px] flex items-center justify-center text-muted-foreground/40">—</span>
-        )}
-      </div>
-    );
-  }
+type PublicHoliday = {
+  date: string;
+  name: string;
+};
 
-  if (compact) {
-    return (
-      <div className="flex gap-0.5 justify-center">
-        {PRIMARY_STATUSES.map((s) => (
-          <button
-            key={s.key}
-            title={s.title}
-            onClick={() => onSelect(status === s.key ? "" : s.key as StatusKey)}
-            className={`
-              h-5 w-5 rounded text-[9px] font-bold border transition-all duration-100
-              ${status === s.key
-                ? s.active
-                : "border-border/50 text-muted-foreground/30 hover:border-current hover:" + s.inactive
-              }
-            `}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-    );
-  }
+function WorkScheduleSettingsPanel({ isAdmin }: { isAdmin: boolean }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [holidayDate, setHolidayDate] = useState("");
+  const [holidayName, setHolidayName] = useState("");
+  const { data: savedSettings } = useQuery<WorkScheduleSettings>({
+    queryKey: ["employee-payroll-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/payroll-settings");
+      if (!response.ok) throw new Error("Failed to load work schedule");
+      return response.json();
+    },
+  });
+  const settings = savedSettings ?? DEFAULT_WORK_SCHEDULE;
+  const { data: publicHolidays = [], isError: holidaysError } = useQuery<PublicHoliday[]>({
+    queryKey: ["employee-public-holidays"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/public-holidays");
+      if (!response.ok) throw new Error("Failed to load public holidays");
+      return response.json();
+    },
+  });
+  const [shiftStart, setShiftStart] = useState(settings.shiftStart);
+  const [shiftEnd, setShiftEnd] = useState(settings.shiftEnd);
+  const [breakMinutes, setBreakMinutes] = useState(settings.breakMinutes);
 
-  // Week view: always show all 4 pills side by side
+  useEffect(() => {
+    setShiftStart(settings.shiftStart);
+    setShiftEnd(settings.shiftEnd);
+    setBreakMinutes(settings.breakMinutes);
+  }, [settings.shiftStart, settings.shiftEnd, settings.breakMinutes]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/employees/payroll-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shiftStart, shiftEnd, breakMinutes }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.formErrors?.[0] ?? "Failed to save work schedule");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-payroll-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      setOpen(false);
+    },
+  });
+
+  const saveHolidayMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/employees/public-holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: holidayDate, name: holidayName }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.formErrors?.[0] ?? "Failed to save public holiday");
+      return result;
+    },
+    onSuccess: () => {
+      setHolidayDate("");
+      setHolidayName("");
+      queryClient.invalidateQueries({ queryKey: ["employee-public-holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-range"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
+
+  const deleteHolidayMutation = useMutation({
+    mutationFn: async (date: string) => {
+      const response = await fetch("/api/employees/public-holidays", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.formErrors?.[0] ?? "Failed to remove public holiday");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-public-holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-range"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+  });
+
+  if (!isAdmin) return null;
+
   return (
-    <div className="flex gap-1 justify-center">
-      {PRIMARY_STATUSES.map((s) => (
-        <button
-          key={s.key}
-          title={s.title}
-          onClick={() => onSelect(status === s.key ? "" : s.key as StatusKey)}
-          className={`
-            h-7 px-1.5 rounded border text-[10px] font-bold transition-all duration-100 min-w-[1.5rem]
-            ${status === s.key
-              ? s.active + " shadow-sm scale-105"
-              : s.inactive
-            }
-          `}
-        >
-          {s.label}
-        </button>
-      ))}
+    <div className="rounded-md border bg-background px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Normal shift: <span className="font-medium text-foreground">{settings.shiftStart}–{settings.shiftEnd}</span>
+          {" · "}{settings.breakMinutes} min unpaid break
+          {" · "}{getRegularShiftHours(settings)} regular hours/day
+        </p>
+        <Button size="sm" variant="outline" onClick={() => setOpen((value) => !value)}>
+          {open ? "Close schedule" : "Work schedule"}
+        </Button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-4 border-t pt-3">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1.2fr_auto] sm:items-end">
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="work-shift-start">Shift start</Label>
+              <Input id="work-shift-start" type="time" value={shiftStart} onChange={(event) => setShiftStart(event.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="work-shift-end">Shift end</Label>
+              <Input id="work-shift-end" type="time" value={shiftEnd} onChange={(event) => setShiftEnd(event.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="work-break">Unpaid break</Label>
+              <select id="work-break" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={breakMinutes} onChange={(event) => setBreakMinutes(Number(event.target.value))}>
+                <option value={30}>30 minutes</option>
+                <option value={60}>1 hour</option>
+              </select>
+            </div>
+            <Button size="sm" disabled={saveMutation.isPending || getRegularShiftHours({ shiftStart, shiftEnd, breakMinutes }) <= 0} onClick={() => saveMutation.mutate()}>
+              {saveMutation.isPending ? "Saving…" : "Save schedule"}
+            </Button>
+            {saveMutation.isError && <p className="text-xs text-destructive sm:col-span-4">{saveMutation.error.message}</p>}
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <div>
+              <p className="text-sm font-medium">Public holidays</p>
+              <p className="text-xs text-muted-foreground">Employees receive normal scheduled-day pay. Public holidays on Sundays are unpaid.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+              <div className="space-y-1">
+                <Label className="text-xs" htmlFor="public-holiday-date">Date</Label>
+                <Input id="public-holiday-date" type="date" value={holidayDate} onChange={(event) => setHolidayDate(event.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs" htmlFor="public-holiday-name">Holiday name</Label>
+                <Input id="public-holiday-name" value={holidayName} maxLength={100} onChange={(event) => setHolidayName(event.target.value)} placeholder="e.g. Diwali" />
+              </div>
+              <Button
+                size="sm"
+                className="self-end"
+                disabled={!holidayDate || !holidayName.trim() || saveHolidayMutation.isPending}
+                onClick={() => saveHolidayMutation.mutate()}
+              >
+                {saveHolidayMutation.isPending ? "Saving…" : "Add holiday"}
+              </Button>
+            </div>
+            {(holidaysError || saveHolidayMutation.isError || deleteHolidayMutation.isError) && (
+              <p className="text-xs text-destructive" role="alert">
+                {holidaysError ? "Failed to load public holidays." : saveHolidayMutation.error?.message ?? deleteHolidayMutation.error?.message}
+              </p>
+            )}
+            {publicHolidays.length > 0 && (
+              <ul className="max-h-40 divide-y overflow-y-auto rounded border">
+                {publicHolidays.map((holiday) => {
+                  const sunday = new Date(`${holiday.date}T00:00:00.000Z`).getUTCDay() === 0;
+                  return (
+                    <li key={holiday.date} className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
+                      <span>
+                        <span className="font-medium">{holiday.name}</span>
+                        <span className="text-muted-foreground"> · {holiday.date}{sunday ? " · Sunday (unpaid)" : ""}</span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={deleteHolidayMutation.isPending}
+                        onClick={() => deleteHolidayMutation.mutate(holiday.date)}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export function AttendanceTab() {
+function AttendanceCell({
+  record,
+  employeeId,
+  date,
+  isSunday,
+  compact,
+  locked,
+  inactive,
+  publicHoliday,
+  editable,
+  editing,
+  schedule,
+  saving,
+  onEdit,
+  onCancel,
+  onSave,
+}: {
+  record: any;
+  employeeId: string;
+  date: string;
+  isSunday: boolean;
+  compact: boolean;
+  locked: boolean;
+  inactive: boolean;
+  publicHoliday: PublicHoliday | null;
+  editable: boolean;
+  editing: boolean;
+  schedule: WorkScheduleSettings;
+  saving: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: (record: AttendanceSaveRecord) => void;
+}) {
+  if (inactive) return <span className="text-xs text-muted-foreground/50">—</span>;
+  if (publicHoliday) {
+    const sunday = isSunday;
+    return (
+      <span
+        className={`mx-auto flex min-h-8 w-full flex-col items-center justify-center rounded px-1 text-[10px] leading-tight ${sunday ? "text-muted-foreground" : "font-medium text-blue-700"}`}
+        title={sunday ? `${publicHoliday.name} — Sunday public holidays are unpaid` : `${publicHoliday.name} — paid public holiday`}
+      >
+        <span>{sunday ? "Sunday · unpaid" : "Public holiday"}</span>
+        {!compact && <span className="text-[9px]">{publicHoliday.name}</span>}
+      </span>
+    );
+  }
+
+  const regularHoursPerDay = getRegularShiftHours(schedule);
+  const savedHours = record?.entryMode
+    ? calculateWorkedHours(record, schedule.breakMinutes)
+    : null;
+
+  if (editing && editable && !locked && !compact) {
+    return (
+      <AttendanceCellEditor
+        key={`${employeeId}-${date}-${record?.id ?? "new"}`}
+        record={record}
+        employeeId={employeeId}
+        date={date}
+        schedule={schedule}
+        saving={saving}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+  }
+
+  let summary = "Enter";
+  let detail = "";
+  if (record?.entryMode && savedHours !== null) {
+    const savedRegularHours = Number(record.regularShiftHours) > 0 ? Number(record.regularShiftHours) : regularHoursPerDay;
+    const regular = Math.min(savedHours, savedRegularHours);
+    const overtime = Math.max(savedHours - savedRegularHours, 0);
+    summary = `${isSunday ? "Sun " : ""}${regular.toFixed(regular % 1 ? 1 : 0)}h`;
+    detail = overtime > 0 ? `OT ${overtime.toFixed(overtime % 1 ? 1 : 0)}h` : "Regular";
+  } else if (record?.status === "ABSENT") {
+    summary = "Absent";
+  } else if (record?.status === "HOLIDAY") {
+    summary = isSunday ? "Sunday" : "Holiday";
+  } else if (record?.status === "HALF_DAY") {
+    summary = "½ · legacy";
+  } else if (record?.status === "PRESENT") {
+    summary = "Present · legacy";
+  }
+
+  const readOnly = compact || locked || !editable;
+  return (
+    <button
+      type="button"
+      disabled={readOnly}
+      onClick={onEdit}
+      className={`mx-auto flex min-h-8 w-full flex-col items-center justify-center rounded px-1 text-[10px] leading-tight ${
+        locked ? "text-muted-foreground" : record?.entryMode ? "text-foreground hover:bg-muted" : "text-muted-foreground hover:bg-muted"
+      } ${compact ? "min-h-5" : ""}`}
+      title={locked ? "Salary paid — attendance locked" : compact ? "Switch to weekly view to edit attendance" : editable ? "Edit attendance" : "Only admins can edit attendance"}
+    >
+      <span>{locked && <LockIcon className="mr-1 inline h-3 w-3" />}{summary}</span>
+      {detail && !compact && <span className={detail.startsWith("OT") ? "font-medium text-amber-700" : "text-muted-foreground"}>{detail}</span>}
+    </button>
+  );
+}
+
+function AttendanceCellEditor({
+  record,
+  employeeId,
+  date,
+  schedule,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  record: any;
+  employeeId: string;
+  date: string;
+  schedule: WorkScheduleSettings;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (record: AttendanceSaveRecord) => void;
+}) {
+  const [entryMode, setEntryMode] = useState<AttendanceEntryMode>(record?.entryMode ?? "HOURS");
+  const [hours, setHours] = useState(record?.entryMode === "HOURS" ? String(record.workedHours ?? "") : "");
+  const [checkIn, setCheckIn] = useState(record?.checkIn ?? schedule.shiftStart);
+  const [checkOut, setCheckOut] = useState(record?.checkOut ?? schedule.shiftEnd);
+  const [notes, setNotes] = useState(record?.notes ?? "");
+
+  const workedHours = calculateWorkedHours({
+    status: "PRESENT",
+    entryMode,
+    workedHours: entryMode === "HOURS" && hours !== "" ? Number(hours) : null,
+    regularShiftHours: null,
+    checkIn: entryMode === "TIME_RANGE" ? checkIn : null,
+    checkOut: entryMode === "TIME_RANGE" ? checkOut : null,
+  }, schedule.breakMinutes);
+  const regularHours = getRegularShiftHours(schedule);
+  const regular = workedHours === null ? 0 : Math.min(workedHours, regularHours);
+  const overtime = workedHours === null ? 0 : Math.max(workedHours - regularHours, 0);
+  const canSave = workedHours !== null;
+
+  function save() {
+    onSave({
+      employeeId,
+      date,
+      status: "PRESENT",
+      entryMode,
+      ...(entryMode === "HOURS" ? { workedHours: Number(hours) } : { checkIn, checkOut }),
+      notes: notes || undefined,
+    });
+  }
+
+  return (
+    <div className="min-w-36 space-y-1.5 rounded border bg-background p-2 text-left shadow-sm">
+      <div className="grid grid-cols-2 gap-1">
+        {(["HOURS", "TIME_RANGE"] as const).map((value) => (
+          <button key={value} type="button" onClick={() => setEntryMode(value)} className={`rounded border px-1 py-1 text-[9px] ${entryMode === value ? "border-primary bg-primary/10 font-semibold text-primary" : "text-muted-foreground"}`}>
+            {value === "HOURS" ? "Hours" : "Start–End"}
+          </button>
+        ))}
+      </div>
+      {entryMode === "HOURS" ? (
+        <label className="block text-[9px] text-muted-foreground">
+          Hours worked, excluding lunch
+          <input type="number" min="0" max="24" step="0.25" value={hours} onChange={(event) => setHours(event.target.value)} className="mt-0.5 h-7 w-full rounded border bg-background px-2 text-xs text-foreground" />
+        </label>
+      ) : (
+        <div className="grid grid-cols-2 gap-1">
+          <label className="text-[9px] text-muted-foreground">Start<input aria-label="Start time" type="time" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} className="mt-0.5 h-7 w-full rounded border bg-background px-1 text-[10px] text-foreground" /></label>
+          <label className="text-[9px] text-muted-foreground">End<input aria-label="End time" type="time" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} className="mt-0.5 h-7 w-full rounded border bg-background px-1 text-[10px] text-foreground" /></label>
+        </div>
+      )}
+      <p className="text-[9px] font-medium text-foreground">
+        {workedHours === null
+          ? "Enter time to calculate"
+          : workedHours === 0
+          ? "0 hours clears this attendance entry"
+          : `${regular.toFixed(regular % 1 ? 1 : 0)}h regular · ${overtime.toFixed(overtime % 1 ? 1 : 0)}h OT`}
+      </p>
+      <input aria-label="Attendance note" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Note (optional)" className="h-7 w-full rounded border bg-background px-2 text-[10px]" />
+      <div className="flex justify-end gap-1">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[10px] text-muted-foreground">Cancel</button>
+        <button type="button" disabled={!canSave || saving} onClick={save} className="rounded bg-primary px-2 py-1 text-[10px] text-primary-foreground disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+      </div>
+    </div>
+  );
+}
+
+export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient();
   const todayYMD = toYMD(new Date());
 
@@ -135,6 +443,31 @@ export function AttendanceTab() {
   });
   const employees: any[] = (empData?.employees ?? []).filter((employee: any) =>
     displayDates.some((date) => isEmployedOnDate(employee.employmentPeriods ?? [], toYMD(date)))
+  );
+  const { data: savedSchedule } = useQuery<WorkScheduleSettings>({
+    queryKey: ["employee-payroll-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/payroll-settings");
+      if (!response.ok) throw new Error("Failed to load work schedule");
+      return response.json();
+    },
+  });
+  const schedule = savedSchedule ?? DEFAULT_WORK_SCHEDULE;
+  const {
+    data: publicHolidays = [],
+    isLoading: holidaysLoading,
+    isError: holidaysLoadError,
+  } = useQuery<PublicHoliday[]>({
+    queryKey: ["employee-public-holidays"],
+    queryFn: async () => {
+      const response = await fetch("/api/employees/public-holidays");
+      if (!response.ok) throw new Error("Failed to load public holidays");
+      return response.json();
+    },
+  });
+  const holidayMap = useMemo(
+    () => new Map(publicHolidays.map((holiday) => [holiday.date, holiday])),
+    [publicHolidays]
   );
 
   const months = useMemo(
@@ -210,98 +543,26 @@ export function AttendanceTab() {
     return m;
   }, [attendanceData]);
 
-  const [optimistic, setOptimistic] = useState<Record<string, string>>({});
+  const [editingCell, setEditingCell] = useState<string | null>(null);
 
   const saveMutation = useMutation({
-    mutationFn: async (records: { employeeId: string; date: string; status: string }[]) => {
-      const toSave = records.filter((r) => r.status !== "");
-      if (toSave.length === 0) return;
+    mutationFn: async (record: AttendanceSaveRecord) => {
       const res = await fetch("/api/employees/attendance/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ records: toSave }),
+        body: JSON.stringify({ records: [record] }),
       });
-      if (!res.ok) throw new Error("Failed");
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error?.formErrors?.[0] ?? "Failed to save attendance");
     },
     onSuccess: () => {
-      setOptimistic({});
+      setEditingCell(null);
       queryClient.invalidateQueries({ queryKey: ["attendance-range"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
     },
   });
 
-  function getStatus(empId: string, date: string): StatusKey {
-    const key = `${empId}|${date}`;
-    if (optimistic[key] !== undefined) return optimistic[key] as StatusKey;
-    const existing = recMap[key]?.status;
-
-    // Auto-mark Sundays as holiday if no status exists
-    const employee = employees.find((item: any) => item.id === empId);
-    if (!existing && employee && isEmployedOnDate(employee.employmentPeriods ?? [], date)) {
-      const dateObj = new Date(date + "T00:00:00");
-      if (dateObj.getDay() === 0) { // Sunday = 0
-        return "HOLIDAY";
-      }
-    }
-
-    return (existing ?? "") as StatusKey;
-  }
-
-  function handleSelect(empId: string, date: string, status: StatusKey) {
-    const employee = employees.find((item: any) => item.id === empId);
-    if (!employee || !isEmployedOnDate(employee.employmentPeriods ?? [], date)) return;
-    if (isLocked(empId, date)) return; // salary paid — no edits
-    const key = `${empId}|${date}`;
-    setOptimistic((prev) => ({ ...prev, [key]: status }));
-    if (status) saveMutation.mutate([{ employeeId: empId, date, status }]);
-  }
-
-  // Auto-save Sundays as holidays when they're displayed
-  React.useEffect(() => {
-    if (employees.length === 0 || isLoading) return;
-
-    const sundaysToMark: { employeeId: string; date: string; status: string }[] = [];
-    const sundays = displayDates.filter((d) => d.getDay() === 0);
-
-    for (const emp of employees) {
-      for (const sunday of sundays) {
-        const ymd = toYMD(sunday);
-        const key = `${emp.id}|${ymd}`;
-        const existing = recMap[key];
-
-        // Only auto-mark if no record exists yet and not in a paid period
-        if (isEmployedOnDate(emp.employmentPeriods ?? [], ymd) && !existing && !optimistic[key] && !isLocked(emp.id, ymd)) {
-          sundaysToMark.push({ employeeId: emp.id, date: ymd, status: "HOLIDAY" });
-        }
-      }
-    }
-
-    if (sundaysToMark.length > 0) {
-      // Mark optimistically first
-      const newOptimistic: Record<string, string> = {};
-      sundaysToMark.forEach(r => {
-        newOptimistic[`${r.employeeId}|${r.date}`] = "HOLIDAY";
-      });
-      setOptimistic((prev) => ({ ...prev, ...newOptimistic }));
-
-      // Then save to database
-      saveMutation.mutate(sundaysToMark);
-    }
-  }, [displayDates, employees, recMap]);
-
-  const isLoading = empLoading || attLoading;
-
-  const stats = useMemo(() => {
-    const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0, HOLIDAY: 0, "": 0 };
-    for (const emp of employees) {
-      for (const d of displayDates) {
-        const date = toYMD(d);
-        if (!isEmployedOnDate(emp.employmentPeriods ?? [], date)) continue;
-        const s = getStatus(emp.id, date);
-        counts[s] = (counts[s] ?? 0) + 1;
-      }
-    }
-    return counts;
-  }, [recMap, optimistic, employees, displayDates]);
+  const isLoading = empLoading || attLoading || holidaysLoading;
 
   return (
     <div className="space-y-4">
@@ -316,19 +577,14 @@ export function AttendanceTab() {
         onMonthChange={setMonthPeriod}
       />
 
-      {/* ── Summary pills ── */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        {PRIMARY_STATUSES.map((s) => (
-          <span key={s.key} className={`rounded-full px-2 py-0.5 font-medium ${PILL_COLORS[s.key]}`}>
-            {stats[s.key] ?? 0} {s.title}
-          </span>
-        ))}
-        {(stats[""] ?? 0) > 0 && (
-          <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
-            {stats[""]} Unmarked
-          </span>
-        )}
-      </div>
+      <WorkScheduleSettingsPanel isAdmin={isAdmin} />
+      {holidaysLoadError && (
+        <p className="text-xs text-destructive" role="alert">
+          Could not load public holidays. Attendance on a configured holiday will be rejected until this is resolved.
+        </p>
+      )}
+
+      {mode === "monthly" && <p className="text-xs text-muted-foreground">Month view is a summary. Switch to weekly view to enter or edit hours.</p>}
 
       {/* ── Grid ── */}
       {isLoading ? (
@@ -389,11 +645,11 @@ export function AttendanceTab() {
                     </td>
                     {displayDates.map((d) => {
                       const ymd = toYMD(d);
-                      const status = getStatus(emp.id, ymd);
                       const isToday = ymd === todayYMD;
                       const isSunday = d.getDay() === 0;
                       const locked = isLocked(emp.id, ymd);
                       const employed = isEmployedOnDate(emp.employmentPeriods ?? [], ymd);
+                      const cellKey = `${emp.id}|${ymd}`;
                       return (
                         <td key={ymd}
                           className={`text-center border-r ${!employed ? "bg-muted/40" : locked ? "bg-muted/60" :
@@ -401,14 +657,24 @@ export function AttendanceTab() {
                                 isSunday ? "bg-blue-50/30" :
                                   ""
                             }`}
-                          style={{ padding: mode === "weekly" ? "0.375rem 0.25rem" : "0.25rem 0.1rem" }}
+                          style={{ padding: mode === "weekly" ? "0.375rem 0.25rem" : "0.25rem 0.1rem", minWidth: mode === "weekly" ? "10rem" : "2.2rem" }}
                         >
-                          <StatusPills
-                            status={status}
-                            onSelect={(s) => handleSelect(emp.id, ymd, s)}
+                          <AttendanceCell
+                            record={recMap[cellKey]}
+                            employeeId={emp.id}
+                            date={ymd}
+                            isSunday={isSunday}
                             compact={mode === "monthly"}
                             locked={locked}
                             inactive={!employed}
+                            publicHoliday={holidayMap.get(ymd) ?? null}
+                            editable={isAdmin}
+                            editing={editingCell === cellKey}
+                            schedule={schedule}
+                            saving={saveMutation.isPending}
+                            onEdit={() => setEditingCell(cellKey)}
+                            onCancel={() => setEditingCell(null)}
+                            onSave={(entry) => saveMutation.mutate(entry)}
                           />
                         </td>
                       );
@@ -422,19 +688,11 @@ export function AttendanceTab() {
       )}
 
       {/* ── Legend ── */}
+      {saveMutation.isError && <p className="text-xs text-destructive">{saveMutation.error.message}</p>}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
-        <span className="font-medium text-foreground">
-          {mode === "weekly" ? "Tap P·A·½·H to mark:" : "Tap dots to mark:"}
-        </span>
-        {PRIMARY_STATUSES.map((s) => (
-          <span key={s.key} className="flex items-center gap-1">
-            <span className={`h-4 w-5 rounded text-[9px] font-bold flex items-center justify-center border ${s.active}`}>
-              {s.label}
-            </span>
-            {s.title}
-          </span>
-        ))}
-        <span className="text-muted-foreground italic">tap again to clear</span>
+        <span className="font-medium text-foreground">{mode === "weekly" ? "Select a day to enter hours:" : "Recorded hours and day status"}</span>
+        <span>Worked hours exclude unpaid break</span>
+        <span>OT is paid at the normal hourly rate</span>
         <span className="flex items-center gap-1 border-l pl-3">
           <LockIcon className="h-3 w-3" />
           Salary paid — locked

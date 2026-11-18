@@ -51,17 +51,20 @@ export function AdvancesTab() {
       return res.json();
     },
   });
-  const employees: any[] = (empData?.employees ?? []).filter((e: any) => e.active);
+  const allEmployees: any[] = empData?.employees ?? [];
+  const employees = allEmployees.filter((employee: any) => employee.active);
 
   // Fetch all advances for all employees
-  const { data: allAdvances = [], isLoading } = useQuery({
-    queryKey: ["all-advances"],
-    enabled: employees.length > 0,
+  const { data: allAdvances = [], isLoading, isError } = useQuery({
+    queryKey: ["all-advances", allEmployees.map((employee: any) => employee.id)],
+    enabled: allEmployees.length > 0,
     queryFn: async () => {
       const results = await Promise.all(
-        employees.map((emp: any) =>
-          fetch(`/api/employees/${emp.id}/advances`).then((r) => (r.ok ? r.json() : []))
-        )
+        allEmployees.map(async (emp: any) => {
+          const response = await fetch(`/api/employees/${emp.id}/advances`);
+          if (!response.ok) throw new Error(`Failed to load advances for ${emp.name}`);
+          return response.json();
+        })
       );
       return results.flat();
     },
@@ -79,13 +82,16 @@ export function AdvancesTab() {
 
   // Calculate stats per employee
   const employeeStats = useMemo(() => {
-    return employees.map((emp) => {
+    return allEmployees.map((emp: any) => {
       const advances = advancesByEmployee.get(emp.id) ?? [];
       const outstanding = advances
         .filter((a) => a.status !== "RECOVERED")
-        .reduce((sum, a) => sum + (Number(a.amount) - Number(a.recoveredAmount)), 0);
+        .reduce((sum, a) => sum + Math.max(Number(a.amount) - Number(a.recoveredAmount), 0), 0);
       const totalIssued = advances.reduce((sum, a) => sum + Number(a.amount), 0);
-      const totalRecovered = advances.reduce((sum, a) => sum + Number(a.recoveredAmount), 0);
+      const totalRecovered = advances.reduce(
+        (sum, advance) => sum + Math.min(Number(advance.amount), Number(advance.recoveredAmount)),
+        0
+      );
 
       return {
         employee: emp,
@@ -95,7 +101,7 @@ export function AdvancesTab() {
         totalRecovered,
       };
     });
-  }, [employees, advancesByEmployee]);
+  }, [allEmployees, advancesByEmployee]);
 
   // Filter: show employees with advances or selected employee
   const filteredStats = employeeStats.filter(
@@ -125,6 +131,12 @@ export function AdvancesTab() {
             </Card>
           ))}
         </div>
+      ) : isError ? (
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-destructive" role="alert">
+            Could not load advances. Refresh and try again.
+          </CardContent>
+        </Card>
       ) : filteredStats.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -290,7 +302,7 @@ function EmployeeAdvanceAccordion({
                     {Number(adv.recoveredAmount) > 0 && (
                       <p className="text-green-600 text-[10px]">
                         <TrendingDown className="h-3 w-3 inline mr-0.5" />
-                        ₹{Number(adv.recoveredAmount).toLocaleString("en-IN")} recovered
+                        ₹{Math.min(Number(adv.amount), Number(adv.recoveredAmount)).toLocaleString("en-IN")} recovered
                       </p>
                     )}
                   </div>
@@ -340,25 +352,29 @@ function IssueAdvanceDialog({
   const selectedEmployee = employees.find((e) => e.id === employeeId);
 
   // Fetch employee's current outstanding advances
-  const { data: existingAdvances = [] } = useQuery({
+  const {
+    data: existingAdvances = [],
+    isLoading: advancesLoading,
+    isError: advancesError,
+  } = useQuery({
     queryKey: ["advances", employeeId],
     enabled: !!employeeId,
     queryFn: async () => {
       const res = await fetch(`/api/employees/${employeeId}/advances`);
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Failed to load employee advances");
       return res.json();
     },
   });
 
   const outstandingTotal = existingAdvances
     .filter((a: any) => a.status !== "RECOVERED")
-    .reduce((sum: number, a: any) => sum + (Number(a.amount) - Number(a.recoveredAmount)), 0);
+    .reduce((sum: number, a: any) => sum + Math.max(Number(a.amount) - Number(a.recoveredAmount), 0), 0);
 
   // Validations
   const amountNum = parseFloat(amount);
   const isAmountValid = !isNaN(amountNum) && amountNum > 0;
   const isReasonValid = reason.trim().length >= 3;
-  const canSubmit = employeeId && isAmountValid && isReasonValid;
+  const canSubmit = employeeId && isAmountValid && isReasonValid && !advancesLoading && !advancesError;
 
   // Warnings
   const showOutstandingWarning = outstandingTotal > 0;
@@ -376,7 +392,10 @@ function IssueAdvanceDialog({
           notes: notes.trim() || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Failed to issue advance");
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(typeof result.error === "string" ? result.error : "Failed to issue advance");
+      }
       return res.json();
     },
     onSuccess,
@@ -419,6 +438,11 @@ function IssueAdvanceDialog({
                 <p className="text-xs">This employee already has pending advances.</p>
               </div>
             </div>
+          )}
+          {advancesError && (
+            <p className="text-xs text-destructive" role="alert">
+              Could not check existing advance balances. Try again before issuing another advance.
+            </p>
           )}
 
           {/* Amount */}
@@ -484,6 +508,9 @@ function IssueAdvanceDialog({
                 </p>
               )}
             </div>
+          )}
+          {issueMutation.isError && (
+            <p className="text-xs text-destructive" role="alert">{issueMutation.error.message}</p>
           )}
         </div>
 
@@ -574,7 +601,7 @@ export function PaymentConfirmDialog({
 
     for (const adv of advances) {
       if (remaining <= 0) break;
-      const advOutstanding = Number(adv.amount) - Number(adv.recoveredAmount);
+      const advOutstanding = Math.max(Number(adv.amount) - Number(adv.recoveredAmount), 0);
       const toRecover = Math.min(remaining, advOutstanding);
       advancesToRecover.push({ advanceId: adv.id, amount: toRecover });
       remaining -= toRecover;
