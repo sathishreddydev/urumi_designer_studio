@@ -1,3 +1,37 @@
+export type EmployeeDirectoryItem = {
+  id: string;
+  name: string;
+  jobRole: string;
+  active: boolean;
+  payCycle: string;
+  salaryAmount: string;
+  employmentPeriods?: { startDate: string; endDate: string | null }[];
+};
+
+export async function fetchAllEmployees() {
+  const limit = 100;
+  const firstParams = new URLSearchParams({ page: "1", limit: String(limit) });
+  const firstResponse = await fetch(`/api/employees?${firstParams}`);
+  if (!firstResponse.ok) throw new Error("Could not load employees");
+  const firstPage = await firstResponse.json() as { employees: EmployeeDirectoryItem[]; total: number };
+  if (!Array.isArray(firstPage.employees) || !Number.isInteger(firstPage.total) || firstPage.total < 0) {
+    throw new Error("Invalid employee list response");
+  }
+
+  const employees = [...firstPage.employees];
+  const pageCount = Math.ceil(firstPage.total / limit);
+  for (let page = 2; page <= pageCount; page += 1) {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    const response = await fetch(`/api/employees?${params}`);
+    if (!response.ok) throw new Error("Could not load employees");
+    const result = await response.json() as { employees: EmployeeDirectoryItem[] };
+    if (!Array.isArray(result.employees)) throw new Error("Invalid employee list response");
+    employees.push(...result.employees);
+  }
+
+  return { employees, total: firstPage.total };
+}
+
 export function toYMD(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");

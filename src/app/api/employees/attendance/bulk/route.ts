@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employeeAttendance, employeeEmploymentPeriods, employeePayrollSettings, employeeSalaryPayments, employeePublicHolidays, employees } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
@@ -13,6 +13,40 @@ const bulkSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidYmdDate, "Date must be a valid calendar date."),
   }).superRefine(refineAttendanceEntry)).min(1),
 });
+
+const attendanceRangeSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidYmdDate),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidYmdDate),
+}).refine((range) => range.startDate <= range.endDate, "Start date must be before end date.")
+  .refine((range) => {
+    const start = new Date(`${range.startDate}T00:00:00Z`).getTime();
+    const end = new Date(`${range.endDate}T00:00:00Z`).getTime();
+    return (end - start) / 86_400_000 <= 62;
+  }, "Attendance range cannot exceed 63 days.");
+
+export const GET = withPermission(
+  { resource: "employee", action: "read" },
+  async (request) => {
+    const { searchParams } = new URL(request.url);
+    const parsed = attendanceRangeSchema.safeParse({
+      startDate: searchParams.get("startDate"),
+      endDate: searchParams.get("endDate"),
+    });
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const rows = await db
+      .select()
+      .from(employeeAttendance)
+      .where(and(
+        gte(employeeAttendance.date, parsed.data.startDate),
+        lte(employeeAttendance.date, parsed.data.endDate)
+      ))
+      .orderBy(asc(employeeAttendance.date), asc(employeeAttendance.employeeId));
+    return NextResponse.json(rows);
+  }
+);
 
 export const POST = withPermission(
   { resource: "employee", action: "update" },

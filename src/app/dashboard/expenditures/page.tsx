@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, TrendingDown, ChevronLeft, ChevronRight, ShieldAlert } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Pencil, Trash2, TrendingDown, ChevronLeft, ChevronRight, ShieldAlert, ReceiptText } from "lucide-react";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -61,7 +70,13 @@ const METHODS = [
 ];
 
 function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function localDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function formatDate(d: string) {
@@ -84,7 +99,7 @@ interface ExpenditureForm {
 }
 
 const emptyForm = (): ExpenditureForm => ({
-  date: new Date().toISOString().split("T")[0],
+  date: localDate(),
   category: "",
   customCategory: "",
   description: "",
@@ -94,10 +109,28 @@ const emptyForm = (): ExpenditureForm => ({
   notes: "",
 });
 
+type Expenditure = {
+  id: string;
+  date: string;
+  category: typeof CATEGORIES[number]["value"];
+  customCategory: string | null;
+  description: string;
+  amount: string;
+  method: typeof METHODS[number]["value"];
+  vendor: string | null;
+  notes: string | null;
+};
+
+type ExpenditureResponse = {
+  expenditures: Expenditure[];
+  total: number;
+  totalAmount: string;
+  breakdown: { category: Expenditure["category"]; total: string | null }[];
+};
+
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ExpendituresPage() {
-  const queryClient = useQueryClient();
   const router = useRouter();
 
   // Check authorization - ADMIN only
@@ -188,7 +221,7 @@ function ExpendituresContent() {
   // ── data ────────────────────────────────────────────────────────────────────
   const queryKey = ["expenditures", month, filterCat];
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery<ExpenditureResponse>({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({ month, limit: "200" });
@@ -202,9 +235,9 @@ function ExpendituresContent() {
     },
   });
 
-  const expenditures: any[] = data?.expenditures ?? [];
+  const expenditures = data?.expenditures ?? [];
   const totalAmount = Number(data?.totalAmount ?? 0);
-  const breakdown: any[] = data?.breakdown ?? [];
+  const breakdown = data?.breakdown ?? [];
 
   // ── mutations ────────────────────────────────────────────────────────────────
 
@@ -227,7 +260,7 @@ function ExpendituresContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error("Failed to update");
+        if (!res.ok) throw new Error(`Could not update expenditure (error ${res.status}). Please try again.`);
         return res.json();
       } else {
         const res = await fetch("/api/expenditures", {
@@ -235,12 +268,17 @@ function ExpendituresContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error("Failed to create");
+        if (!res.ok) throw new Error(`Could not save expenditure (error ${res.status}). Please check the details and try again.`);
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (saved: Expenditure) => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+      const savedMonth = saved.date.slice(0, 7);
+      if (savedMonth !== month) {
+        setMonth(savedMonth);
+        syncToUrl({ month: savedMonth });
+      }
       setShowForm(false);
       setEditId(null);
       setForm(emptyForm());
@@ -250,7 +288,7 @@ function ExpendituresContent() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/expenditures/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      if (!res.ok) throw new Error(`Could not delete expenditure (error ${res.status}). Please try again.`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenditures"] });
@@ -276,7 +314,7 @@ function ExpendituresContent() {
     syncToUrl({ month: newMonth });
   }
 
-  function openEdit(exp: any) {
+  function openEdit(exp: Expenditure) {
     setForm({
       date: exp.date,
       category: exp.category,
@@ -289,17 +327,19 @@ function ExpendituresContent() {
     });
     setEditId(exp.id);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function cancelForm() {
     setShowForm(false);
     setEditId(null);
     setForm(emptyForm());
+    saveMutation.reset();
   }
 
   const [y, m] = month.split("-").map(Number);
   const monthLabel = new Date(y, m - 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+  const selectedCategory = CATEGORIES.find((category) => category.value === filterCat);
+  const isCurrentMonth = month === currentMonth();
 
   return (
     <div className="space-y-4">
@@ -317,164 +357,225 @@ function ExpendituresContent() {
         </Button>
       </div>
 
-      {/* Add / Edit form */}
-      {showForm && (
-        <Card className="border-primary/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{editId ? "Edit Expenditure" : "New Expenditure"}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {/* Date */}
-              <div className="space-y-1">
-                <Label className="text-xs">Date *</Label>
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open && !saveMutation.isPending) cancelForm();
+          else setShowForm(true);
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editId ? "Edit expenditure" : "Add expenditure"}</DialogTitle>
+            <DialogDescription>
+              Record the amount, category and payment details for this store expense.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveMutation.mutate();
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-date">Date <span className="text-destructive">*</span></Label>
                 <Input
+                  id="expenditure-date"
                   type="date"
+                  required
                   value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="h-9 text-sm"
+                  onChange={(event) => setForm({ ...form, date: event.target.value })}
                 />
               </div>
-
-              {/* Category */}
-              <div className="space-y-1">
-                <Label className="text-xs">Category *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-category">Category <span className="text-destructive">*</span></Label>
                 <Select
                   value={form.category}
-                  onValueChange={(val) => setForm({ ...form, category: val })}
+                  onValueChange={(category) => setForm({
+                    ...form,
+                    category,
+                    customCategory: category === "MISCELLANEOUS" ? form.customCategory : "",
+                  })}
+                  required
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectTrigger id="expenditure-category"><SelectValue placeholder="Choose a category" /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    {CATEGORIES.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Description */}
-              <div className="space-y-1 sm:col-span-2">
-                <Label className="text-xs">Description *</Label>
+              {form.category === "MISCELLANEOUS" && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="expenditure-custom-category">Expense type <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input
+                    id="expenditure-custom-category"
+                    value={form.customCategory}
+                    maxLength={100}
+                    onChange={(event) => setForm({ ...form, customCategory: event.target.value })}
+                    placeholder="e.g. Staff refreshments"
+                  />
+                </div>
+              )}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="expenditure-description">Description <span className="text-destructive">*</span></Label>
                 <Input
+                  id="expenditure-description"
+                  required
+                  maxLength={250}
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="e.g. Monthly rent for shop, Silk fabric purchase…"
-                  className="h-9 text-sm"
+                  onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  placeholder="e.g. Monthly shop rent or silk fabric purchase"
                 />
               </div>
-
-              {/* Amount */}
-              <div className="space-y-1">
-                <Label className="text-xs">Amount (₹) *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-amount">Amount (₹) <span className="text-destructive">*</span></Label>
                 <Input
+                  id="expenditure-amount"
                   type="number"
-                  min={0}
-                  step={0.01}
+                  min="0.01"
+                  step="0.01"
+                  inputMode="decimal"
+                  required
                   value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  onChange={(event) => setForm({ ...form, amount: event.target.value })}
                   placeholder="0.00"
-                  className="h-9 text-sm"
                 />
               </div>
-
-              {/* Method */}
-              <div className="space-y-1">
-                <Label className="text-xs">Payment Method</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-method">Payment method</Label>
                 <Select
                   value={form.method}
-                  onValueChange={(val) => setForm({ ...form, method: val })}
+                  onValueChange={(method) => setForm({ ...form, method })}
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="expenditure-method"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {METHODS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    {METHODS.map((method) => (
+                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Vendor */}
-              <div className="space-y-1">
-                <Label className="text-xs">Vendor / Paid To <span className="text-muted-foreground">(optional)</span></Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-vendor">Vendor / paid to <span className="text-muted-foreground">(optional)</span></Label>
                 <Input
+                  id="expenditure-vendor"
+                  maxLength={150}
                   value={form.vendor}
-                  onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-                  placeholder="e.g. Landlord name, supplier…"
-                  className="h-9 text-sm"
+                  onChange={(event) => setForm({ ...form, vendor: event.target.value })}
+                  placeholder="Landlord or supplier"
                 />
               </div>
-
-              {/* Notes */}
-              <div className="space-y-1">
-                <Label className="text-xs">Notes <span className="text-muted-foreground">(optional)</span></Label>
-                <Input
+              <div className="space-y-1.5">
+                <Label htmlFor="expenditure-notes">Notes <span className="text-muted-foreground">(optional)</span></Label>
+                <Textarea
+                  id="expenditure-notes"
+                  className="min-h-10"
+                  maxLength={500}
                   value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Any additional details…"
-                  className="h-9 text-sm"
+                  onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                  placeholder="Additional details"
                 />
               </div>
             </div>
-
             {saveMutation.error && (
-              <p className="text-sm text-destructive">{saveMutation.error.message}</p>
+              <p className="text-sm text-destructive" role="alert">{saveMutation.error.message}</p>
             )}
-
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" size="sm" onClick={cancelForm}>Cancel</Button>
-              <Button
-                size="sm"
-                disabled={saveMutation.isPending || !form.category || !form.description || !form.amount}
-                onClick={() => saveMutation.mutate()}
-              >
-                {saveMutation.isPending ? "Saving…" : editId ? "Save Changes" : "Add Expenditure"}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={cancelForm} disabled={saveMutation.isPending}>
+                Cancel
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              <Button
+                type="submit"
+                disabled={saveMutation.isPending || !form.category || !form.description.trim() || !form.amount || Number(form.amount) <= 0}
+              >
+                {saveMutation.isPending ? "Saving…" : editId ? "Save changes" : "Save expenditure"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Month navigator */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={prevMonth}>
+        <Button variant="outline" size="icon" aria-label="Previous month" onClick={prevMonth}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="font-semibold text-sm">{monthLabel}</span>
-        <Button variant="outline" size="sm" onClick={nextMonth}>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">{monthLabel}</span>
+          {!isCurrentMonth && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                const thisMonth = currentMonth();
+                setMonth(thisMonth);
+                syncToUrl({ month: thisMonth });
+              }}
+            >
+              This month
+            </Button>
+          )}
+        </div>
+        <Button variant="outline" size="icon" aria-label="Next month" disabled={isCurrentMonth} onClick={nextMonth}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Total + breakdown */}
-      {!isLoading && (
+      {isLoading ? (
+        <Card className="animate-pulse">
+          <CardContent className="h-24" />
+        </Card>
+      ) : (
         <div className="space-y-3">
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total This Month</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    {selectedCategory ? `${selectedCategory.label} total` : "Total this month"}
+                  </p>
                   <p className="text-2xl font-bold">₹{totalAmount.toLocaleString("en-IN")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {data?.total ?? 0} {data?.total === 1 ? "expense" : "expenses"} in {monthLabel}
+                  </p>
                 </div>
                 <TrendingDown className="h-8 w-8 text-destructive/50" />
               </div>
             </CardContent>
           </Card>
 
-          {breakdown.length > 0 && (
+          {filterCat === "ALL" && breakdown.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               {breakdown
+                .slice()
                 .sort((a, b) => Number(b.total) - Number(a.total))
-                .map((b: any) => {
-                  const label = CATEGORIES.find((c) => c.value === b.category)?.label ?? b.category;
+                .map((item) => {
+                  const category = CATEGORIES.find((option) => option.value === item.category);
+                  const label = category?.label ?? item.category;
                   return (
-                    <Card key={b.category} className="cursor-pointer hover:border-primary/40"
-                      onClick={() => { const v = filterCat === b.category ? "ALL" : b.category; setFilterCat(v); syncToUrl({ cat: v }); }}
+                    <button
+                      type="button"
+                      key={item.category}
+                      className="rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Filter by ${label}, total ₹${Number(item.total).toLocaleString("en-IN")}`}
+                      onClick={() => {
+                        setFilterCat(item.category);
+                        syncToUrl({ cat: item.category });
+                      }}
                     >
-                      <CardContent className="p-3">
-                        <Badge className={`text-xs mb-1 ${CATEGORY_COLORS[b.category]}`}>{label}</Badge>
-                        <p className="font-semibold text-sm">₹{Number(b.total).toLocaleString("en-IN")}</p>
-                      </CardContent>
-                    </Card>
+                      <Card className="h-full transition-colors hover:border-primary/40">
+                        <CardContent className="p-3">
+                          <Badge className={`mb-1 text-xs ${CATEGORY_COLORS[item.category]}`}>{label}</Badge>
+                          <p className="font-semibold text-sm">₹{Number(item.total).toLocaleString("en-IN")}</p>
+                        </CardContent>
+                      </Card>
+                    </button>
                   );
                 })}
             </div>
@@ -483,8 +584,10 @@ function ExpendituresContent() {
       )}
 
       {/* Filter bar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter expenditures by category">
         <button
+          type="button"
+          aria-pressed={filterCat === "ALL"}
           onClick={() => { setFilterCat("ALL"); syncToUrl({ cat: "ALL" }); }}
           className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${filterCat === "ALL" ? "bg-primary text-primary-foreground border-transparent" : "border-border hover:border-primary/40"}`}
         >
@@ -492,7 +595,9 @@ function ExpendituresContent() {
         </button>
         {CATEGORIES.map((c) => (
           <button
+            type="button"
             key={c.value}
+            aria-pressed={filterCat === c.value}
             onClick={() => { const v = filterCat === c.value ? "ALL" : c.value; setFilterCat(v); syncToUrl({ cat: v }); }}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               filterCat === c.value
@@ -511,6 +616,9 @@ function ExpendituresContent() {
           <CardContent className="py-12 text-center">
             <p className="text-destructive font-medium mb-2">Error loading expenditures</p>
             <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : "Unknown error"}</p>
+            <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+              Try again
+            </Button>
           </CardContent>
         </Card>
       ) : isLoading ? (
@@ -521,50 +629,80 @@ function ExpendituresContent() {
         </div>
       ) : expenditures.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No expenditures recorded for {monthLabel}.
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 rounded-full bg-muted p-3">
+              <ReceiptText className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="font-medium">
+              {filterCat === "ALL" ? "No expenses recorded yet" : `No ${selectedCategory?.label.toLowerCase()} expenses`}
+            </p>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              {filterCat === "ALL"
+                ? `There are no expenditures for ${monthLabel}. Add an expense to start tracking your store costs.`
+                : `There are no ${selectedCategory?.label.toLowerCase()} expenses for ${monthLabel}. Try another category or clear the filter.`}
+            </p>
+            {filterCat === "ALL" ? (
+              <Button className="mt-4" onClick={() => { cancelForm(); setShowForm(true); }}>
+                <Plus className="h-4 w-4" /> Add first expense
+              </Button>
+            ) : (
+              <Button
+                className="mt-4"
+                variant="outline"
+                onClick={() => { setFilterCat("ALL"); syncToUrl({ cat: "ALL" }); }}
+              >
+                Clear category filter
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {expenditures.map((exp: any) => {
-            const catLabel = CATEGORIES.find((c) => c.value === exp.category)?.label ?? exp.category;
+          {expenditures.map((exp) => {
+            const catLabel = exp.customCategory || CATEGORIES.find((c) => c.value === exp.category)?.label || exp.category;
             return (
               <Card key={exp.id}>
-                <CardContent className="pt-3 pb-3">
+                <CardContent className="py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <Badge className={`text-xs shrink-0 ${CATEGORY_COLORS[exp.category]}`}>
                           {catLabel}
                         </Badge>
-                        <p className="font-medium text-sm truncate">{exp.description}</p>
+                        <p className="font-medium text-sm break-words">{exp.description}</p>
                       </div>
-                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-0.5">
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>{formatDate(exp.date)}</span>
-                        {exp.vendor && <span>· {exp.vendor}</span>}
-                        <span>· {exp.method.replace("_", " ")}</span>
-                        {exp.notes && <span>· {exp.notes}</span>}
+                        <span>{METHODS.find((method) => method.value === exp.method)?.label ?? exp.method}</span>
+                        {exp.vendor && <span>Paid to {exp.vendor}</span>}
                       </div>
+                      {exp.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{exp.notes}</p>}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className="font-semibold text-sm">₹{Number(exp.amount).toLocaleString("en-IN")}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => openEdit(exp)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteId(exp.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          aria-label={`Edit ${exp.description}`}
+                          onClick={() => openEdit(exp)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          aria-label={`Delete ${exp.description}`}
+                          onClick={() => {
+                            deleteMutation.reset();
+                            setDeleteId(exp.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -580,16 +718,25 @@ function ExpendituresContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this expenditure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone.
+              {expenditures.find((expenditure) => expenditure.id === deleteId)?.description
+                ? `"${expenditures.find((expenditure) => expenditure.id === deleteId)?.description}" will be permanently deleted. This action cannot be undone.`
+                : "This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteMutation.error && (
+            <p className="text-sm text-destructive" role="alert">{deleteMutation.error.message}</p>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground"
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              disabled={deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deleteId) deleteMutation.mutate(deleteId);
+              }}
             >
-              Delete
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

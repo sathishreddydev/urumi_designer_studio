@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,13 +12,25 @@ import { toast } from "@/hooks/use-toast";
 
 export function StaffTab() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["employees", search],
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["employees", "staff", debouncedSearch, page],
     queryFn: async () => {
-      const res = await fetch(`/api/employees?search=${encodeURIComponent(search)}&limit=100`);
-      if (!res.ok) throw new Error("Failed");
+      const params = new URLSearchParams({
+        search: debouncedSearch,
+        page: String(page),
+        limit: "20",
+      });
+      const res = await fetch(`/api/employees?${params}`);
+      if (!res.ok) throw new Error("Could not load employees");
       return res.json();
     },
   });
@@ -43,6 +55,12 @@ export function StaffTab() {
   });
 
   const employees = data?.employees ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="space-y-4">
@@ -52,14 +70,18 @@ export function StaffTab() {
           className="pl-9"
           placeholder="Search by name, phone or role…"
           value={search}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
       </div>
 
-      {!isLoading && (
+      {!isLoading && !isError && (
         <p className="text-xs text-muted-foreground">
-          {employees.filter((e: any) => e.active).length} active ·{" "}
-          {employees.filter((e: any) => !e.active).length} inactive
+          {total === 0
+            ? "No employees"
+            : `Showing ${(page - 1) * 20 + 1}–${Math.min(page * 20, total)} of ${total} employees`}
         </p>
       )}
 
@@ -69,6 +91,13 @@ export function StaffTab() {
             <Card key={i} className="animate-pulse"><CardContent className="h-20 pt-6" /></Card>
           ))}
         </div>
+      ) : isError ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-destructive" role="alert">Could not load employees. Please try again.</p>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+          </CardContent>
+        </Card>
       ) : employees.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">No employees found.</CardContent></Card>
       ) : (
@@ -133,6 +162,17 @@ export function StaffTab() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+      {!isLoading && !isError && total > 20 && (
+        <div className="flex items-center justify-between">
+          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+          <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>
+            Next
+          </Button>
         </div>
       )}
     </div>

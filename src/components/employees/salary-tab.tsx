@@ -48,11 +48,11 @@ export function SalaryTab() {
     function getMethod(id: string) { return methods[id] ?? "CASH"; }
     function getNote(id: string) { return notes[id] ?? ""; }
 
-    const { data: payrollData, isLoading } = useQuery({
+    const { data: payrollData, isLoading, isError: payrollError, refetch: refetchPayroll } = useQuery({
         queryKey: ["payroll", period],
         queryFn: async () => {
             const res = await fetch(`/api/employees/salary/payroll?period=${period}`);
-            if (!res.ok) throw new Error("Failed");
+            if (!res.ok) throw new Error("Could not load payroll");
             return res.json();
         },
     });
@@ -72,25 +72,17 @@ export function SalaryTab() {
         queryFn: async () => {
             const employeesWithAdvances = payroll.filter((p: any) => p.calculation.outstandingAdvances > 0);
             if (employeesWithAdvances.length === 0) return {};
-
-            const results = await Promise.all(
-                employeesWithAdvances.map(async (p: any) => {
-                    const res = await fetch(`/api/employees/${p.employee.id}/advances`);
-                    if (!res.ok) throw new Error(`Failed to load advances for ${p.employee.name}`);
-                    const advances = await res.json();
-                    return {
-                        employeeId: p.employee.id,
-                        advances: advances
-                            .filter((a: any) => a.status !== "RECOVERED")
-                            .sort((a: any, b: any) => new Date(a.issuedAt).getTime() - new Date(b.issuedAt).getTime()), // FIFO
-                    };
-                })
-            );
-
+            const employeeIds = employeesWithAdvances.map((p: any) => p.employee.id);
+            const params = new URLSearchParams({ employeeIds: employeeIds.join(",") });
+            const response = await fetch(`/api/employees/advances?${params}`);
+            if (!response.ok) throw new Error("Failed to load advances");
+            const advances = await response.json();
             const map: Record<string, any[]> = {};
-            results.forEach((r) => {
-                map[r.employeeId] = r.advances;
-            });
+            for (const employeeId of employeeIds) {
+                map[employeeId] = advances
+                    .filter((advance: any) => advance.employeeId === employeeId && advance.status !== "RECOVERED")
+                    .sort((a: any, b: any) => new Date(a.issuedAt).getTime() - new Date(b.issuedAt).getTime());
+            }
             return map;
         },
     });
@@ -202,6 +194,13 @@ export function SalaryTab() {
                 <p className="flex items-center gap-1 text-xs text-destructive" role="alert">
                     <AlertCircle className="h-3 w-3" />
                     Could not load advance balances. Retry before recording a salary payment.
+                    <button className="underline" onClick={() => queryClient.invalidateQueries({ queryKey: ["all-advances-for-salary"] })}>Retry</button>
+                </p>
+            )}
+            {payrollError && (
+                <p className="flex items-center gap-1 text-xs text-destructive" role="alert">
+                    <AlertCircle className="h-3 w-3" />
+                    Could not load payroll. <button className="underline" onClick={() => refetchPayroll()}>Retry</button>
                 </p>
             )}
             {saveMutation.isError && (
@@ -215,6 +214,8 @@ export function SalaryTab() {
                         <Card key={i} className="animate-pulse"><CardContent className="h-20 pt-4" /></Card>
                     ))}
                 </div>
+            ) : payrollError ? (
+                <Card><CardContent className="py-12 text-center text-sm text-destructive">Payroll could not be loaded.</CardContent></Card>
             ) : payroll.length === 0 ? (
                 <Card><CardContent className="py-12 text-center text-muted-foreground">No active employees found.</CardContent></Card>
             ) : (

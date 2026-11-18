@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   currentWeekMonday,
   currentYearMonth,
+  fetchAllEmployees,
   getMonthDates,
   getWeekDates,
   toYMD,
@@ -237,6 +238,7 @@ function AttendanceCell({
   inactive,
   publicHoliday,
   editable,
+  readOnlyReason,
   editing,
   schedule,
   saving,
@@ -253,6 +255,7 @@ function AttendanceCell({
   inactive: boolean;
   publicHoliday: PublicHoliday | null;
   editable: boolean;
+  readOnlyReason: string;
   editing: boolean;
   schedule: WorkScheduleSettings;
   saving: boolean;
@@ -321,7 +324,7 @@ function AttendanceCell({
       className={`mx-auto flex min-h-8 w-full flex-col items-center justify-center rounded px-1 text-[10px] leading-tight ${
         locked ? "text-muted-foreground" : record?.entryMode ? "text-foreground hover:bg-muted" : "text-muted-foreground hover:bg-muted"
       } ${compact ? "min-h-5" : ""}`}
-      title={locked ? "Salary paid — attendance locked" : compact ? "Switch to weekly view to edit attendance" : editable ? "Edit attendance" : "Only admins can edit attendance"}
+      title={locked ? "Salary paid — attendance locked" : compact ? "Switch to weekly view to edit attendance" : editable ? "Edit attendance" : readOnlyReason}
     >
       <span>{locked && <LockIcon className="mr-1 inline h-3 w-3" />}{summary}</span>
       {detail && !compact && <span className={detail.startsWith("OT") ? "font-medium text-amber-700" : "text-muted-foreground"}>{detail}</span>}
@@ -433,13 +436,9 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
     }
   }, [isWeek, weekPeriod, monthPeriod]);
 
-  const { data: empData, isLoading: empLoading } = useQuery({
+  const { data: empData, isLoading: empLoading, isError: employeesError, refetch: refetchEmployees } = useQuery({
     queryKey: ["employees", ""],
-    queryFn: async () => {
-      const res = await fetch("/api/employees?limit=100");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: fetchAllEmployees,
   });
   const employees: any[] = (empData?.employees ?? []).filter((employee: any) =>
     displayDates.some((date) => isEmployedOnDate(employee.employmentPeriods ?? [], toYMD(date)))
@@ -457,6 +456,7 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
     data: publicHolidays = [],
     isLoading: holidaysLoading,
     isError: holidaysLoadError,
+    refetch: refetchHolidays,
   } = useQuery<PublicHoliday[]>({
     queryKey: ["employee-public-holidays"],
     queryFn: async () => {
@@ -470,32 +470,23 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
     [publicHolidays]
   );
 
-  const months = useMemo(
-    () => [...new Set<string>(displayDates.map((d) => toYMD(d).slice(0, 7)))],
-    [displayDates]
-  );
+  const startDate = toYMD(displayDates[0]);
+  const endDate = toYMD(displayDates[displayDates.length - 1]);
 
-  // Fetch all salary payments so we can lock paid-period cells
-  const { data: salaryPayments = [] } = useQuery({
-    queryKey: ["salary-payments-all"],
-    queryFn: async () => {
-      // Get payments for all employees by fetching the payroll summary which includes paidThisPeriod
-      // We need raw payments — use the payroll endpoint for a wide enough range instead,
-      // or simply hit each employee's salary history. Easier: call the payroll API for a
-      // very early period (just to get the payment list) isn't reliable, so we fetch each
-      // active employee's salary history.
-      if (employees.length === 0) return [];
-      const results = await Promise.all(
-        employees.map((emp: any) =>
-          fetch(`/api/employees/${emp.id}/salary`).then((r) => r.ok ? r.json() : [])
-        )
-      );
-      // Each result is an array of payment records; flatten and tag with employeeId
-      return results.flatMap((rows: any[], i: number) =>
-        rows.map((row: any) => ({ ...row, employeeId: employees[i].id }))
-      );
-    },
+  const {
+    data: salaryPayments = [],
+    isLoading: paymentsLoading,
+    isError: paymentsError,
+    refetch: refetchPayments,
+  } = useQuery({
+    queryKey: ["salary-payments", startDate, endDate],
     enabled: employees.length > 0,
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(`/api/employees/salary/payments?${params}`);
+      if (!response.ok) throw new Error("Could not load salary payments");
+      return response.json();
+    },
   });
 
   // Build a set "employeeId|YYYY-MM-DD" for every date inside a paid period
@@ -520,20 +511,19 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
     return paidDateKeys.has(`${empId}|${ymd}`);
   }
 
-  const { data: attendanceData = [], isLoading: attLoading } = useQuery({
-    queryKey: ["attendance-range", months.join(","), employees.map((e: any) => e.id).join(",")],
+  const {
+    data: attendanceData = [],
+    isLoading: attLoading,
+    isError: attendanceError,
+    refetch: refetchAttendance,
+  } = useQuery({
+    queryKey: ["attendance-range", startDate, endDate],
     enabled: employees.length > 0,
     queryFn: async () => {
-      const results = await Promise.all(
-        employees.flatMap((emp: any) =>
-          months.map((m: string) =>
-            fetch(`/api/employees/${emp.id}/attendance?month=${m}`).then((r) =>
-              r.ok ? r.json() : []
-            )
-          )
-        )
-      );
-      return results.flat();
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(`/api/employees/attendance/bulk?${params}`);
+      if (!response.ok) throw new Error("Could not load attendance");
+      return response.json();
     },
   });
 
@@ -562,7 +552,17 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
     },
   });
 
-  const isLoading = empLoading || attLoading || holidaysLoading;
+  const isLoading = empLoading || attLoading || paymentsLoading || holidaysLoading;
+  const canEditAttendance = isAdmin && !attendanceError && !paymentsError && !paymentsLoading && !holidaysLoadError;
+  const editDisabledReason = paymentsLoading
+    ? "Checking paid periods"
+    : paymentsError
+    ? "Cannot edit until salary payments load"
+    : holidaysLoadError
+    ? "Cannot edit until public holidays load"
+    : attendanceError
+    ? "Cannot edit until attendance loads"
+    : "Only admins can edit attendance";
 
   return (
     <div className="space-y-4">
@@ -578,6 +578,10 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
       />
 
       <WorkScheduleSettingsPanel isAdmin={isAdmin} />
+      {employeesError && <p className="text-sm text-destructive" role="alert">Could not load employees. <button className="underline" onClick={() => refetchEmployees()}>Retry</button></p>}
+      {attendanceError && <p className="text-sm text-destructive" role="alert">Could not load attendance. <button className="underline" onClick={() => refetchAttendance()}>Retry</button></p>}
+      {paymentsError && <p className="text-sm text-destructive" role="alert">Could not load salary payments, so paid attendance dates cannot be verified. <button className="underline" onClick={() => refetchPayments()}>Retry</button></p>}
+      {holidaysLoadError && <p className="text-sm text-destructive" role="alert">Could not load public holidays. <button className="underline" onClick={() => refetchHolidays()}>Retry</button></p>}
       {holidaysLoadError && (
         <p className="text-xs text-destructive" role="alert">
           Could not load public holidays. Attendance on a configured holiday will be rejected until this is resolved.
@@ -589,6 +593,13 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
       {/* ── Grid ── */}
       {isLoading ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground text-sm animate-pulse">Loading…</CardContent></Card>
+      ) : employeesError ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-destructive" role="alert">Could not load employees for attendance.</p>
+            <Button size="sm" variant="outline" onClick={() => refetchEmployees()}>Retry</Button>
+          </CardContent>
+        </Card>
       ) : employees.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">No active employees found.</CardContent></Card>
       ) : (
@@ -668,7 +679,8 @@ export function AttendanceTab({ isAdmin = false }: { isAdmin?: boolean }) {
                             locked={locked}
                             inactive={!employed}
                             publicHoliday={holidayMap.get(ymd) ?? null}
-                            editable={isAdmin}
+                            editable={canEditAttendance}
+                            readOnlyReason={editDisabledReason}
                             editing={editingCell === cellKey}
                             schedule={schedule}
                             saving={saveMutation.isPending}

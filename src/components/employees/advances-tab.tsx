@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchAllEmployees } from "./utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -54,30 +55,20 @@ export function AdvancesTab() {
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
 
   // Fetch all employees
-  const { data: empData } = useQuery({
+  const { data: empData, isLoading: employeesLoading, isError: employeesError, refetch: refetchEmployees } = useQuery({
     queryKey: ["employees", ""],
-    queryFn: async () => {
-      const res = await fetch("/api/employees?limit=100");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: fetchAllEmployees,
   });
   const allEmployees: any[] = empData?.employees ?? [];
   const employees = allEmployees.filter((employee: any) => employee.active);
 
   // Fetch all advances for all employees
-  const { data: allAdvances = [], isLoading, isError } = useQuery({
-    queryKey: ["all-advances", allEmployees.map((employee: any) => employee.id)],
-    enabled: allEmployees.length > 0,
+  const { data: allAdvances = [], isLoading: advancesLoading, isError: advancesError, refetch: refetchAdvances } = useQuery({
+    queryKey: ["all-advances"],
     queryFn: async () => {
-      const results = await Promise.all(
-        allEmployees.map(async (emp: any) => {
-          const response = await fetch(`/api/employees/${emp.id}/advances`);
-          if (!response.ok) throw new Error(`Failed to load advances for ${emp.name}`);
-          return response.json();
-        })
-      );
-      return results.flat();
+      const response = await fetch("/api/employees/advances");
+      if (!response.ok) throw new Error("Could not load advances");
+      return response.json();
     },
   });
 
@@ -134,7 +125,7 @@ export function AdvancesTab() {
       </div>
 
       {/* Summary Cards */}
-      {isLoading ? (
+      {employeesLoading || advancesLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -142,10 +133,20 @@ export function AdvancesTab() {
             </Card>
           ))}
         </div>
-      ) : isError ? (
+      ) : employeesError || advancesError ? (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-destructive" role="alert">
-            Could not load advances. Refresh and try again.
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center text-sm text-destructive" role="alert">
+            Could not load employee or advance data. Please try again.
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (employeesError) refetchEmployees();
+                if (advancesError) refetchAdvances();
+              }}
+            >
+              Retry
+            </Button>
           </CardContent>
         </Card>
       ) : filteredStats.length === 0 ? (
