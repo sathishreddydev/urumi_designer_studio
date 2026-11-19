@@ -15,6 +15,27 @@ interface Studio {
   active: boolean;
 }
 
+interface ApiResponse {
+  error?: string;
+  studios?: Studio[];
+}
+
+async function readApiResponse(response: Response): Promise<ApiResponse> {
+  const body = await response.text();
+  let result: unknown;
+  try {
+    result = JSON.parse(body);
+  } catch {
+    throw new Error(
+      `The studios API returned a non-JSON response (HTTP ${response.status}). Check the server logs.`
+    );
+  }
+  if (!result || typeof result !== "object") {
+    throw new Error("The studios API returned an invalid response.");
+  }
+  return result as ApiResponse;
+}
+
 export function StudiosList() {
   const router = useRouter();
   const [studios, setStudios] = useState<Studio[]>([]);
@@ -30,9 +51,12 @@ export function StudiosList() {
           router.replace("/owner/login");
           return null;
         }
-        const result = await response.json();
+        const result = await readApiResponse(response);
         if (!response.ok) throw new Error(result.error || "Could not load studios");
-        return result as { studios: Studio[] };
+        if (!Array.isArray(result.studios)) {
+          throw new Error("The studios API response did not contain a studio list.");
+        }
+        return { studios: result.studios };
       })
       .then((result) => {
         if (result) setStudios(result.studios);
@@ -57,7 +81,7 @@ export function StudiosList() {
         method: "PATCH",
         body: formData,
       });
-      const result = await response.json();
+      const result = await readApiResponse(response);
       if (response.status === 401) {
         router.replace("/owner/login");
         return;

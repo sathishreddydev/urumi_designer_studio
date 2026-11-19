@@ -5,11 +5,6 @@ import {
   normalizeDomain,
   normalizePostgresUrl,
 } from "@/lib/tenant-registry/domain";
-import {
-  compressFaviconUpload,
-  compressLogoUpload,
-  LogoUploadError,
-} from "@/lib/tenant-registry/logo";
 import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { queryMaster } from "@/lib/tenant-registry/db";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
@@ -31,11 +26,11 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  if (!(await isOwnerAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    if (!(await isOwnerAuthenticated())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const { rows } = await queryMaster<StudioRow>(
       `SELECT id, name, domain, logo_url, logo_data, favicon_data, active
@@ -66,11 +61,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
-  if (!(await isOwnerAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    if (!(await isOwnerAuthenticated())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const nameValue = formData.get("name");
     const domainValue = formData.get("domain");
@@ -99,6 +94,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     let faviconData: Buffer | null;
     let databaseUrlEncrypted: string | null = null;
     let cloudinaryUrlEncrypted: string | null = null;
+    const { compressFaviconUpload, compressLogoUpload } = await import("@/lib/tenant-registry/logo");
     try {
       domain = normalizeDomain(domainValue);
       logoData = await compressLogoUpload(formData.get("logo"), false);
@@ -116,11 +112,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     } catch (error) {
       return NextResponse.json(
         {
-          error: error instanceof LogoUploadError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : "Invalid studio details",
+          error: error instanceof Error ? error.message : "Invalid studio details",
         },
         { status: 400 }
       );

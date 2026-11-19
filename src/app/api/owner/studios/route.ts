@@ -3,11 +3,6 @@ import { NextResponse } from "next/server";
 import { encryptTenantSecret } from "@/lib/tenant-registry/crypto";
 import { normalizeCloudinaryUrl, normalizeDomain, normalizePostgresUrl } from "@/lib/tenant-registry/domain";
 import { queryMaster } from "@/lib/tenant-registry/db";
-import {
-  compressFaviconUpload,
-  compressLogoUpload,
-  LogoUploadError,
-} from "@/lib/tenant-registry/logo";
 import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
 
@@ -25,11 +20,11 @@ interface StudioRow {
 }
 
 export async function GET() {
-  if (!(await isOwnerAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    if (!(await isOwnerAuthenticated())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { rows } = await queryMaster<StudioRow>(
       `SELECT id, name, domain, logo_url, logo_data, active, created_at
        FROM tenant_registry_studios
@@ -52,11 +47,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await isOwnerAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    if (!(await isOwnerAuthenticated())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const nameValue = formData.get("name");
     const domainValue = formData.get("domain");
@@ -81,6 +76,7 @@ export async function POST(request: Request) {
     let faviconData: Buffer | null;
     let databaseUrl: string;
     let cloudinaryUrl: string;
+    const { compressFaviconUpload, compressLogoUpload } = await import("@/lib/tenant-registry/logo");
     try {
       domain = normalizeDomain(domainValue);
       logoData = await compressLogoUpload(formData.get("logo"), true);
@@ -93,11 +89,7 @@ export async function POST(request: Request) {
     } catch (error) {
       return NextResponse.json(
         {
-          error: error instanceof LogoUploadError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : "Invalid studio details",
+          error: error instanceof Error ? error.message : "Invalid studio details",
         },
         { status: 400 }
       );
