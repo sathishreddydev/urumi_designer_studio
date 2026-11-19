@@ -429,7 +429,7 @@ export function StudiosList() {
 
           {/* Tab switcher */}
           <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
-            {(["set", "update", "delete"] as const).map((tab) => (
+            {(["set", "update", "delete"] as const).filter((tab) => tab === "set").map((tab) => (
               <button
                 key={tab}
                 type="button"
