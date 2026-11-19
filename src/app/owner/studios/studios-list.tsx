@@ -469,11 +469,15 @@ export function StudiosList() {
             {adminTab !== "delete" && (
               <div className="space-y-1.5">
                 <Label htmlFor="admin-name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Display name{adminTab === "update" && <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>}
+                  Display name{adminTab === "set"
+                    ? <span className="text-destructive"> *</span>
+                    : <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>
+                  }
                 </Label>
                 <Input
                   id="admin-name"
-                  placeholder={adminTab === "set" ? "Admin" : "Leave blank to keep current"}
+                  required={adminTab === "set"}
+                  placeholder={adminTab === "set" ? "e.g. Mounika" : "Leave blank to keep current"}
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
                   disabled={adminSaving}

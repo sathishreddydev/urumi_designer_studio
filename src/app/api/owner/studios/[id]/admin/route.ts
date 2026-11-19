@@ -106,8 +106,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
     }
 
+    if (typeof name !== "string" || !name.trim()) {
+      return NextResponse.json({ error: "Display name is required" }, { status: 400 });
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const adminName = typeof name === "string" && name.trim() ? name.trim() : "Admin";
+    const adminName = name.trim();
 
     try {
       const passwordHash = await bcrypt.hash(password, 12);
