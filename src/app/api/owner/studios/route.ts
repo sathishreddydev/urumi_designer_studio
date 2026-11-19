@@ -72,18 +72,15 @@ export async function POST(request: Request) {
     }
 
     let domain: string;
-    let logoData: Buffer | null;
+    let logoData: Buffer;
     let faviconData: Buffer | null;
     let databaseUrl: string;
     let cloudinaryUrl: string;
-    const { compressFaviconUpload, compressLogoUpload } = await import("@/lib/tenant-registry/logo");
+    const { validateLogoUpload, validateFaviconUpload } = await import("@/lib/tenant-registry/logo");
     try {
       domain = normalizeDomain(domainValue);
-      logoData = await compressLogoUpload(formData.get("logo"), true);
-      faviconData = await compressFaviconUpload(formData.get("favicon"), false);
-      if (!logoData) {
-        return NextResponse.json({ error: "Choose a logo image to upload." }, { status: 400 });
-      }
+      logoData = (await validateLogoUpload(formData.get("logo"), true))!;
+      faviconData = await validateFaviconUpload(formData.get("favicon"), false);
       databaseUrl = normalizePostgresUrl(databaseUrlValue);
       cloudinaryUrl = normalizeCloudinaryUrl(cloudinaryUrlValue);
     } catch (error) {

@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // bundled into the SSR/server chunks. It must only ever run in the browser.
   // Without this, Next.js pulls it into the outfit-page server bundle and the
   // duplicate React instance causes a ReactCurrentOwner crash at startup.
-  serverExternalPackages: ["@react-pdf/renderer", "sharp"],
+  serverExternalPackages: ["@react-pdf/renderer"],
 
   images: {
     remotePatterns: [

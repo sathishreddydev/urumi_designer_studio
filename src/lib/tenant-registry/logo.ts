@@ -1,7 +1,4 @@
-import sharp from "sharp";
-
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const MAX_INPUT_PIXELS = 20_000_000;
 
 export class LogoUploadError extends Error {
   constructor(message: string) {
@@ -10,17 +7,46 @@ export class LogoUploadError extends Error {
   }
 }
 
-async function compressImageUpload(
+/**
+ * Detect image format by inspecting magic bytes.
+ * No native modules — pure Node.js Buffer reads.
+ */
+function detectImageFormat(buf: Buffer): "jpeg" | "png" | "webp" | null {
+  if (buf.length < 12) return null;
+
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+  ) return "png";
+
+  // WebP: RIFF????WEBP
+  if (
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+  ) return "webp";
+
+  return null;
+}
+
+/**
+ * Validates an image upload and returns its raw bytes.
+ *
+ * Compression and resizing happen in the browser (compress-image.ts)
+ * before the file reaches the server, so this only needs to:
+ *   1. Enforce the size limit
+ *   2. Confirm the bytes are a real JPEG / PNG / WebP
+ */
+async function validateImageUpload(
   value: FormDataEntryValue | null,
   required: boolean,
-  maxDimension: number,
-  imageName: string,
-  outputFormat: "png" | "webp"
+  imageName: string
 ): Promise<Buffer | null> {
   if (value === null || typeof value === "string" || value.size === 0) {
-    if (required) {
-      throw new LogoUploadError(`Choose a ${imageName.toLowerCase()} image to upload.`);
-    }
+    if (required) throw new LogoUploadError(`Choose a ${imageName.toLowerCase()} image to upload.`);
     return null;
   }
 
@@ -28,52 +54,25 @@ async function compressImageUpload(
     throw new LogoUploadError(`${imageName} images must be 4 MB or smaller.`);
   }
 
-  const input = Buffer.from(await value.arrayBuffer());
-  let format: string | undefined;
-  try {
-    format = (await sharp(input, {
-      failOn: "error",
-      limitInputPixels: MAX_INPUT_PIXELS,
-    }).metadata()).format;
-  } catch {
+  const buf = Buffer.from(await value.arrayBuffer());
+
+  if (!detectImageFormat(buf)) {
     throw new LogoUploadError(`Upload a valid PNG, JPEG, or WebP ${imageName.toLowerCase()}.`);
   }
 
-  if (!format || !["jpeg", "png", "webp"].includes(format)) {
-    throw new LogoUploadError(`Upload a PNG, JPEG, or WebP ${imageName.toLowerCase()}.`);
-  }
-
-  try {
-    const resized = sharp(input, {
-      failOn: "error",
-      limitInputPixels: MAX_INPUT_PIXELS,
-    })
-      .rotate()
-      .resize({
-        width: maxDimension,
-        height: maxDimension,
-        fit: "inside",
-        withoutEnlargement: true,
-      });
-
-    return outputFormat === "png"
-      ? await resized.png({ compressionLevel: 9 }).toBuffer()
-      : await resized.webp({ quality: 82 }).toBuffer();
-  } catch {
-    throw new LogoUploadError(`The uploaded ${imageName.toLowerCase()} could not be processed.`);
-  }
+  return buf;
 }
 
-export function compressLogoUpload(
+export function validateLogoUpload(
   value: FormDataEntryValue | null,
   required: boolean
 ): Promise<Buffer | null> {
-  return compressImageUpload(value, required, 512, "Logo", "webp");
+  return validateImageUpload(value, required, "Logo");
 }
 
-export function compressFaviconUpload(
+export function validateFaviconUpload(
   value: FormDataEntryValue | null,
   required: boolean
 ): Promise<Buffer | null> {
-  return compressImageUpload(value, required, 64, "Favicon", "png");
+  return validateImageUpload(value, required, "Favicon");
 }

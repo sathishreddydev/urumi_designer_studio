@@ -94,11 +94,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     let faviconData: Buffer | null;
     let databaseUrlEncrypted: string | null = null;
     let cloudinaryUrlEncrypted: string | null = null;
-    const { compressFaviconUpload, compressLogoUpload } = await import("@/lib/tenant-registry/logo");
+    const { validateLogoUpload, validateFaviconUpload } = await import("@/lib/tenant-registry/logo");
     try {
       domain = normalizeDomain(domainValue);
-      logoData = await compressLogoUpload(formData.get("logo"), false);
-      faviconData = await compressFaviconUpload(formData.get("favicon"), false);
+      logoData = await validateLogoUpload(formData.get("logo"), false);
+      faviconData = await validateFaviconUpload(formData.get("favicon"), false);
 
       const databaseUrl = typeof databaseUrlValue === "string" ? databaseUrlValue.trim() : "";
       if (databaseUrl) {

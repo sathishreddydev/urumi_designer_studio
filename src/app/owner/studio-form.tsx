@@ -6,7 +6,19 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Building2,
+  Globe,
+  ImageIcon,
+  Database,
+  Cloud,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import { compressImageForUpload } from "@/lib/compress-image";
 
 interface Studio {
   name: string;
@@ -32,6 +44,115 @@ function getImageUploadError(file: File): string | null {
   return null;
 }
 
+function ImagePickerBox({
+  label,
+  badge,
+  previewSrc,
+  previewAlt,
+  fileName,
+  fileSize,
+  hint,
+  error,
+  disabled,
+  onChoose,
+  onRemove,
+  size = "lg",
+}: {
+  label: string;
+  badge?: string;
+  previewSrc: string | null | undefined;
+  previewAlt: string;
+  fileName?: string;
+  fileSize?: number;
+  hint: string;
+  error?: string;
+  disabled?: boolean;
+  onChoose: () => void;
+  onRemove?: () => void;
+  size?: "sm" | "lg";
+}) {
+  const boxSize = size === "lg" ? "h-20 w-20" : "h-16 w-16";
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-sm font-medium">{label}</Label>
+        {badge && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div
+        className={`flex items-center gap-4 rounded-xl border bg-muted/30 p-4 transition-colors ${error ? "border-destructive/60" : "border-border"}`}
+      >
+        <div
+          className={`${boxSize} shrink-0 overflow-hidden rounded-lg border bg-background shadow-sm`}
+        >
+          {previewSrc ? (
+            <img
+              src={previewSrc}
+              alt={previewAlt}
+              className="h-full w-full object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-sm font-medium leading-tight">
+            {fileName ? (
+              <span className="text-foreground">{fileName}</span>
+            ) : previewSrc ? (
+              <span className="text-muted-foreground">Current image saved</span>
+            ) : (
+              <span className="text-muted-foreground">No image selected</span>
+            )}
+          </p>
+          {fileSize !== undefined && (
+            <p className="text-xs text-muted-foreground">
+              {Math.max(1, Math.ceil(fileSize / 1024))} KB
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2 pt-0.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={onChoose}
+              className="h-7 text-xs"
+            >
+              {previewSrc ? "Change" : "Choose file"}
+            </Button>
+            {onRemove && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                onClick={onRemove}
+                className="h-7 text-xs text-muted-foreground"
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground/70">{hint}</p>
+        </div>
+      </div>
+      {error && (
+        <div className="flex items-center gap-1.5 text-sm text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StudioForm({ studioId }: StudioFormProps) {
   const router = useRouter();
   const editing = Boolean(studioId);
@@ -45,6 +166,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState("");
@@ -56,55 +178,37 @@ export function StudioForm({ studioId }: StudioFormProps) {
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!logoFile) {
-      setLogoPreview(null);
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(logoFile);
-    setLogoPreview(previewUrl);
-    return () => URL.revokeObjectURL(previewUrl);
+    if (!logoFile) { setLogoPreview(null); return; }
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
   }, [logoFile]);
 
   useEffect(() => {
-    if (!faviconFile) {
-      setFaviconPreview(null);
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(faviconFile);
-    setFaviconPreview(previewUrl);
-    return () => URL.revokeObjectURL(previewUrl);
+    if (!faviconFile) { setFaviconPreview(null); return; }
+    const url = URL.createObjectURL(faviconFile);
+    setFaviconPreview(url);
+    return () => URL.revokeObjectURL(url);
   }, [faviconFile]);
 
   useEffect(() => {
     if (!studioId) return;
-
     fetch(`/api/owner/studios/${encodeURIComponent(studioId)}`, { cache: "no-store" })
-      .then(async (response) => {
-        if (response.status === 401) {
-          router.replace("/owner/login");
-          return null;
-        }
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Could not load studio");
+      .then(async (res) => {
+        if (res.status === 401) { router.replace("/owner/login"); return null; }
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Could not load studio");
         return result.studio as Studio;
       })
-      .then((result) => {
-        if (result) {
-          setStudio(result);
-          setUseLogoAsFavicon(false);
-        }
-      })
-      .catch((loadError: unknown) => {
-        setError(loadError instanceof Error ? loadError.message : "Could not load studio");
-      })
+      .then((result) => { if (result) { setStudio(result); setUseLogoAsFavicon(false); } })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load studio"))
       .finally(() => setLoading(false));
   }, [router, studioId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSuccessMessage("");
     if (logoError || faviconError) return;
     if (!editing && !logoFile) {
       setLogoError("Choose a logo image to register this studio.");
@@ -125,10 +229,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
     try {
       const response = await fetch(
         editing ? `/api/owner/studios/${encodeURIComponent(studioId!)}` : "/api/owner/studios",
-        {
-          method: editing ? "PATCH" : "POST",
-          body: formData,
-        }
+        { method: editing ? "PATCH" : "POST", body: formData }
       );
       const result = await response.json();
       if (!response.ok) {
@@ -136,9 +237,13 @@ export function StudioForm({ studioId }: StudioFormProps) {
         setError(result.diagnosticCode ? `${message} (${result.diagnosticCode})` : message);
         return;
       }
-
-      router.push("/owner");
-      router.refresh();
+      if (editing) {
+        setSuccessMessage("Studio updated successfully.");
+        setTimeout(() => setSuccessMessage(""), 4000);
+      } else {
+        router.push("/owner");
+        router.refresh();
+      }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not save studio");
     } finally {
@@ -147,252 +252,244 @@ export function StudioForm({ studioId }: StudioFormProps) {
   }
 
   if (loading) {
-    return <main className="mx-auto min-h-screen w-full max-w-3xl p-4 sm:p-8">Loading studio...</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm">Loading studio…</span>
+        </div>
+      </main>
+    );
   }
 
+  /* favicon preview src resolution */
+  const faviconDisplaySrc =
+    faviconPreview ||
+    (useLogoAsFavicon
+      ? logoPreview || studio.logoUrl || null
+      : studio.faviconUrl || logoPreview || studio.logoUrl || null);
+
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl space-y-6 p-4 sm:p-8">
-      <header className="space-y-2">
-        <Link href="/owner" className="text-sm text-muted-foreground hover:underline">
-          Back to studios
+    <main className="mx-auto min-h-screen w-full max-w-2xl space-y-6 p-4 sm:p-8">
+      {/* Header */}
+      <header className="space-y-1">
+        <Link href="/owner" className="text-xs text-muted-foreground hover:underline">
+          ← Back to studios
         </Link>
-        <h1 className="text-2xl font-bold">{editing ? "Edit studio" : "Register studio"}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {editing ? "Edit studio" : "Register studio"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {editing
+            ? "Update the studio's details, branding, and credentials."
+            : "Fill in the details to register a new studio."}
+        </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Studio details</CardTitle>
-          <CardDescription>
-            Database and Cloudinary credentials are encrypted before storage and are never shown after saving.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Studio name</Label>
-              <Input
-                id="name"
-                name="name"
-                maxLength={120}
-                required
-                value={studio.name}
-                onChange={(event) => setStudio((current) => ({ ...current, name: event.target.value }))}
-              />
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* ── Studio Identity ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              Studio identity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Name + Domain side by side */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Building2 className="h-3 w-3" /> Studio name
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  maxLength={120}
+                  required
+                  placeholder="e.g. Urumi by Mounika"
+                  value={studio.name}
+                  onChange={(e) => setStudio((s) => ({ ...s, name: e.target.value }))}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="domain" className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Globe className="h-3 w-3" /> Domain
+                </Label>
+                <Input
+                  id="domain"
+                  name="domain"
+                  placeholder="studio.example.com"
+                  required
+                  value={studio.domain}
+                  onChange={(e) => setStudio((s) => ({ ...s, domain: e.target.value }))}
+                  className="h-10"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="domain">Domain</Label>
-              <Input
-                id="domain"
-                name="domain"
-                placeholder="studio.example.com"
-                required
-                value={studio.domain}
-                onChange={(event) => setStudio((current) => ({ ...current, domain: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="logo">Logo image</Label>
-              <Input
-                ref={logoInputRef}
-                id="logo"
-                name="logo"
-                type="file"
-                className="hidden"
-                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+
+            {editing && (
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-sm transition-colors hover:bg-muted/50">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={studio.active}
+                  onChange={(e) => setStudio((s) => ({ ...s, active: e.target.checked }))}
+                />
+                <span className="font-medium">Studio is active</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {studio.active ? "Visible to users" : "Hidden from users"}
+                </span>
+              </label>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Branding ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              Branding
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Hidden file inputs */}
+            <input
+              ref={logoInputRef}
+              type="file"
+              className="hidden"
+              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+              disabled={saving}
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                if (!file) return;
+                const err = getImageUploadError(file);
+                if (err) { setLogoFile(null); setLogoError(err); e.currentTarget.value = ""; return; }
+                setLogoError("");
+                // Compress in browser: resize to 512px max, encode as WebP — mirrors what sharp used to do
+                const compressed = await compressImageForUpload(file, {
+                  maxDimension: 512,
+                  mimeType: "image/webp",
+                  quality: 0.82,
+                  outputFileName: file.name.replace(/\.[^.]+$/, ".webp"),
+                });
+                setLogoFile(compressed);
+              }}
+            />
+            <input
+              ref={faviconInputRef}
+              type="file"
+              className="hidden"
+              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+              disabled={saving}
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                if (!file) return;
+                const err = getImageUploadError(file);
+                if (err) { setFaviconFile(null); setFaviconError(err); e.currentTarget.value = ""; return; }
+                setFaviconError("");
+                // Compress in browser: resize to 64px max, encode as PNG — mirrors what sharp used to do
+                const compressed = await compressImageForUpload(file, {
+                  maxDimension: 64,
+                  mimeType: "image/png",
+                  quality: 1,
+                  outputFileName: file.name.replace(/\.[^.]+$/, ".png"),
+                });
+                setFaviconFile(compressed);
+                setUseLogoAsFavicon(false);
+              }}
+            />
+
+            {/* Logo + Favicon side by side */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <ImagePickerBox
+                label="Logo image"
+                previewSrc={logoPreview || studio.logoUrl || null}
+                previewAlt={logoFile ? "New logo preview" : "Current studio logo"}
+                fileName={logoFile?.name}
+                fileSize={logoFile?.size}
+                hint="PNG, JPEG or WebP · max 4 MB · resized to 512px & compressed"
+                error={logoError}
                 disabled={saving}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (!file) return;
-                  const uploadError = getImageUploadError(file);
-                  if (uploadError) {
-                    setLogoFile(null);
-                    setLogoError(uploadError);
-                    event.currentTarget.value = "";
-                    return;
-                  }
-                  setLogoError("");
-                  setLogoFile(file);
-                }}
+                onChoose={() => logoInputRef.current?.click()}
+                onRemove={
+                  logoFile
+                    ? () => { setLogoFile(null); setLogoError(""); if (logoInputRef.current) logoInputRef.current.value = ""; }
+                    : undefined
+                }
+                size="lg"
               />
-              <div className="flex items-center gap-4 rounded-lg border p-4">
-                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
-                  {(logoPreview || studio.logoUrl) ? (
-                    <img
-                      src={logoPreview || studio.logoUrl}
-                      alt={logoFile ? "Selected logo preview" : "Current studio logo"}
-                      className="h-full w-full object-contain p-1"
-                    />
-                  ) : (
-                    <span className="px-2 text-center text-xs text-muted-foreground">No logo</span>
-                  )}
-                </div>
-                <div className="min-w-0 space-y-2">
-                  <p className="text-sm font-medium">
-                    {logoFile ? "New logo selected" : studio.logoUrl ? "Current studio logo" : "No logo selected"}
-                  </p>
-                  {logoFile && (
-                    <p className="max-w-full truncate text-xs text-muted-foreground" title={logoFile.name}>
-                      {logoFile.name} · {Math.max(1, Math.ceil(logoFile.size / 1024))} KB
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => logoInputRef.current?.click()}
-                    >
-                      {logoFile || studio.logoUrl ? "Choose another" : "Choose logo"}
-                    </Button>
-                    {logoFile && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => {
-                          setLogoFile(null);
-                          setLogoError("");
-                          if (logoInputRef.current) logoInputRef.current.value = "";
-                        }}
-                      >
-                        Remove selection
-                      </Button>
-                    )}
-                  </div>
-                  <p id="logo-help" className="text-xs text-muted-foreground">
-                    PNG, JPEG, or WebP, up to 4 MB. We resize and compress it before saving.
-                  </p>
-                </div>
-              </div>
-              {logoError && <p role="alert" className="text-sm text-destructive">{logoError}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="favicon">Favicon image (optional)</Label>
-              <Input
-                id="favicon"
-                name="favicon"
-                ref={faviconInputRef}
-                type="file"
-                className="hidden"
-                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (!file) return;
-                  const uploadError = getImageUploadError(file);
-                  if (uploadError) {
-                    setFaviconFile(null);
-                    setFaviconError(uploadError);
-                    event.currentTarget.value = "";
-                    return;
-                  }
-                  setFaviconError("");
-                  setFaviconFile(file);
-                  setUseLogoAsFavicon(false);
-                }}
+              <ImagePickerBox
+                label="Favicon image"
+                badge="optional"
+                previewSrc={faviconDisplaySrc}
+                previewAlt={faviconFile ? "New favicon preview" : "Favicon preview"}
+                fileName={faviconFile?.name}
+                fileSize={faviconFile?.size}
+                hint={editing ? "Resized to 64px · leave unchanged to keep saved" : "Resized to 64px · uses logo if not set"}
+                error={faviconError}
+                disabled={saving}
+                onChoose={() => faviconInputRef.current?.click()}
+                onRemove={
+                  faviconFile
+                    ? () => { setFaviconFile(null); setFaviconError(""); setUseLogoAsFavicon(false); if (faviconInputRef.current) faviconInputRef.current.value = ""; }
+                    : undefined
+                }
+                size="sm"
               />
-              <div className="flex items-center gap-4 rounded-lg border p-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
-                  {(faviconPreview || (useLogoAsFavicon || !studio.faviconUrl
-                    ? logoPreview || studio.logoUrl
-                    : studio.faviconUrl)) ? (
-                    <img
-                      src={
-                        faviconPreview ||
-                        (useLogoAsFavicon || !studio.faviconUrl
-                          ? logoPreview || studio.logoUrl
-                          : studio.faviconUrl)
-                      }
-                      alt={faviconFile ? "Selected favicon preview" : "Favicon preview"}
-                      className="h-full w-full object-contain p-1"
-                    />
-                  ) : (
-                    <span className="px-1 text-center text-xs text-muted-foreground">No image</span>
-                  )}
-                </div>
-                <div className="min-w-0 space-y-2">
-                  <p className="text-sm font-medium">
-                    {faviconFile
-                      ? "New favicon selected"
-                      : useLogoAsFavicon
-                        ? "Studio logo will be used"
-                        : studio.faviconUrl
-                          ? "Current favicon"
-                          : "Studio logo is used as the favicon"}
-                  </p>
-                  {faviconFile && (
-                    <p className="max-w-full truncate text-xs text-muted-foreground" title={faviconFile.name}>
-                      {faviconFile.name} · {Math.max(1, Math.ceil(faviconFile.size / 1024))} KB
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => faviconInputRef.current?.click()}
-                    >
-                      {faviconFile || studio.faviconUrl ? "Choose another" : "Choose favicon"}
-                    </Button>
-                    {faviconFile && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => {
-                          setFaviconFile(null);
-                          setFaviconError("");
-                          setUseLogoAsFavicon(false);
-                          if (faviconInputRef.current) faviconInputRef.current.value = "";
-                        }}
-                      >
-                        Remove selection
-                      </Button>
-                    )}
-                  </div>
-                  <p id="favicon-help" className="text-xs text-muted-foreground">
-                    PNG, JPEG, or WebP, up to 4 MB. {editing
-                      ? "Leave unchanged to keep the saved favicon."
-                      : "The studio logo is used if you do not upload one."}
-                  </p>
-                </div>
-              </div>
-              {faviconError && <p role="alert" className="text-sm text-destructive">{faviconError}</p>}
-              {editing && studio.faviconUrl && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={useLogoAsFavicon}
-                    disabled={saving}
-                    onChange={(event) => {
-                      setUseLogoAsFavicon(event.target.checked);
-                      if (event.target.checked) {
-                        setFaviconFile(null);
-                        setFaviconError("");
-                        if (faviconInputRef.current) faviconInputRef.current.value = "";
-                      }
-                    }}
-                  />
-                  Replace the saved favicon with the studio logo
-                </label>
-              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="databaseUrl">Studio PostgreSQL URL</Label>
+
+            {editing && studio.faviconUrl && (
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-sm transition-colors hover:bg-muted/50">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={useLogoAsFavicon}
+                  disabled={saving}
+                  onChange={(e) => {
+                    setUseLogoAsFavicon(e.target.checked);
+                    if (e.target.checked) { setFaviconFile(null); setFaviconError(""); if (faviconInputRef.current) faviconInputRef.current.value = ""; }
+                  }}
+                />
+                <span className="font-medium">Use logo as favicon</span>
+                <span className="ml-auto text-xs text-muted-foreground">Replaces the saved favicon</span>
+              </label>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Credentials ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4 text-muted-foreground" />
+              Credentials
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+              Credentials are encrypted before storage and are never shown after saving.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="databaseUrl" className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Database className="h-3 w-3" /> PostgreSQL URL
+              </Label>
               <Input
                 id="databaseUrl"
                 name="databaseUrl"
                 type="password"
                 autoComplete="new-password"
-                placeholder={editing ? "Leave blank to keep the current URL" : "postgresql://..."}
+                placeholder={editing ? "Leave blank to keep the current URL" : "postgresql://user:pass@host/db"}
                 required={!editing}
+                className="h-10 font-mono text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cloudinaryUrl">Cloudinary URL</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="cloudinaryUrl" className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Cloud className="h-3 w-3" /> Cloudinary URL
+              </Label>
               <Input
                 id="cloudinaryUrl"
                 name="cloudinaryUrl"
@@ -400,31 +497,45 @@ export function StudioForm({ studioId }: StudioFormProps) {
                 autoComplete="new-password"
                 placeholder={editing ? "Leave blank to keep the current URL" : "cloudinary://key:secret@cloud-name"}
                 required={!editing}
+                className="h-10 font-mono text-sm"
               />
             </div>
-            {editing && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="active"
-                  checked={studio.active}
-                  onChange={(event) => setStudio((current) => ({ ...current, active: event.target.checked }))}
-                />
-                Studio is active
-              </label>
+          </CardContent>
+        </Card>
+
+        {/* ── Status messages ── */}
+        {error && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+        {successMessage && (
+          <div className="flex items-center gap-2.5 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* ── Actions ── */}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={saving} className="min-w-[130px]">
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : editing ? (
+              "Save changes"
+            ) : (
+              "Register studio"
             )}
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving}>
-                {saving ? "Saving..." : editing ? "Save changes" : "Register studio"}
-              </Button>
-              <Button asChild type="button" variant="outline">
-                <Link href="/owner">Cancel</Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </Button>
+          <Button asChild type="button" variant="outline">
+            <Link href="/owner">Cancel</Link>
+          </Button>
+        </div>
+      </form>
     </main>
   );
 }
