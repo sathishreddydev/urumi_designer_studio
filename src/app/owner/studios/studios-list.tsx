@@ -366,7 +366,7 @@ export function StudiosList() {
         </div>
       </header>
 
-      <OwnerSessionExpiryWarning />
+      {/* <OwnerSessionExpiryWarning /> */}
 
       {/* Global status errors */}
       {statusError && (

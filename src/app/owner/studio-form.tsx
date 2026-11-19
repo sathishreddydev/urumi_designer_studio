@@ -313,7 +313,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
         </p>
       </header>
 
-      <OwnerSessionExpiryWarning />
+      {/* <OwnerSessionExpiryWarning /> */}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* ── Studio Identity ── */}
