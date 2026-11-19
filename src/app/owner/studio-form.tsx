@@ -17,6 +17,8 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
+  CalendarClock,
+  X,
 } from "lucide-react";
 import { compressImageForUpload } from "@/lib/compress-image";
 
@@ -26,6 +28,7 @@ interface Studio {
   logoUrl: string;
   faviconUrl: string | null;
   active: boolean;
+  deactivateAt: string | null;
 }
 
 interface StudioFormProps {
@@ -162,6 +165,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
     logoUrl: "",
     faviconUrl: null,
     active: true,
+    deactivateAt: null,
   });
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
@@ -224,6 +228,10 @@ export function StudioForm({ studioId }: StudioFormProps) {
     if (editing) {
       formData.set("active", String(studio.active));
       formData.set("clearFavicon", String(useLogoAsFavicon));
+      // Send deactivateAt: ISO string, "clear" to remove, or omit if unchanged
+      if (studio.deactivateAt !== undefined) {
+        formData.set("deactivateAt", studio.deactivateAt ?? "clear");
+      }
     }
 
     try {
@@ -330,18 +338,64 @@ export function StudioForm({ studioId }: StudioFormProps) {
             </div>
 
             {editing && (
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-sm transition-colors hover:bg-muted/50">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={studio.active}
-                  onChange={(e) => setStudio((s) => ({ ...s, active: e.target.checked }))}
-                />
-                <span className="font-medium">Studio is active</span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {studio.active ? "Visible to users" : "Hidden from users"}
-                </span>
-              </label>
+              <>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-sm transition-colors hover:bg-muted/50">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={studio.active}
+                    onChange={(e) => setStudio((s) => ({ ...s, active: e.target.checked }))}
+                  />
+                  <span className="font-medium">Studio is active</span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {studio.active ? "Visible to users" : "Hidden from users"}
+                  </span>
+                </label>
+
+                {/* Scheduled deactivation date */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <CalendarClock className="h-3 w-3" /> Auto-deactivate on
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="datetime-local"
+                      className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      value={
+                        studio.deactivateAt
+                          ? new Date(studio.deactivateAt).toISOString().slice(0, 16)
+                          : ""
+                      }
+                      min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+                      onChange={(e) =>
+                        setStudio((s) => ({
+                          ...s,
+                          deactivateAt: e.target.value
+                            ? new Date(e.target.value).toISOString()
+                            : null,
+                        }))
+                      }
+                    />
+                    {studio.deactivateAt && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-3 text-muted-foreground"
+                        onClick={() => setStudio((s) => ({ ...s, deactivateAt: null }))}
+                        title="Clear scheduled date"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {studio.deactivateAt
+                      ? `Will automatically go inactive on ${new Date(studio.deactivateAt).toLocaleString()}`
+                      : "Leave blank to keep the studio active indefinitely"}
+                  </p>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

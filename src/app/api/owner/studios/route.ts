@@ -16,6 +16,7 @@ interface StudioRow {
   logo_data: Buffer | null;
   favicon_data: Buffer | null;
   active: boolean;
+  deactivate_at: Date | null;
   created_at: Date;
 }
 
@@ -26,7 +27,7 @@ export async function GET() {
     }
 
     const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, logo_data, active, created_at
+      `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, created_at
        FROM tenant_registry_studios
        ORDER BY created_at DESC`
     );
@@ -37,6 +38,7 @@ export async function GET() {
         domain: row.domain,
         logoUrl: getStudioLogoUrl(row.logo_url, row.logo_data),
         active: row.active,
+        deactivateAt: row.deactivate_at?.toISOString() ?? null,
         createdAt: row.created_at,
       })),
     });
@@ -57,11 +59,13 @@ export async function POST(request: Request) {
     const domainValue = formData.get("domain");
     const databaseUrlValue = formData.get("databaseUrl");
     const cloudinaryUrlValue = formData.get("cloudinaryUrl");
+    const deactivateAtValue = formData.get("deactivateAt");
     if (
       typeof nameValue !== "string" ||
       typeof domainValue !== "string" ||
       typeof databaseUrlValue !== "string" ||
-      typeof cloudinaryUrlValue !== "string"
+      typeof cloudinaryUrlValue !== "string" ||
+      (deactivateAtValue !== null && typeof deactivateAtValue !== "string")
     ) {
       return NextResponse.json({ error: "All studio fields are required" }, { status: 400 });
     }
@@ -69,6 +73,22 @@ export async function POST(request: Request) {
     const name = nameValue.trim();
     if (name.length < 2 || name.length > 120) {
       return NextResponse.json({ error: "Studio name must be 2 to 120 characters" }, { status: 400 });
+    }
+
+    // Parse deactivateAt if provided
+    let deactivateAt: Date | null = null;
+    if (deactivateAtValue && deactivateAtValue.trim() !== "") {
+      const parsed = new Date(deactivateAtValue);
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "Invalid deactivation date" }, { status: 400 });
+      }
+      if (parsed <= new Date()) {
+        return NextResponse.json(
+          { error: "Deactivation date must be in the future" },
+          { status: 400 }
+        );
+      }
+      deactivateAt = parsed;
     }
 
     let domain: string;
@@ -95,10 +115,11 @@ export async function POST(request: Request) {
     const databaseUrlEncrypted = encryptTenantSecret(databaseUrl);
     const cloudinaryUrlEncrypted = encryptTenantSecret(cloudinaryUrl);
     const { rows } = await queryMaster<StudioRow>(
-      `INSERT INTO tenant_registry_studios (id, name, domain, logo_url, logo_data, favicon_data, database_url_encrypted, cloudinary_url_encrypted)
-       VALUES ($1, $2, $3, '', $4, $5, $6, $7)
-       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, created_at`,
-      [randomUUID(), name, domain, logoData, faviconData, databaseUrlEncrypted, cloudinaryUrlEncrypted]
+      `INSERT INTO tenant_registry_studios
+         (id, name, domain, logo_url, logo_data, favicon_data, database_url_encrypted, cloudinary_url_encrypted, deactivate_at)
+       VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)
+       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at, created_at`,
+      [randomUUID(), name, domain, logoData, faviconData, databaseUrlEncrypted, cloudinaryUrlEncrypted, deactivateAt]
     );
 
     const studio = rows[0];
@@ -110,6 +131,7 @@ export async function POST(request: Request) {
         logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
         faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
+        deactivateAt: studio.deactivate_at?.toISOString() ?? null,
         createdAt: studio.created_at,
       },
     }, { status: 201 });

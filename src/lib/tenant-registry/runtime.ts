@@ -13,6 +13,7 @@ interface TenantRow {
   logo_url: string;
   logo_data: Buffer | null;
   active: boolean;
+  deactivate_at: Date | null;
   database_url_encrypted: string;
   cloudinary_url_encrypted: string;
 }
@@ -44,7 +45,7 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
   }
 
   const { rows } = await queryMaster<TenantRow>(
-    `SELECT id, name, domain, logo_url, logo_data, active, database_url_encrypted, cloudinary_url_encrypted
+    `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, database_url_encrypted, cloudinary_url_encrypted
      FROM tenant_registry_studios
      WHERE domain = $1
      LIMIT 1`,
@@ -54,7 +55,10 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
   if (!studio) {
     throw new TenantResolutionError("Unrecognized studio domain", 404);
   }
-  if (!studio.active) {
+
+  // Inactive either by manual flag or by scheduled deactivation date being reached
+  const scheduledInactive = studio.deactivate_at !== null && new Date() >= new Date(studio.deactivate_at);
+  if (!studio.active || scheduledInactive) {
     throw new InactiveStudioError();
   }
 
