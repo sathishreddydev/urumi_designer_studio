@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scissors, Eye, EyeOff } from "lucide-react";
+import { InactiveStudioPage } from "@/components/inactive-studio-page";
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [branding, setBranding] = useState<{ name: string; logoUrl: string } | null>(null);
+  const [branding, setBranding] = useState<{ name: string; logoUrl: string; active: boolean } | null>(null);
 
   useEffect(() => {
     fetch("/api/tenant/branding", { cache: "no-store" })
@@ -62,6 +63,10 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (branding && !branding.active) {
+    return <InactiveStudioPage />;
   }
 
   return (

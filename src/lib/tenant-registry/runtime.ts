@@ -10,6 +10,7 @@ interface TenantRow {
   name: string;
   domain: string;
   logo_url: string;
+  active: boolean;
   database_url_encrypted: string;
   cloudinary_url_encrypted: string;
 }
@@ -18,6 +19,13 @@ export class TenantResolutionError extends Error {
   constructor(message: string, readonly status: number) {
     super(message);
     this.name = "TenantResolutionError";
+  }
+}
+
+export class InactiveStudioError extends TenantResolutionError {
+  constructor() {
+    super("This domain is inactive. Please contact the team for assistance.", 403);
+    this.name = "InactiveStudioError";
   }
 }
 
@@ -34,15 +42,18 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
   }
 
   const { rows } = await queryMaster<TenantRow>(
-    `SELECT id, name, domain, logo_url, database_url_encrypted, cloudinary_url_encrypted
+    `SELECT id, name, domain, logo_url, active, database_url_encrypted, cloudinary_url_encrypted
      FROM tenant_registry_studios
-     WHERE domain = $1 AND active = true
+     WHERE domain = $1
      LIMIT 1`,
     [domain]
   );
   const studio = rows[0];
   if (!studio) {
     throw new TenantResolutionError("Unrecognized studio domain", 404);
+  }
+  if (!studio.active) {
+    throw new InactiveStudioError();
   }
 
   const databaseUrl = normalizePostgresUrl(

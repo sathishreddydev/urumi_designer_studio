@@ -98,11 +98,12 @@ master database. The login flow reads the hash from that database; after seeding
 `OWNER_EMAIL` and `OWNER_PASSWORD_HASH` from `.env.local`. The seed command does not overwrite
 an existing account.
 
-Start the app after seeding.
-Sign in at `/owner/login` and register each studio at `/owner`. The logo field accepts
-an HTTPS image URL; database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before
-being stored. `MASTER_DATABASE_URL` and `ENCRYPTION_KEY` must have the same values across
-deployments that read the registry.
+Start the app after seeding. Sign in at `/owner/login`. The combined owner dashboard remains
+at `/owner`; use `/owner/studios` to manage registered studios, `/owner/newStudio` to add one,
+and `/owner/editStudio/<studio-id>` to edit one. The logo field accepts an HTTPS image URL;
+database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before they are stored.
+`MASTER_DATABASE_URL` and `ENCRYPTION_KEY` must have the same values across deployments that
+read the registry.
 
 Only register a studio after its database schema has been prepared. Login sessions are bound
 to the studio that issued them, and studio database/Cloudinary secrets remain server-side.

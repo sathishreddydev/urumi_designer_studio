@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
 import { RealtimeProvider } from "@/components/realtime-provider";
-import { runWithTenantHost, TenantResolutionError } from "@/lib/tenant-registry/runtime";
+import { InactiveStudioError, runWithTenantHost, TenantResolutionError } from "@/lib/tenant-registry/runtime";
 import { getTenantContext } from "@/lib/tenant-registry/context";
+import { InactiveStudioPage } from "@/components/inactive-studio-page";
 // import { BlockersBanner } from "@/components/blockers-banner";
 
 export default async function DashboardLayout({
@@ -41,6 +42,9 @@ export default async function DashboardLayout({
       );
     });
   } catch (error) {
+    if (error instanceof InactiveStudioError) {
+      return <InactiveStudioPage />;
+    }
     if (error instanceof TenantResolutionError && error.status === 404) {
       notFound();
     }

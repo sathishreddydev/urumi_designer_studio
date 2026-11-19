@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 interface BrandingRow {
   name: string;
   logo_url: string;
+  active: boolean;
 }
 
 export async function GET(request: Request) {
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
 
   try {
     const { rows } = await queryMaster<BrandingRow>(
-      "SELECT name, logo_url FROM tenant_registry_studios WHERE domain = $1 AND active = true LIMIT 1",
+      "SELECT name, logo_url, active FROM tenant_registry_studios WHERE domain = $1 LIMIT 1",
       [domain]
     );
     if (!rows[0]) {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(
-      { studio: { name: rows[0].name, logoUrl: rows[0].logo_url } },
+      { studio: { name: rows[0].name, logoUrl: rows[0].logo_url, active: rows[0].active } },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
