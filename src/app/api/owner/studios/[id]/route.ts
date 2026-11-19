@@ -20,6 +20,7 @@ interface StudioRow {
   favicon_data: Buffer | null;
   active: boolean;
   deactivate_at: Date | null;
+  notes: string;
 }
 
 type RouteContext = {
@@ -34,7 +35,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at
+      `SELECT id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at, notes
        FROM tenant_registry_studios
        WHERE id = $1
        LIMIT 1`,
@@ -54,6 +55,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
         deactivateAt: studio.deactivate_at?.toISOString() ?? null,
+        notes: studio.notes,
       },
     });
   } catch (error) {
@@ -77,6 +79,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const cloudinaryUrlValue = formData.get("cloudinaryUrl");
     // deactivateAt: ISO date string, "clear" to remove, or absent to leave unchanged
     const deactivateAtValue = formData.get("deactivateAt");
+    const notesValue = formData.get("notes");
 
     if (
       typeof nameValue !== "string" ||
@@ -85,7 +88,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       (clearFaviconValue !== null && clearFaviconValue !== "true" && clearFaviconValue !== "false") ||
       (databaseUrlValue !== null && typeof databaseUrlValue !== "string") ||
       (cloudinaryUrlValue !== null && typeof cloudinaryUrlValue !== "string") ||
-      (deactivateAtValue !== null && typeof deactivateAtValue !== "string")
+      (deactivateAtValue !== null && typeof deactivateAtValue !== "string") ||
+      (notesValue !== null && typeof notesValue !== "string")
     ) {
       return NextResponse.json({ error: "Invalid studio details" }, { status: 400 });
     }
@@ -93,6 +97,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const name = nameValue.trim();
     if (name.length < 2 || name.length > 120) {
       return NextResponse.json({ error: "Studio name must be 2 to 120 characters" }, { status: 400 });
+    }
+    const notes = typeof notesValue === "string" ? notesValue.trim() : null;
+    if (notes !== null && notes.length > 5000) {
+      return NextResponse.json({ error: "Studio notes must be 5000 characters or fewer" }, { status: 400 });
     }
 
     // Parse and validate deactivateAt
@@ -155,9 +163,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
            cloudinary_url_encrypted = COALESCE($8, cloudinary_url_encrypted),
            active = $9,
            deactivate_at = CASE WHEN $10::boolean THEN $11::timestamptz ELSE deactivate_at END,
+           notes = COALESCE($12, notes),
            updated_at = now()
        WHERE id = $1
-       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at`,
+       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at, notes`,
       [
         id,
         name,
@@ -170,6 +179,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         activeValue === "true",
         deactivateAt !== undefined,  // $10: whether to update deactivate_at
         deactivateAt ?? null,        // $11: the new value (null clears it)
+        notes,
       ]
     );
     const studio = rows[0];
@@ -186,6 +196,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
         deactivateAt: studio.deactivate_at?.toISOString() ?? null,
+        notes: studio.notes,
       },
     });
   } catch (error) {

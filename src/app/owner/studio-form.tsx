@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OwnerSessionExpiryWarning } from "./session-expiry-warning";
 import {
   Building2,
   Globe,
@@ -29,6 +30,7 @@ interface Studio {
   faviconUrl: string | null;
   active: boolean;
   deactivateAt: string | null;
+  notes: string;
 }
 
 interface StudioFormProps {
@@ -166,6 +168,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
     faviconUrl: null,
     active: true,
     deactivateAt: null,
+    notes: "",
   });
   // Track the original loaded deactivateAt so we can tell if the user changed it
   const [savedDeactivateAt, setSavedDeactivateAt] = useState<string | null>(null);
@@ -240,7 +243,10 @@ export function StudioForm({ studioId }: StudioFormProps) {
       if (studio.deactivateAt !== savedDeactivateAt) {
         formData.set("deactivateAt", studio.deactivateAt ?? "clear");
       }
+    } else {
+      formData.set("deactivateAt", studio.deactivateAt ?? "");
     }
+    formData.set("notes", studio.notes);
 
     try {
       const response = await fetch(
@@ -307,6 +313,8 @@ export function StudioForm({ studioId }: StudioFormProps) {
         </p>
       </header>
 
+      <OwnerSessionExpiryWarning />
+
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* ── Studio Identity ── */}
         <Card>
@@ -365,60 +373,77 @@ export function StudioForm({ studioId }: StudioFormProps) {
                   </span>
                 </label>
 
-                {/* Scheduled deactivation date */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <CalendarClock className="h-3 w-3" /> Auto-deactivate on
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="datetime-local"
-                      className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      value={
-                        studio.deactivateAt
-                          ? (() => {
-                              const d = new Date(studio.deactivateAt);
-                              // Convert to local time for datetime-local input (which works in local time)
-                              const offset = d.getTimezoneOffset() * 60_000;
-                              return new Date(d.getTime() - offset).toISOString().slice(0, 16);
-                            })()
-                          : ""
-                      }
-                      min={(() => {
-                        const d = new Date(Date.now() + 60_000);
-                        const offset = d.getTimezoneOffset() * 60_000;
-                        return new Date(d.getTime() - offset).toISOString().slice(0, 16);
-                      })()}
-                      onChange={(e) =>
-                        setStudio((s) => ({
-                          ...s,
-                          deactivateAt: e.target.value
-                            ? new Date(e.target.value).toISOString()
-                            : null,
-                        }))
-                      }
-                    />
-                    {studio.deactivateAt && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-3 text-muted-foreground"
-                        onClick={() => setStudio((s) => ({ ...s, deactivateAt: null }))}
-                        title="Clear scheduled date"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {studio.deactivateAt
-                      ? `Will automatically go inactive on ${new Date(studio.deactivateAt).toLocaleString()}`
-                      : "Leave blank to keep the studio active indefinitely"}
-                  </p>
-                </div>
               </>
             )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="deactivateAt" className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <CalendarClock className="h-3 w-3" /> Auto-deactivate on
+              </Label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="deactivateAt"
+                  type="datetime-local"
+                  className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  value={
+                    studio.deactivateAt
+                      ? (() => {
+                          const d = new Date(studio.deactivateAt);
+                          const offset = d.getTimezoneOffset() * 60_000;
+                          return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                        })()
+                      : ""
+                  }
+                  min={(() => {
+                    const d = new Date(Date.now() + 60_000);
+                    const offset = d.getTimezoneOffset() * 60_000;
+                    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                  })()}
+                  onChange={(e) =>
+                    setStudio((s) => ({
+                      ...s,
+                      deactivateAt: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null,
+                    }))
+                  }
+                />
+                {studio.deactivateAt && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 px-3 text-muted-foreground"
+                    onClick={() => setStudio((s) => ({ ...s, deactivateAt: null }))}
+                    title="Clear scheduled date"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {studio.deactivateAt
+                  ? `Will automatically go inactive on ${new Date(studio.deactivateAt).toLocaleString()}`
+                  : "Leave blank to keep the studio active indefinitely"}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Internal notes
+              </Label>
+              <textarea
+                id="notes"
+                name="notes"
+                maxLength={5000}
+                rows={4}
+                placeholder="Trial expiry, client contact, payment reminders…"
+                value={studio.notes}
+                onChange={(e) => setStudio((s) => ({ ...s, notes: e.target.value }))}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              />
+              <p className="text-xs text-muted-foreground">Visible only in the owner panel.</p>
+            </div>
           </CardContent>
         </Card>
 

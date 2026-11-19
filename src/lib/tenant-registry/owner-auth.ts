@@ -57,6 +57,27 @@ export async function isOwnerAuthenticated(): Promise<boolean> {
   return (await getOwnerAccount(email)) !== null;
 }
 
+export async function getOwnerSessionExpiresAt(): Promise<number | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(OWNER_COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    if (
+      payload.purpose !== "owner-session" ||
+      typeof payload.sub !== "string" ||
+      typeof payload.exp !== "number"
+    ) {
+      return null;
+    }
+    if (!(await getOwnerAccount(payload.sub))) return null;
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
 export function ownerCookieOptions() {
   return {
     httpOnly: true,

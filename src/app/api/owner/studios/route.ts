@@ -17,6 +17,7 @@ interface StudioRow {
   favicon_data: Buffer | null;
   active: boolean;
   deactivate_at: Date | null;
+  notes: string;
   created_at: Date;
 }
 
@@ -27,7 +28,7 @@ export async function GET() {
     }
 
     const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, created_at
+      `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at
        FROM tenant_registry_studios
        ORDER BY created_at DESC`
     );
@@ -39,6 +40,7 @@ export async function GET() {
         logoUrl: getStudioLogoUrl(row.logo_url, row.logo_data),
         active: row.active,
         deactivateAt: row.deactivate_at?.toISOString() ?? null,
+        notes: row.notes,
         createdAt: row.created_at,
       })),
     });
@@ -60,12 +62,14 @@ export async function POST(request: Request) {
     const databaseUrlValue = formData.get("databaseUrl");
     const cloudinaryUrlValue = formData.get("cloudinaryUrl");
     const deactivateAtValue = formData.get("deactivateAt");
+    const notesValue = formData.get("notes");
     if (
       typeof nameValue !== "string" ||
       typeof domainValue !== "string" ||
       typeof databaseUrlValue !== "string" ||
       typeof cloudinaryUrlValue !== "string" ||
-      (deactivateAtValue !== null && typeof deactivateAtValue !== "string")
+      (deactivateAtValue !== null && typeof deactivateAtValue !== "string") ||
+      (notesValue !== null && typeof notesValue !== "string")
     ) {
       return NextResponse.json({ error: "All studio fields are required" }, { status: 400 });
     }
@@ -73,6 +77,10 @@ export async function POST(request: Request) {
     const name = nameValue.trim();
     if (name.length < 2 || name.length > 120) {
       return NextResponse.json({ error: "Studio name must be 2 to 120 characters" }, { status: 400 });
+    }
+    const notes = typeof notesValue === "string" ? notesValue.trim() : "";
+    if (notes.length > 5000) {
+      return NextResponse.json({ error: "Studio notes must be 5000 characters or fewer" }, { status: 400 });
     }
 
     // Parse deactivateAt if provided
@@ -116,10 +124,10 @@ export async function POST(request: Request) {
     const cloudinaryUrlEncrypted = encryptTenantSecret(cloudinaryUrl);
     const { rows } = await queryMaster<StudioRow>(
       `INSERT INTO tenant_registry_studios
-         (id, name, domain, logo_url, logo_data, favicon_data, database_url_encrypted, cloudinary_url_encrypted, deactivate_at)
-       VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)
-       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at, created_at`,
-      [randomUUID(), name, domain, logoData, faviconData, databaseUrlEncrypted, cloudinaryUrlEncrypted, deactivateAt]
+         (id, name, domain, logo_url, logo_data, favicon_data, database_url_encrypted, cloudinary_url_encrypted, deactivate_at, notes)
+       VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, deactivate_at, notes, created_at`,
+      [randomUUID(), name, domain, logoData, faviconData, databaseUrlEncrypted, cloudinaryUrlEncrypted, deactivateAt, notes]
     );
 
     const studio = rows[0];
@@ -132,6 +140,7 @@ export async function POST(request: Request) {
         faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
         deactivateAt: studio.deactivate_at?.toISOString() ?? null,
+        notes: studio.notes,
         createdAt: studio.created_at,
       },
     }, { status: 201 });

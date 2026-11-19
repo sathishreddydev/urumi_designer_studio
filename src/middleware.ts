@@ -9,6 +9,8 @@ const publicPaths = [
   "/api/auth/login",
   "/api/owner/auth/login",
   "/api/owner/auth/logout",
+  "/api/owner/auth/change-password",
+  "/api/owner/auth/session",
   "/api/owner/studios",
   "/api/tenant/branding",
   "/api/portal",

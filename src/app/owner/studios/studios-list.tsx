@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Loader2, PencilLine, CalendarClock, KeyRound, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Trash2, Loader2, PencilLine, CalendarClock, KeyRound, CheckCircle2, XCircle, AlertTriangle, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { OwnerSessionExpiryWarning } from "../session-expiry-warning";
 
 interface Studio {
   id: string;
@@ -34,13 +35,18 @@ interface Studio {
   logoUrl: string;
   active: boolean;
   deactivateAt: string | null;
+  notes: string;
 }
 
 interface ApiResponse {
   error?: string;
   studios?: Studio[];
   studio?: Studio;
+  healthy?: boolean;
+  latencyMs?: number;
 }
+
+type HealthStatus = "checking" | "healthy" | "unhealthy";
 
 async function readApiResponse(response: Response): Promise<ApiResponse> {
   const body = await response.text();
@@ -65,6 +71,8 @@ export function StudiosList() {
   const [loading, setLoading] = useState(true);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [statusError, setStatusError] = useState("");
+  const [healthStatuses, setHealthStatuses] = useState<Record<string, HealthStatus>>({});
+  const [now, setNow] = useState(Date.now());
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Studio | null>(null);
@@ -82,6 +90,15 @@ export function StudiosList() {
   const [adminError, setAdminError] = useState("");
   const [adminSuccess, setAdminSuccess] = useState("");
 
+  // Owner password state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+
   useEffect(() => {
     fetch("/api/owner/studios", { cache: "no-store" })
       .then(async (response) => {
@@ -97,13 +114,51 @@ export function StudiosList() {
         return { studios: result.studios };
       })
       .then((result) => {
-        if (result) setStudios(result.studios);
+        if (result) {
+          setStudios(result.studios);
+          setHealthStatuses(Object.fromEntries(result.studios.map((studio) => [studio.id, "checking"])));
+          void checkStudioHealth(result.studios);
+        }
       })
       .catch((loadError: unknown) => {
         setError(loadError instanceof Error ? loadError.message : "Could not load studios");
       })
       .finally(() => setLoading(false));
   }, [router]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  async function checkStudioHealth(studioList: Studio[]) {
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < studioList.length) {
+        const studio = studioList[nextIndex++];
+        try {
+          const response = await fetch(
+            `/api/owner/studios/${encodeURIComponent(studio.id)}/health`,
+            { cache: "no-store" }
+          );
+          if (response.status === 401) {
+            router.replace("/owner/login");
+            return;
+          }
+          const result = await readApiResponse(response);
+          setHealthStatuses((current) => ({
+            ...current,
+            [studio.id]: response.ok && result.healthy ? "healthy" : "unhealthy",
+          }));
+        } catch {
+          setHealthStatuses((current) => ({ ...current, [studio.id]: "unhealthy" }));
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(3, studioList.length) }, () => worker())
+    );
+  }
 
   async function handleActiveChange(studio: Studio, active: boolean) {
     setStatusError("");
@@ -246,6 +301,45 @@ export function StudiosList() {
     router.refresh();
   }
 
+  async function handlePasswordChange(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      setPasswordError("New password must be between 8 and 128 characters");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const response = await fetch("/api/owner/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const result = await readApiResponse(response);
+      if (response.status === 401) {
+        router.replace("/owner/login");
+        return;
+      }
+      if (!response.ok) throw new Error(result.error || "Could not change password");
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setPasswordSuccess("Owner password changed successfully.");
+      window.dispatchEvent(new Event("owner-session-renewed"));
+    } catch (changeError) {
+      setPasswordError(changeError instanceof Error ? changeError.message : "Could not change password");
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 p-4 sm:p-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -253,13 +347,26 @@ export function StudiosList() {
           <h1 className="text-2xl font-bold">Studios</h1>
           <p className="text-sm text-muted-foreground">Manage registered studio domains and settings.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link href="/owner/newStudio">Add studio</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setPasswordDialogOpen(true);
+              setPasswordError("");
+              setPasswordSuccess("");
+            }}
+          >
+            Change password
           </Button>
           <Button type="button" variant="outline" onClick={handleLogout}>Sign out</Button>
         </div>
       </header>
+
+      <OwnerSessionExpiryWarning />
 
       {/* Global status errors */}
       {statusError && (
@@ -292,6 +399,9 @@ export function StudiosList() {
             <ul className="divide-y">
               {studios.map((studio) => {
                 const busy = updatingIds.has(studio.id);
+                const expired = studio.deactivateAt !== null && new Date(studio.deactivateAt).getTime() <= now;
+                const effectivelyActive = studio.active && !expired;
+                const health = healthStatuses[studio.id] ?? "checking";
                 return (
                   <li key={studio.id} className="flex flex-wrap items-center gap-3 py-4">
                     {studio.logoUrl ? (
@@ -306,22 +416,55 @@ export function StudiosList() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{studio.name}</p>
                       <p className="truncate text-sm text-muted-foreground">{studio.domain}</p>
+                      <p
+                        role="status"
+                        className={`mt-1 flex items-center gap-1 text-xs ${
+                          health === "healthy"
+                            ? "text-green-700 dark:text-green-400"
+                            : health === "unhealthy"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {health === "checking" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : health === "healthy" ? (
+                          <CheckCircle2 className="h-3 w-3" />
+                        ) : (
+                          <XCircle className="h-3 w-3" />
+                        )}
+                        <Database className="h-3 w-3" />
+                        {health === "checking"
+                          ? "Checking database…"
+                          : health === "healthy"
+                            ? "Database connected"
+                            : "Database unreachable"}
+                      </p>
+                      {studio.notes && (
+                        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                          {studio.notes}
+                        </p>
+                      )}
                       {studio.deactivateAt && (
                         <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                           <CalendarClock className="h-3 w-3 shrink-0" />
-                          Auto-deactivates {new Date(studio.deactivateAt).toLocaleString()}
+                          {expired
+                            ? `Auto-deactivated ${new Date(studio.deactivateAt).toLocaleString()}`
+                            : `Auto-deactivates ${new Date(studio.deactivateAt).toLocaleString()}`}
                         </p>
                       )}
                     </div>
 
                     {/* Active toggle */}
                     <label className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">{studio.active ? "Active" : "Inactive"}</span>
+                      <span className="text-muted-foreground">
+                        {expired ? "Expired" : effectivelyActive ? "Active" : "Inactive"}
+                      </span>
                       <Switch
-                        checked={studio.active}
-                        disabled={busy}
+                        checked={effectivelyActive}
+                        disabled={busy || expired}
                         onCheckedChange={(active) => handleActiveChange(studio, active)}
-                        aria-label={`${studio.active ? "Deactivate" : "Activate"} ${studio.name}`}
+                        aria-label={`${effectivelyActive ? "Deactivate" : "Activate"} ${studio.name}`}
                       />
                     </label>
 
@@ -410,6 +553,98 @@ export function StudiosList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          if (!passwordSaving) {
+            setPasswordDialogOpen(open);
+            if (!open) {
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmNewPassword("");
+              setPasswordError("");
+              setPasswordSuccess("");
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change owner password</DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new password of 8 to 128 characters.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="owner-current-password">Current password</Label>
+              <Input
+                id="owner-current-password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                disabled={passwordSaving}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="owner-new-password">New password</Label>
+              <Input
+                id="owner-new-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                required
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                disabled={passwordSaving}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="owner-confirm-password">Confirm new password</Label>
+              <Input
+                id="owner-confirm-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                required
+                value={confirmNewPassword}
+                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                disabled={passwordSaving}
+              />
+            </div>
+            {passwordError && <p role="alert" className="text-sm text-destructive">{passwordError}</p>}
+            {passwordSuccess && <p role="status" className="text-sm text-green-700 dark:text-green-400">{passwordSuccess}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={passwordSaving}
+                onClick={() => {
+                  setPasswordDialogOpen(false);
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmNewPassword("");
+                  setPasswordError("");
+                  setPasswordSuccess("");
+                }}
+              >
+                {passwordSuccess ? "Close" : "Cancel"}
+              </Button>
+              {!passwordSuccess && (
+                <Button type="submit" disabled={passwordSaving}>
+                  {passwordSaving ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                  ) : "Change password"}
+                </Button>
+              )}
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       {/* ── Admin credentials dialog ── */}
       <Dialog
         open={adminTarget !== null}
