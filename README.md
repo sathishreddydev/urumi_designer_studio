@@ -99,7 +99,7 @@ master database. The login flow reads the hash from that database; after seeding
 an existing account.
 
 Start the app after seeding.
-Sign in at `/owner/login` and register each studio at `/owner/studios`. The logo field accepts
+Sign in at `/owner/login` and register each studio at `/owner`. The logo field accepts
 an HTTPS image URL; database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before
 being stored. `MASTER_DATABASE_URL` and `ENCRYPTION_KEY` must have the same values across
 deployments that read the registry.
