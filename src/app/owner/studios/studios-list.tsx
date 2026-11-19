@@ -428,7 +428,7 @@ export function StudiosList() {
           </DialogHeader>
 
           {/* Tab switcher */}
-          <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+          {/* <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
             {(["set", "update", "delete"] as const).filter((tab) => tab === "set").map((tab) => (
               <button
                 key={tab}
@@ -443,7 +443,7 @@ export function StudiosList() {
                 {tab === "set" ? "Set / Create" : tab === "update" ? "Update" : "Remove"}
               </button>
             ))}
-          </div>
+          </div> */}
 
           <form onSubmit={handleAdminSubmit} className="space-y-4">
 
