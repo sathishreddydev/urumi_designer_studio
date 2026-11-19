@@ -169,6 +169,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "That domain is already registered" }, { status: 409 });
     }
     console.error("Could not update registered studio:", error);
-    return NextResponse.json({ error: "Could not update studio" }, { status: 500 });
+    const diagnosticCode =
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? error.code
+        : undefined;
+    return NextResponse.json(
+      { error: "Could not update studio", diagnosticCode },
+      { status: 500 }
+    );
   }
 }

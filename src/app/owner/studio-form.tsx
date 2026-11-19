@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [useLogoAsFavicon, setUseLogoAsFavicon] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!logoFile) {
@@ -106,7 +107,8 @@ export function StudioForm({ studioId }: StudioFormProps) {
       );
       const result = await response.json();
       if (!response.ok) {
-        setError(result.error || (editing ? "Could not update studio" : "Could not register studio"));
+        const message = result.error || (editing ? "Could not update studio" : "Could not register studio");
+        setError(result.diagnosticCode ? `${message} (${result.diagnosticCode})` : message);
         return;
       }
 
@@ -189,6 +191,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
               <Input
                 id="favicon"
                 name="favicon"
+                ref={faviconInputRef}
                 type="file"
                 accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                 onChange={(event) => {
@@ -196,6 +199,18 @@ export function StudioForm({ studioId }: StudioFormProps) {
                   setUseLogoAsFavicon(false);
                 }}
               />
+              {faviconFile && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFaviconFile(null);
+                    if (faviconInputRef.current) faviconInputRef.current.value = "";
+                  }}
+                >
+                  Remove selected upload
+                </Button>
+              )}
               <p className="text-sm text-muted-foreground">
                 PNG, JPEG, or WebP up to 4 MB. If omitted, the studio logo is used.
               </p>
