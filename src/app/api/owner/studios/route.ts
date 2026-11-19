@@ -1,8 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { encryptTenantSecret } from "@/lib/tenant-registry/crypto";
-import { normalizeCloudinaryUrl, normalizeDomain, normalizeLogoUrl, normalizePostgresUrl } from "@/lib/tenant-registry/domain";
+import { normalizeCloudinaryUrl, normalizeDomain, normalizePostgresUrl } from "@/lib/tenant-registry/domain";
 import { queryMaster } from "@/lib/tenant-registry/db";
+import {
+  compressFaviconUpload,
+  compressLogoUpload,
+  getStudioFaviconUrl,
+  getStudioLogoUrl,
+  LogoUploadError,
+} from "@/lib/tenant-registry/logo";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
 
 export const runtime = "nodejs";
@@ -12,6 +19,8 @@ interface StudioRow {
   name: string;
   domain: string;
   logo_url: string;
+  logo_data: Buffer | null;
+  favicon_data: Buffer | null;
   active: boolean;
   created_at: Date;
 }
@@ -23,7 +32,7 @@ export async function GET() {
 
   try {
     const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, active, created_at
+      `SELECT id, name, domain, logo_url, logo_data, active, created_at
        FROM tenant_registry_studios
        ORDER BY created_at DESC`
     );
@@ -32,7 +41,7 @@ export async function GET() {
         id: row.id,
         name: row.name,
         domain: row.domain,
-        logoUrl: row.logo_url,
+        logoUrl: getStudioLogoUrl(row.logo_url, row.logo_data),
         active: row.active,
         createdAt: row.created_at,
       })),
@@ -49,39 +58,48 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body: unknown = await request.json();
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid studio details" }, { status: 400 });
-    }
-
-    const input = body as Record<string, unknown>;
+    const formData = await request.formData();
+    const nameValue = formData.get("name");
+    const domainValue = formData.get("domain");
+    const databaseUrlValue = formData.get("databaseUrl");
+    const cloudinaryUrlValue = formData.get("cloudinaryUrl");
     if (
-      typeof input.name !== "string" ||
-      typeof input.domain !== "string" ||
-      typeof input.logoUrl !== "string" ||
-      typeof input.databaseUrl !== "string" ||
-      typeof input.cloudinaryUrl !== "string"
+      typeof nameValue !== "string" ||
+      typeof domainValue !== "string" ||
+      typeof databaseUrlValue !== "string" ||
+      typeof cloudinaryUrlValue !== "string"
     ) {
       return NextResponse.json({ error: "All studio fields are required" }, { status: 400 });
     }
 
-    const name = input.name.trim();
+    const name = nameValue.trim();
     if (name.length < 2 || name.length > 120) {
       return NextResponse.json({ error: "Studio name must be 2 to 120 characters" }, { status: 400 });
     }
 
     let domain: string;
-    let logoUrl: string;
+    let logoData: Buffer | null;
+    let faviconData: Buffer | null;
     let databaseUrl: string;
     let cloudinaryUrl: string;
     try {
-      domain = normalizeDomain(input.domain);
-      logoUrl = normalizeLogoUrl(input.logoUrl);
-      databaseUrl = normalizePostgresUrl(input.databaseUrl);
-      cloudinaryUrl = normalizeCloudinaryUrl(input.cloudinaryUrl);
+      domain = normalizeDomain(domainValue);
+      logoData = await compressLogoUpload(formData.get("logo"), true);
+      faviconData = await compressFaviconUpload(formData.get("favicon"), false);
+      if (!logoData) {
+        return NextResponse.json({ error: "Choose a logo image to upload." }, { status: 400 });
+      }
+      databaseUrl = normalizePostgresUrl(databaseUrlValue);
+      cloudinaryUrl = normalizeCloudinaryUrl(cloudinaryUrlValue);
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid studio details" },
+        {
+          error: error instanceof LogoUploadError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : "Invalid studio details",
+        },
         { status: 400 }
       );
     }
@@ -89,10 +107,10 @@ export async function POST(request: Request) {
     const databaseUrlEncrypted = encryptTenantSecret(databaseUrl);
     const cloudinaryUrlEncrypted = encryptTenantSecret(cloudinaryUrl);
     const { rows } = await queryMaster<StudioRow>(
-      `INSERT INTO tenant_registry_studios (id, name, domain, logo_url, database_url_encrypted, cloudinary_url_encrypted)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, domain, logo_url, active, created_at`,
-      [randomUUID(), name, domain, logoUrl, databaseUrlEncrypted, cloudinaryUrlEncrypted]
+      `INSERT INTO tenant_registry_studios (id, name, domain, logo_url, logo_data, favicon_data, database_url_encrypted, cloudinary_url_encrypted)
+       VALUES ($1, $2, $3, '', $4, $5, $6, $7)
+       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active, created_at`,
+      [randomUUID(), name, domain, logoData, faviconData, databaseUrlEncrypted, cloudinaryUrlEncrypted]
     );
 
     const studio = rows[0];
@@ -101,7 +119,8 @@ export async function POST(request: Request) {
         id: studio.id,
         name: studio.name,
         domain: studio.domain,
-        logoUrl: studio.logo_url,
+        logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
+        faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
         createdAt: studio.created_at,
       },

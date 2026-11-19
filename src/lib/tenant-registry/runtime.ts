@@ -3,6 +3,7 @@ import { getTenantDatabase } from "@/lib/db";
 import { decryptTenantSecret } from "@/lib/tenant-registry/crypto";
 import { runWithTenantContext, type TenantContext } from "@/lib/tenant-registry/context";
 import { normalizeCloudinaryUrl, normalizeDomain, normalizePostgresUrl } from "@/lib/tenant-registry/domain";
+import { getStudioLogoUrl } from "@/lib/tenant-registry/logo";
 import { queryMaster } from "@/lib/tenant-registry/db";
 
 interface TenantRow {
@@ -10,6 +11,7 @@ interface TenantRow {
   name: string;
   domain: string;
   logo_url: string;
+  logo_data: Buffer | null;
   active: boolean;
   database_url_encrypted: string;
   cloudinary_url_encrypted: string;
@@ -42,7 +44,7 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
   }
 
   const { rows } = await queryMaster<TenantRow>(
-    `SELECT id, name, domain, logo_url, active, database_url_encrypted, cloudinary_url_encrypted
+    `SELECT id, name, domain, logo_url, logo_data, active, database_url_encrypted, cloudinary_url_encrypted
      FROM tenant_registry_studios
      WHERE domain = $1
      LIMIT 1`,
@@ -67,7 +69,7 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
     id: studio.id,
     name: studio.name,
     domain: studio.domain,
-    logoUrl: studio.logo_url,
+    logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
     db: getTenantDatabase(studio.id, databaseUrl),
     cloudinary: {
       cloudName: cloudinaryUrl.hostname,

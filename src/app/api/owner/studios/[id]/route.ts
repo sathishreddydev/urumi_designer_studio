@@ -3,9 +3,15 @@ import { encryptTenantSecret } from "@/lib/tenant-registry/crypto";
 import {
   normalizeCloudinaryUrl,
   normalizeDomain,
-  normalizeLogoUrl,
   normalizePostgresUrl,
 } from "@/lib/tenant-registry/domain";
+import {
+  compressFaviconUpload,
+  compressLogoUpload,
+  getStudioFaviconUrl,
+  getStudioLogoUrl,
+  LogoUploadError,
+} from "@/lib/tenant-registry/logo";
 import { queryMaster } from "@/lib/tenant-registry/db";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
 
@@ -16,6 +22,8 @@ interface StudioRow {
   name: string;
   domain: string;
   logo_url: string;
+  logo_data: Buffer | null;
+  favicon_data: Buffer | null;
   active: boolean;
 }
 
@@ -31,7 +39,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, active
+      `SELECT id, name, domain, logo_url, logo_data, favicon_data, active
        FROM tenant_registry_studios
        WHERE id = $1
        LIMIT 1`,
@@ -47,7 +55,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
         id: studio.id,
         name: studio.name,
         domain: studio.domain,
-        logoUrl: studio.logo_url,
+        logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
+        faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
       },
     });
@@ -63,48 +72,57 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   try {
-    const body: unknown = await request.json();
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid studio details" }, { status: 400 });
-    }
-
-    const input = body as Record<string, unknown>;
+    const formData = await request.formData();
+    const nameValue = formData.get("name");
+    const domainValue = formData.get("domain");
+    const activeValue = formData.get("active");
+    const clearFaviconValue = formData.get("clearFavicon");
+    const databaseUrlValue = formData.get("databaseUrl");
+    const cloudinaryUrlValue = formData.get("cloudinaryUrl");
     if (
-      typeof input.name !== "string" ||
-      typeof input.domain !== "string" ||
-      typeof input.logoUrl !== "string" ||
-      typeof input.active !== "boolean" ||
-      (input.databaseUrl !== undefined && typeof input.databaseUrl !== "string") ||
-      (input.cloudinaryUrl !== undefined && typeof input.cloudinaryUrl !== "string")
+      typeof nameValue !== "string" ||
+      typeof domainValue !== "string" ||
+      (activeValue !== "true" && activeValue !== "false") ||
+      (clearFaviconValue !== null && clearFaviconValue !== "true" && clearFaviconValue !== "false") ||
+      (databaseUrlValue !== null && typeof databaseUrlValue !== "string") ||
+      (cloudinaryUrlValue !== null && typeof cloudinaryUrlValue !== "string")
     ) {
       return NextResponse.json({ error: "Invalid studio details" }, { status: 400 });
     }
 
-    const name = input.name.trim();
+    const name = nameValue.trim();
     if (name.length < 2 || name.length > 120) {
       return NextResponse.json({ error: "Studio name must be 2 to 120 characters" }, { status: 400 });
     }
 
     let domain: string;
-    let logoUrl: string;
+    let logoData: Buffer | null;
+    let faviconData: Buffer | null;
     let databaseUrlEncrypted: string | null = null;
     let cloudinaryUrlEncrypted: string | null = null;
     try {
-      domain = normalizeDomain(input.domain);
-      logoUrl = normalizeLogoUrl(input.logoUrl);
+      domain = normalizeDomain(domainValue);
+      logoData = await compressLogoUpload(formData.get("logo"), false);
+      faviconData = await compressFaviconUpload(formData.get("favicon"), false);
 
-      const databaseUrl = typeof input.databaseUrl === "string" ? input.databaseUrl.trim() : "";
+      const databaseUrl = typeof databaseUrlValue === "string" ? databaseUrlValue.trim() : "";
       if (databaseUrl) {
         databaseUrlEncrypted = encryptTenantSecret(normalizePostgresUrl(databaseUrl));
       }
 
-      const cloudinaryUrl = typeof input.cloudinaryUrl === "string" ? input.cloudinaryUrl.trim() : "";
+      const cloudinaryUrl = typeof cloudinaryUrlValue === "string" ? cloudinaryUrlValue.trim() : "";
       if (cloudinaryUrl) {
         cloudinaryUrlEncrypted = encryptTenantSecret(normalizeCloudinaryUrl(cloudinaryUrl));
       }
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid studio details" },
+        {
+          error: error instanceof LogoUploadError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : "Invalid studio details",
+        },
         { status: 400 }
       );
     }
@@ -114,14 +132,26 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       `UPDATE tenant_registry_studios
        SET name = $2,
            domain = $3,
-           logo_url = $4,
-           database_url_encrypted = COALESCE($5, database_url_encrypted),
-           cloudinary_url_encrypted = COALESCE($6, cloudinary_url_encrypted),
-           active = $7,
+           logo_url = CASE WHEN $4 IS NOT NULL THEN '' ELSE logo_url END,
+           logo_data = COALESCE($4, logo_data),
+           favicon_data = CASE WHEN $6 THEN NULL ELSE COALESCE($5, favicon_data) END,
+           database_url_encrypted = COALESCE($7, database_url_encrypted),
+           cloudinary_url_encrypted = COALESCE($8, cloudinary_url_encrypted),
+           active = $9,
            updated_at = now()
        WHERE id = $1
-       RETURNING id, name, domain, logo_url, active`,
-      [id, name, domain, logoUrl, databaseUrlEncrypted, cloudinaryUrlEncrypted, input.active]
+       RETURNING id, name, domain, logo_url, logo_data, favicon_data, active`,
+      [
+        id,
+        name,
+        domain,
+        logoData,
+        faviconData,
+        clearFaviconValue === "true",
+        databaseUrlEncrypted,
+        cloudinaryUrlEncrypted,
+        activeValue === "true",
+      ]
     );
     const studio = rows[0];
     if (!studio) {
@@ -133,7 +163,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         id: studio.id,
         name: studio.name,
         domain: studio.domain,
-        logoUrl: studio.logo_url,
+        logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
+        faviconUrl: getStudioFaviconUrl(studio.favicon_data),
         active: studio.active,
       },
     });

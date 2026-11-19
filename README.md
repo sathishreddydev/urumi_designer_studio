@@ -98,10 +98,12 @@ master database. The login flow reads the hash from that database; after seeding
 `OWNER_EMAIL` and `OWNER_PASSWORD_HASH` from `.env.local`. The seed command does not overwrite
 an existing account.
 
-Start the app after seeding. Sign in at `/owner/login`. The combined owner dashboard remains
-at `/owner`; use `/owner/studios` to manage registered studios, `/owner/newStudio` to add one,
-and `/owner/editStudio/<studio-id>` to edit one. The logo field accepts an HTTPS image URL;
-database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before they are stored.
+Start the app after seeding. Sign in at `/owner/login` to manage studios at `/owner`,
+add one at `/owner/newStudio`, or edit one at `/owner/editStudio/<studio-id>`. Studio logos and optional separate favicons can be uploaded as PNG, JPEG, or WebP images;
+logos are resized and compressed to WebP, while favicons are optimized as PNG. Both are stored
+in the master database. The favicon falls back to the studio logo and then `/favicon.png`.
+Run `npm run db:migrate:master` to apply master database migrations.
+Database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before they are stored.
 `MASTER_DATABASE_URL` and `ENCRYPTION_KEY` must have the same values across deployments that
 read the registry.
 

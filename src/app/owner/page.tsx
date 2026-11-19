@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
-import { StudiosManager } from "./studios/studios-manager";
+import { StudiosList } from "./studios/studios-list";
 
 export const runtime = "nodejs";
 
@@ -9,5 +9,5 @@ export default async function OwnerPage() {
     redirect("/owner/login");
   }
 
-  return <StudiosManager />;
+  return <StudiosList />;
 }

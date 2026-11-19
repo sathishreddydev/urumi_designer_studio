@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeDomain } from "@/lib/tenant-registry/domain";
+import { getStudioLogoUrl } from "@/lib/tenant-registry/logo";
 import { queryMaster } from "@/lib/tenant-registry/db";
 
 export const runtime = "nodejs";
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 interface BrandingRow {
   name: string;
   logo_url: string;
+  logo_data: Buffer | null;
   active: boolean;
 }
 
@@ -25,7 +27,7 @@ export async function GET(request: Request) {
 
   try {
     const { rows } = await queryMaster<BrandingRow>(
-      "SELECT name, logo_url, active FROM tenant_registry_studios WHERE domain = $1 LIMIT 1",
+      "SELECT name, logo_url, logo_data, active FROM tenant_registry_studios WHERE domain = $1 LIMIT 1",
       [domain]
     );
     if (!rows[0]) {
@@ -35,7 +37,13 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(
-      { studio: { name: rows[0].name, logoUrl: rows[0].logo_url, active: rows[0].active } },
+      {
+        studio: {
+          name: rows[0].name,
+          logoUrl: getStudioLogoUrl(rows[0].logo_url, rows[0].logo_data),
+          active: rows[0].active,
+        },
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

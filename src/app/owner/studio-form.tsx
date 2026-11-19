@@ -12,6 +12,7 @@ interface Studio {
   name: string;
   domain: string;
   logoUrl: string;
+  faviconUrl: string | null;
   active: boolean;
 }
 
@@ -26,11 +27,39 @@ export function StudioForm({ studioId }: StudioFormProps) {
     name: "",
     domain: "",
     logoUrl: "",
+    faviconUrl: null,
     active: true,
   });
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [useLogoAsFavicon, setUseLogoAsFavicon] = useState(false);
+
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreview(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(logoFile);
+    setLogoPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [logoFile]);
+
+  useEffect(() => {
+    if (!faviconFile) {
+      setFaviconPreview(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(faviconFile);
+    setFaviconPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [faviconFile]);
 
   useEffect(() => {
     if (!studioId) return;
@@ -46,7 +75,10 @@ export function StudioForm({ studioId }: StudioFormProps) {
         return result.studio as Studio;
       })
       .then((result) => {
-        if (result) setStudio(result);
+        if (result) {
+          setStudio(result);
+          setUseLogoAsFavicon(false);
+        }
       })
       .catch((loadError: unknown) => {
         setError(loadError instanceof Error ? loadError.message : "Could not load studio");
@@ -59,28 +91,17 @@ export function StudioForm({ studioId }: StudioFormProps) {
     setError("");
     setSaving(true);
     const formData = new FormData(event.currentTarget);
-    const payload: Record<string, string | boolean> = {
-      name: studio.name,
-      domain: studio.domain,
-      logoUrl: studio.logoUrl,
-    };
-
     if (editing) {
-      payload.active = studio.active;
+      formData.set("active", String(studio.active));
+      formData.set("clearFavicon", String(useLogoAsFavicon));
     }
-
-    const databaseUrl = String(formData.get("databaseUrl") || "").trim();
-    const cloudinaryUrl = String(formData.get("cloudinaryUrl") || "").trim();
-    if (databaseUrl) payload.databaseUrl = databaseUrl;
-    if (cloudinaryUrl) payload.cloudinaryUrl = cloudinaryUrl;
 
     try {
       const response = await fetch(
         editing ? `/api/owner/studios/${encodeURIComponent(studioId!)}` : "/api/owner/studios",
         {
           method: editing ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: formData,
         }
       );
       const result = await response.json();
@@ -89,7 +110,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
         return;
       }
 
-      router.push("/owner/studios");
+      router.push("/owner");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not save studio");
@@ -105,7 +126,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl space-y-6 p-4 sm:p-8">
       <header className="space-y-2">
-        <Link href="/owner/studios" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/owner" className="text-sm text-muted-foreground hover:underline">
           Back to studios
         </Link>
         <h1 className="text-2xl font-bold">{editing ? "Edit studio" : "Register studio"}</h1>
@@ -143,16 +164,63 @@ export function StudioForm({ studioId }: StudioFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="logoUrl">Logo image URL</Label>
+              <Label htmlFor="logo">Logo image</Label>
               <Input
-                id="logoUrl"
-                name="logoUrl"
-                type="url"
-                placeholder="https://example.com/logo.png"
-                required
-                value={studio.logoUrl}
-                onChange={(event) => setStudio((current) => ({ ...current, logoUrl: event.target.value }))}
+                id="logo"
+                name="logo"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                required={!editing}
+                onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
               />
+              <p className="text-sm text-muted-foreground">
+                PNG, JPEG, or WebP up to 4 MB. Images are resized, compressed, and stored in the master database.
+              </p>
+              {(logoPreview || studio.logoUrl) && (
+                <img
+                  src={logoPreview || studio.logoUrl}
+                  alt="Studio logo preview"
+                  className="h-16 w-16 rounded border object-contain p-1"
+                />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="favicon">Favicon image (optional)</Label>
+              <Input
+                id="favicon"
+                name="favicon"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                onChange={(event) => {
+                  setFaviconFile(event.target.files?.[0] ?? null);
+                  setUseLogoAsFavicon(false);
+                }}
+              />
+              <p className="text-sm text-muted-foreground">
+                PNG, JPEG, or WebP up to 4 MB. If omitted, the studio logo is used.
+              </p>
+              {(faviconPreview || studio.faviconUrl || logoPreview || studio.logoUrl) && (
+                <img
+                  src={
+                    faviconPreview ||
+                    (useLogoAsFavicon || !studio.faviconUrl
+                      ? logoPreview || studio.logoUrl
+                      : studio.faviconUrl)
+                  }
+                  alt="Favicon preview"
+                  className="h-10 w-10 rounded border object-contain p-1"
+                />
+              )}
+              {editing && studio.faviconUrl && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useLogoAsFavicon}
+                    onChange={(event) => setUseLogoAsFavicon(event.target.checked)}
+                  />
+                  Use the studio logo instead of the saved favicon
+                </label>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="databaseUrl">Studio PostgreSQL URL</Label>
@@ -193,7 +261,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
                 {saving ? "Saving..." : editing ? "Save changes" : "Register studio"}
               </Button>
               <Button asChild type="button" variant="outline">
-                <Link href="/owner/studios">Cancel</Link>
+                <Link href="/owner">Cancel</Link>
               </Button>
             </div>
           </form>

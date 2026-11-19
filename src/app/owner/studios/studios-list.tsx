@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 
 interface Studio {
   id: string;
@@ -19,6 +20,8 @@ export function StudiosList() {
   const [studios, setStudios] = useState<Studio[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
+  const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
     fetch("/api/owner/studios", { cache: "no-store" })
@@ -39,6 +42,45 @@ export function StudiosList() {
       })
       .finally(() => setLoading(false));
   }, [router]);
+
+  async function handleActiveChange(studio: Studio, active: boolean) {
+    setStatusError("");
+    setUpdatingIds((current) => new Set(current).add(studio.id));
+
+    try {
+      const formData = new FormData();
+      formData.set("name", studio.name);
+      formData.set("domain", studio.domain);
+      formData.set("active", String(active));
+
+      const response = await fetch(`/api/owner/studios/${encodeURIComponent(studio.id)}`, {
+        method: "PATCH",
+        body: formData,
+      });
+      const result = await response.json();
+      if (response.status === 401) {
+        router.replace("/owner/login");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(result.error || "Could not update studio status");
+      }
+
+      setStudios((current) =>
+        current.map((item) => item.id === studio.id ? { ...item, active } : item)
+      );
+    } catch (updateError) {
+      setStatusError(
+        updateError instanceof Error ? updateError.message : "Could not update studio status"
+      );
+    } finally {
+      setUpdatingIds((current) => {
+        const next = new Set(current);
+        next.delete(studio.id);
+        return next;
+      });
+    }
+  }
 
   async function handleLogout() {
     await fetch("/api/owner/auth/logout", { method: "POST" });
@@ -67,6 +109,7 @@ export function StudiosList() {
           <CardDescription>Database and Cloudinary credentials are never displayed here.</CardDescription>
         </CardHeader>
         <CardContent>
+          {statusError && <p role="alert" className="mb-4 text-sm text-destructive">{statusError}</p>}
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading studios...</p>
           ) : error ? (
@@ -87,9 +130,15 @@ export function StudiosList() {
                     <p className="truncate font-medium">{studio.name}</p>
                     <p className="truncate text-sm text-muted-foreground">{studio.domain}</p>
                   </div>
-                  <span className={`text-sm ${studio.active ? "text-green-700" : "text-destructive"}`}>
-                    {studio.active ? "Active" : "Inactive"}
-                  </span>
+                  <label className="flex items-center gap-2 text-sm">
+                    <span>{studio.active ? "Active" : "Inactive"}</span>
+                    <Switch
+                      checked={studio.active}
+                      disabled={updatingIds.has(studio.id)}
+                      onCheckedChange={(active) => handleActiveChange(studio, active)}
+                      aria-label={`${studio.active ? "Deactivate" : "Activate"} ${studio.name}`}
+                    />
+                  </label>
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/owner/editStudio/${encodeURIComponent(studio.id)}`}>Edit</Link>
                   </Button>
