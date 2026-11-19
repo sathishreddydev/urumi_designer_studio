@@ -123,9 +123,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       `UPDATE tenant_registry_studios
        SET name = $2,
            domain = $3,
-           logo_url = CASE WHEN $4 IS NOT NULL THEN '' ELSE logo_url END,
-           logo_data = COALESCE($4, logo_data),
-           favicon_data = CASE WHEN $6 THEN NULL ELSE COALESCE($5, favicon_data) END,
+           logo_url = CASE WHEN $4::bytea IS NOT NULL THEN '' ELSE logo_url END,
+           logo_data = COALESCE($4::bytea, logo_data),
+           favicon_data = CASE WHEN $6 THEN NULL ELSE COALESCE($5::bytea, favicon_data) END,
            database_url_encrypted = COALESCE($7, database_url_encrypted),
            cloudinary_url_encrypted = COALESCE($8, cloudinary_url_encrypted),
            active = $9,

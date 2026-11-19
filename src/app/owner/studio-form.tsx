@@ -20,6 +20,18 @@ interface StudioFormProps {
   studioId?: string;
 }
 
+const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+function getImageUploadError(file: File): string | null {
+  if (file.size === 0) return "This image is empty. Choose another file.";
+  if (file.size > MAX_IMAGE_SIZE_BYTES) return "Images must be 4 MB or smaller.";
+  if (file.type && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "Choose a PNG, JPEG, or WebP image.";
+  }
+  return null;
+}
+
 export function StudioForm({ studioId }: StudioFormProps) {
   const router = useRouter();
   const editing = Boolean(studioId);
@@ -35,9 +47,12 @@ export function StudioForm({ studioId }: StudioFormProps) {
   const [error, setError] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState("");
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [faviconError, setFaviconError] = useState("");
   const [useLogoAsFavicon, setUseLogoAsFavicon] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -90,8 +105,18 @@ export function StudioForm({ studioId }: StudioFormProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (logoError || faviconError) return;
+    if (!editing && !logoFile) {
+      setLogoError("Choose a logo image to register this studio.");
+      return;
+    }
+
     setSaving(true);
     const formData = new FormData(event.currentTarget);
+    formData.delete("logo");
+    formData.delete("favicon");
+    if (logoFile) formData.set("logo", logoFile);
+    if (faviconFile && !useLogoAsFavicon) formData.set("favicon", faviconFile);
     if (editing) {
       formData.set("active", String(studio.active));
       formData.set("clearFavicon", String(useLogoAsFavicon));
@@ -168,23 +193,80 @@ export function StudioForm({ studioId }: StudioFormProps) {
             <div className="space-y-2">
               <Label htmlFor="logo">Logo image</Label>
               <Input
+                ref={logoInputRef}
                 id="logo"
                 name="logo"
                 type="file"
+                className="hidden"
                 accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                required={!editing}
-                onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+                disabled={saving}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (!file) return;
+                  const uploadError = getImageUploadError(file);
+                  if (uploadError) {
+                    setLogoFile(null);
+                    setLogoError(uploadError);
+                    event.currentTarget.value = "";
+                    return;
+                  }
+                  setLogoError("");
+                  setLogoFile(file);
+                }}
               />
-              <p className="text-sm text-muted-foreground">
-                PNG, JPEG, or WebP up to 4 MB. Images are resized, compressed, and stored in the master database.
-              </p>
-              {(logoPreview || studio.logoUrl) && (
-                <img
-                  src={logoPreview || studio.logoUrl}
-                  alt="Studio logo preview"
-                  className="h-16 w-16 rounded border object-contain p-1"
-                />
-              )}
+              <div className="flex items-center gap-4 rounded-lg border p-4">
+                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
+                  {(logoPreview || studio.logoUrl) ? (
+                    <img
+                      src={logoPreview || studio.logoUrl}
+                      alt={logoFile ? "Selected logo preview" : "Current studio logo"}
+                      className="h-full w-full object-contain p-1"
+                    />
+                  ) : (
+                    <span className="px-2 text-center text-xs text-muted-foreground">No logo</span>
+                  )}
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <p className="text-sm font-medium">
+                    {logoFile ? "New logo selected" : studio.logoUrl ? "Current studio logo" : "No logo selected"}
+                  </p>
+                  {logoFile && (
+                    <p className="max-w-full truncate text-xs text-muted-foreground" title={logoFile.name}>
+                      {logoFile.name} · {Math.max(1, Math.ceil(logoFile.size / 1024))} KB
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      {logoFile || studio.logoUrl ? "Choose another" : "Choose logo"}
+                    </Button>
+                    {logoFile && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => {
+                          setLogoFile(null);
+                          setLogoError("");
+                          if (logoInputRef.current) logoInputRef.current.value = "";
+                        }}
+                      >
+                        Remove selection
+                      </Button>
+                    )}
+                  </div>
+                  <p id="logo-help" className="text-xs text-muted-foreground">
+                    PNG, JPEG, or WebP, up to 4 MB. We resize and compress it before saving.
+                  </p>
+                </div>
+              </div>
+              {logoError && <p role="alert" className="text-sm text-destructive">{logoError}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="favicon">Favicon image (optional)</Label>
@@ -193,47 +275,108 @@ export function StudioForm({ studioId }: StudioFormProps) {
                 name="favicon"
                 ref={faviconInputRef}
                 type="file"
+                className="hidden"
                 accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                 onChange={(event) => {
-                  setFaviconFile(event.target.files?.[0] ?? null);
+                  const file = event.currentTarget.files?.[0];
+                  if (!file) return;
+                  const uploadError = getImageUploadError(file);
+                  if (uploadError) {
+                    setFaviconFile(null);
+                    setFaviconError(uploadError);
+                    event.currentTarget.value = "";
+                    return;
+                  }
+                  setFaviconError("");
+                  setFaviconFile(file);
                   setUseLogoAsFavicon(false);
                 }}
               />
-              {faviconFile && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setFaviconFile(null);
-                    if (faviconInputRef.current) faviconInputRef.current.value = "";
-                  }}
-                >
-                  Remove selected upload
-                </Button>
-              )}
-              <p className="text-sm text-muted-foreground">
-                PNG, JPEG, or WebP up to 4 MB. If omitted, the studio logo is used.
-              </p>
-              {(faviconPreview || studio.faviconUrl || logoPreview || studio.logoUrl) && (
-                <img
-                  src={
-                    faviconPreview ||
-                    (useLogoAsFavicon || !studio.faviconUrl
-                      ? logoPreview || studio.logoUrl
-                      : studio.faviconUrl)
-                  }
-                  alt="Favicon preview"
-                  className="h-10 w-10 rounded border object-contain p-1"
-                />
-              )}
+              <div className="flex items-center gap-4 rounded-lg border p-4">
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
+                  {(faviconPreview || (useLogoAsFavicon || !studio.faviconUrl
+                    ? logoPreview || studio.logoUrl
+                    : studio.faviconUrl)) ? (
+                    <img
+                      src={
+                        faviconPreview ||
+                        (useLogoAsFavicon || !studio.faviconUrl
+                          ? logoPreview || studio.logoUrl
+                          : studio.faviconUrl)
+                      }
+                      alt={faviconFile ? "Selected favicon preview" : "Favicon preview"}
+                      className="h-full w-full object-contain p-1"
+                    />
+                  ) : (
+                    <span className="px-1 text-center text-xs text-muted-foreground">No image</span>
+                  )}
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <p className="text-sm font-medium">
+                    {faviconFile
+                      ? "New favicon selected"
+                      : useLogoAsFavicon
+                        ? "Studio logo will be used"
+                        : studio.faviconUrl
+                          ? "Current favicon"
+                          : "Studio logo is used as the favicon"}
+                  </p>
+                  {faviconFile && (
+                    <p className="max-w-full truncate text-xs text-muted-foreground" title={faviconFile.name}>
+                      {faviconFile.name} · {Math.max(1, Math.ceil(faviconFile.size / 1024))} KB
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => faviconInputRef.current?.click()}
+                    >
+                      {faviconFile || studio.faviconUrl ? "Choose another" : "Choose favicon"}
+                    </Button>
+                    {faviconFile && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => {
+                          setFaviconFile(null);
+                          setFaviconError("");
+                          setUseLogoAsFavicon(false);
+                          if (faviconInputRef.current) faviconInputRef.current.value = "";
+                        }}
+                      >
+                        Remove selection
+                      </Button>
+                    )}
+                  </div>
+                  <p id="favicon-help" className="text-xs text-muted-foreground">
+                    PNG, JPEG, or WebP, up to 4 MB. {editing
+                      ? "Leave unchanged to keep the saved favicon."
+                      : "The studio logo is used if you do not upload one."}
+                  </p>
+                </div>
+              </div>
+              {faviconError && <p role="alert" className="text-sm text-destructive">{faviconError}</p>}
               {editing && studio.faviconUrl && (
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={useLogoAsFavicon}
-                    onChange={(event) => setUseLogoAsFavicon(event.target.checked)}
+                    disabled={saving}
+                    onChange={(event) => {
+                      setUseLogoAsFavicon(event.target.checked);
+                      if (event.target.checked) {
+                        setFaviconFile(null);
+                        setFaviconError("");
+                        if (faviconInputRef.current) faviconInputRef.current.value = "";
+                      }
+                    }}
                   />
-                  Use the studio logo instead of the saved favicon
+                  Replace the saved favicon with the studio logo
                 </label>
               )}
             </div>
