@@ -8,10 +8,9 @@ import {
 import {
   compressFaviconUpload,
   compressLogoUpload,
-  getStudioFaviconUrl,
-  getStudioLogoUrl,
   LogoUploadError,
 } from "@/lib/tenant-registry/logo";
+import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { queryMaster } from "@/lib/tenant-registry/db";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
 

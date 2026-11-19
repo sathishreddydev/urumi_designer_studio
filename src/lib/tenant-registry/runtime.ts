@@ -3,7 +3,7 @@ import { getTenantDatabase } from "@/lib/db";
 import { decryptTenantSecret } from "@/lib/tenant-registry/crypto";
 import { runWithTenantContext, type TenantContext } from "@/lib/tenant-registry/context";
 import { normalizeCloudinaryUrl, normalizeDomain, normalizePostgresUrl } from "@/lib/tenant-registry/domain";
-import { getStudioLogoUrl } from "@/lib/tenant-registry/logo";
+import { getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { queryMaster } from "@/lib/tenant-registry/db";
 
 interface TenantRow {

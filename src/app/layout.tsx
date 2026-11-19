@@ -5,7 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { normalizeDomain } from "@/lib/tenant-registry/domain";
-import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo";
+import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { queryMaster } from "@/lib/tenant-registry/db";
 
 const inter = Inter({ subsets: ["latin"] });

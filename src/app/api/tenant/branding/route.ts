@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeDomain } from "@/lib/tenant-registry/domain";
-import { getStudioLogoUrl } from "@/lib/tenant-registry/logo";
+import { getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { queryMaster } from "@/lib/tenant-registry/db";
 
 export const runtime = "nodejs";
