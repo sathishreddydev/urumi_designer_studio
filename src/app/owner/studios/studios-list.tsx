@@ -30,6 +30,7 @@ interface Studio {
 interface ApiResponse {
   error?: string;
   studios?: Studio[];
+  studio?: Studio;
 }
 
 async function readApiResponse(response: Response): Promise<ApiResponse> {
@@ -104,7 +105,11 @@ export function StudiosList() {
       if (!response.ok) throw new Error(result.error || "Could not update studio status");
 
       setStudios((current) =>
-        current.map((item) => item.id === studio.id ? { ...item, active } : item)
+        current.map((item) =>
+          item.id === studio.id
+            ? { ...item, active, deactivateAt: result.studio?.deactivateAt ?? item.deactivateAt }
+            : item
+        )
       );
     } catch (updateError) {
       setStatusError(

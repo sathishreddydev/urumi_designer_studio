@@ -167,6 +167,8 @@ export function StudioForm({ studioId }: StudioFormProps) {
     active: true,
     deactivateAt: null,
   });
+  // Track the original loaded deactivateAt so we can tell if the user changed it
+  const [savedDeactivateAt, setSavedDeactivateAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -204,7 +206,13 @@ export function StudioForm({ studioId }: StudioFormProps) {
         if (!res.ok) throw new Error(result.error || "Could not load studio");
         return result.studio as Studio;
       })
-      .then((result) => { if (result) { setStudio(result); setUseLogoAsFavicon(false); } })
+      .then((result) => {
+        if (result) {
+          setStudio(result);
+          setSavedDeactivateAt(result.deactivateAt);
+          setUseLogoAsFavicon(false);
+        }
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load studio"))
       .finally(() => setLoading(false));
   }, [router, studioId]);
@@ -228,8 +236,8 @@ export function StudioForm({ studioId }: StudioFormProps) {
     if (editing) {
       formData.set("active", String(studio.active));
       formData.set("clearFavicon", String(useLogoAsFavicon));
-      // Send deactivateAt: ISO string, "clear" to remove, or omit if unchanged
-      if (studio.deactivateAt !== undefined) {
+      // Only send deactivateAt if the user changed it from the saved value
+      if (studio.deactivateAt !== savedDeactivateAt) {
         formData.set("deactivateAt", studio.deactivateAt ?? "clear");
       }
     }
@@ -246,6 +254,11 @@ export function StudioForm({ studioId }: StudioFormProps) {
         return;
       }
       if (editing) {
+        // Sync state from server response so displayed values are accurate
+        if (result.studio) {
+          setStudio((s) => ({ ...s, ...result.studio }));
+          setSavedDeactivateAt(result.studio.deactivateAt ?? null);
+        }
         setSuccessMessage("Studio updated successfully.");
         setTimeout(() => setSuccessMessage(""), 4000);
       } else {
@@ -363,10 +376,19 @@ export function StudioForm({ studioId }: StudioFormProps) {
                       className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       value={
                         studio.deactivateAt
-                          ? new Date(studio.deactivateAt).toISOString().slice(0, 16)
+                          ? (() => {
+                              const d = new Date(studio.deactivateAt);
+                              // Convert to local time for datetime-local input (which works in local time)
+                              const offset = d.getTimezoneOffset() * 60_000;
+                              return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                            })()
                           : ""
                       }
-                      min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+                      min={(() => {
+                        const d = new Date(Date.now() + 60_000);
+                        const offset = d.getTimezoneOffset() * 60_000;
+                        return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                      })()}
                       onChange={(e) =>
                         setStudio((s) => ({
                           ...s,
