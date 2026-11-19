@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Loader2, PencilLine, CalendarClock } from "lucide-react";
+import { Trash2, Loader2, PencilLine, CalendarClock, KeyRound, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Studio {
   id: string;
@@ -61,6 +70,17 @@ export function StudiosList() {
   const [deleteTarget, setDeleteTarget] = useState<Studio | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  // Admin credential state
+  const [adminTarget, setAdminTarget] = useState<Studio | null>(null);
+  const [adminTab, setAdminTab] = useState<"set" | "update" | "delete">("set");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
+  const [adminSaving, setAdminSaving] = useState(false);
+  const [adminError, setAdminError] = useState("");
+  const [adminSuccess, setAdminSuccess] = useState("");
 
   useEffect(() => {
     fetch("/api/owner/studios", { cache: "no-store" })
@@ -146,6 +166,77 @@ export function StudiosList() {
       setDeleteError(err instanceof Error ? err.message : "Could not delete studio");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openAdminDialog(studio: Studio) {
+    setAdminTarget(studio);
+    setAdminTab("set");
+    setAdminEmail("");
+    setAdminName("");
+    setAdminPassword("");
+    setAdminConfirmPassword("");
+    setAdminError("");
+    setAdminSuccess("");
+  }
+
+  async function handleAdminSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAdminError("");
+    setAdminSuccess("");
+
+    if (adminTab !== "delete") {
+      if (adminPassword !== adminConfirmPassword) {
+        setAdminError("Passwords do not match");
+        return;
+      }
+      if (adminTab === "set" && adminPassword.length < 8) {
+        setAdminError("Password must be at least 8 characters");
+        return;
+      }
+      if (adminTab === "update" && adminPassword && adminPassword.length < 8) {
+        setAdminError("Password must be at least 8 characters");
+        return;
+      }
+    }
+
+    setAdminSaving(true);
+    try {
+      const url = `/api/owner/studios/${encodeURIComponent(adminTarget!.id)}/admin`;
+      let method = "POST";
+      let bodyObj: Record<string, string> = { email: adminEmail, name: adminName || "Admin", password: adminPassword };
+
+      if (adminTab === "update") {
+        method = "PATCH";
+        bodyObj = { email: adminEmail, name: adminName, password: adminPassword };
+      } else if (adminTab === "delete") {
+        method = "DELETE";
+        bodyObj = { email: adminEmail };
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyObj),
+      });
+      if (response.status === 401) { router.replace("/owner/login"); return; }
+      const result = await response.json();
+      if (!response.ok) {
+        setAdminError(result.error || "Operation failed");
+        return;
+      }
+
+      if (adminTab === "delete") {
+        setAdminSuccess(`Admin account removed.`);
+      } else {
+        setAdminSuccess(`Admin account ${adminTab === "set" ? "set" : "updated"} for ${result.admin.email}`);
+      }
+      setAdminPassword("");
+      setAdminConfirmPassword("");
+    } catch (err) {
+      setAdminError(err instanceof Error ? err.message : "Operation failed");
+    } finally {
+      setAdminSaving(false);
     }
   }
 
@@ -242,6 +333,18 @@ export function StudiosList() {
                       </Link>
                     </Button>
 
+                    {/* Set admin */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => openAdminDialog(studio)}
+                      title="Set admin credentials for this studio"
+                    >
+                      <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                      Set admin
+                    </Button>
+
                     {/* Delete */}
                     <Button
                       variant="ghost"
@@ -307,6 +410,173 @@ export function StudiosList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* ── Admin credentials dialog ── */}
+      <Dialog
+        open={adminTarget !== null}
+        onOpenChange={(open) => { if (!open && !adminSaving) setAdminTarget(null); }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              Admin credentials — {adminTarget?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Manage the ADMIN account in{" "}
+              <span className="font-mono text-xs">{adminTarget?.domain}</span>'s database.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Tab switcher */}
+          <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+            {(["set", "update", "delete"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => { setAdminTab(tab); setAdminError(""); setAdminSuccess(""); setAdminPassword(""); setAdminConfirmPassword(""); }}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  adminTab === tab
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab === "set" ? "Set / Create" : tab === "update" ? "Update" : "Remove"}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleAdminSubmit} className="space-y-4">
+
+            {/* Email — always shown */}
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-email" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Email <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="admin-email"
+                type="email"
+                required
+                placeholder="admin@studio.com"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                disabled={adminSaving}
+                className="h-9"
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Name — Set and Update only */}
+            {adminTab !== "delete" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Display name{adminTab === "update" && <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>}
+                </Label>
+                <Input
+                  id="admin-name"
+                  placeholder={adminTab === "set" ? "Admin" : "Leave blank to keep current"}
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  disabled={adminSaving}
+                  className="h-9"
+                />
+              </div>
+            )}
+
+            {/* Password — Set and Update only */}
+            {adminTab !== "delete" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="admin-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Password{" "}
+                    {adminTab === "set"
+                      ? <span className="text-destructive">*</span>
+                      : <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>
+                    }
+                  </Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    required={adminTab === "set"}
+                    minLength={adminTab === "set" ? 8 : undefined}
+                    placeholder={adminTab === "set" ? "Min. 8 characters" : "Leave blank to keep current"}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    disabled={adminSaving}
+                    className="h-9"
+                    autoComplete="new-password"
+                  />
+                </div>
+                {adminPassword && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="admin-confirm-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Confirm password <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="admin-confirm-password"
+                      type="password"
+                      required
+                      placeholder="Repeat password"
+                      value={adminConfirmPassword}
+                      onChange={(e) => setAdminConfirmPassword(e.target.value)}
+                      disabled={adminSaving}
+                      className="h-9"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Delete warning */}
+            {adminTab === "delete" && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  This permanently deletes the ADMIN user with the given email from{" "}
+                  <span className="font-semibold">{adminTarget?.name}</span>'s database.
+                  This cannot be undone.
+                </span>
+              </div>
+            )}
+
+            {/* Feedback */}
+            {adminError && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{adminError}</span>
+              </div>
+            )}
+            {adminSuccess && (
+              <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-3 py-2.5 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{adminSuccess}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" size="sm" disabled={adminSaving} onClick={() => setAdminTarget(null)}>
+                {adminSuccess ? "Close" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={adminSaving}
+                className={`min-w-[110px] ${adminTab === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
+              >
+                {adminSaving ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Working…</>
+                ) : adminTab === "set" ? (
+                  "Set credentials"
+                ) : adminTab === "update" ? (
+                  "Save changes"
+                ) : (
+                  "Remove admin"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
