@@ -760,7 +760,7 @@ export function MobilePortal({
           <p className="text-xs text-muted-foreground mt-0.5 italic">
             &ldquo;Custom outfits, crafted with care&rdquo;
           </p>
-          <p className="text-[10px] font-semibold text-primary mt-0.5">— Urumi by Mounika</p>
+          <p className="text-[10px] font-semibold text-primary mt-0.5">— {data.studio?.name ?? "the studio"}</p>
 
           <div className="mt-4 grid grid-cols-4 gap-2">
             <MobileStatCard
@@ -917,7 +917,7 @@ export function MobilePortal({
         )}
 
         <p className="mt-8 text-center text-xs text-muted-foreground px-4">
-          Thank you for choosing Urumi by Mounika ❤️
+          Thank you for choosing {data.studio?.name ?? "the studio"} ❤️
         </p>
       </div>
     );

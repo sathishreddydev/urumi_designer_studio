@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { customers, referenceImages, outfits, orders } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 const CUSTOMER_REVIEW_STATUSES = [
   "DRAFT",
@@ -11,10 +12,10 @@ const CUSTOMER_REVIEW_STATUSES = [
   "WAITING_FOR_DEPENDENCIES",
 ];
 
-export async function POST(
+export const POST = withTenant(async (
   request: Request,
   { params }: { params: Promise<{ token: string }> }
-) {
+) => {
   // Rate limiting
   const ip = getClientIp(request);
   const { allowed, resetMs } = portalLimiter.check(ip);
@@ -119,4 +120,4 @@ export async function POST(
   eventBus.emit({ type: "reference_updated", outfitId, customerId: customer.id, timestamp: Date.now() });
 
   return NextResponse.json({ success: true, feedback });
-}
+});

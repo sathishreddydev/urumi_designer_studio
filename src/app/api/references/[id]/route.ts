@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { referenceImages, outfits, orders } from "@/lib/db/schema";
 import { withPermission } from "@/lib/api-guard";
+import { getTenantContext } from "@/lib/tenant-registry/context";
 
 export const DELETE = withPermission(
   { resource: "reference", action: "update" },
@@ -50,11 +51,7 @@ export const DELETE = withPermission(
 
 async function deleteFromCloudinary(url: string) {
   try {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if (!cloudName || !apiKey || !apiSecret) return;
+    const { cloudName, apiKey, apiSecret } = getTenantContext().cloudinary;
 
     // Extract public ID from URL
     // URL format: https://res.cloudinary.com/{cloud}/image/upload/v123/folder/filename.jpg

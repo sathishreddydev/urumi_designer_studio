@@ -3,11 +3,13 @@ import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages, payments, customerMeasurements, invoices } from "@/lib/db/schema";
 import { portalLimiter, getClientIp } from "@/lib/rate-limit";
+import { withTenant } from "@/lib/tenant-registry/runtime";
+import { getTenantContext } from "@/lib/tenant-registry/context";
 
-export async function GET(
+export const GET = withTenant(async (
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
-) {
+) => {
   try {
     // Rate limiting
     const ip = getClientIp(_request);
@@ -134,12 +136,19 @@ export async function GET(
     );
 
     return NextResponse.json({
+      studio: {
+        name: getTenantContext().name,
+        logoUrl: getTenantContext().logoUrl,
+      },
       customer: { name: customer.name },
       measurements: latestMeasurement ? latestMeasurement.values : null,
-      orders: ordersWithDetails,
+      orders: ordersWithDetails.map((order) => ({
+        ...order,
+        studioName: getTenantContext().name,
+      })),
     });
   } catch (error) {
     console.error("Portal error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

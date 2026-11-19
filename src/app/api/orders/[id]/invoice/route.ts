@@ -5,6 +5,7 @@ import { generateInvoiceNumber } from "@/lib/utils";
 import { withPermission } from "@/lib/api-guard";
 import { eq, desc } from "drizzle-orm";
 import { withAuth } from "@/lib/api-guard";
+import { getTenantContext } from "@/lib/tenant-registry/context";
 
 export const GET = withAuth(async (_request, { params }) => {
   const { id } = await params;
@@ -108,6 +109,10 @@ export const GET = withAuth(async (_request, { params }) => {
   const balance = invoiceTotal > 0 ? invoiceTotal - totalPaid : 0;
 
   return NextResponse.json({
+    studio: {
+      name: getTenantContext().name,
+      logoUrl: getTenantContext().logoUrl,
+    },
     order,
     outfits: orderOutfits,
     payments: orderPayments,

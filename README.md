@@ -29,19 +29,24 @@ A production-ready Designer Studio / Bridal Boutique management application buil
    npm install
    ```
 
-2. **Configure database**:
-   Edit `.env.local` with your PostgreSQL connection string:
+2. **Configure server environment**:
+   Set the master registry connection, encryption key, and JWT secret in `.env.local`:
    ```
-   DATABASE_URL="postgresql://postgres:password@localhost:5432/designer_studio"
+   MASTER_DATABASE_URL="postgresql://..."
+   ENCRYPTION_KEY="base64-encoded-32-byte-key"
    JWT_SECRET="your-super-secret-jwt-key-change-in-production"
    NEXT_PUBLIC_ENABLE_WHATSAPP_NOTIFICATIONS="false"
    ```
    Set `NEXT_PUBLIC_ENABLE_WHATSAPP_NOTIFICATIONS="false"` to disable the WhatsApp prompt entirely. Omit it or set it to `true` to keep the prompt enabled.
 
-3. **Push schema to database**:
+3. **Prepare each studio database**:
+   Set `DATABASE_URL` temporarily to that studio's PostgreSQL connection string, then run:
    ```bash
    npm run db:push
    ```
+   Repeat for each studio database. The application reads each studio's database URL and
+   Cloudinary credentials from the encrypted master registry at runtime; it does not use
+   `DATABASE_URL` or `CLOUDINARY_*` environment values for requests.
 
 4. **Seed default users**:
    ```bash
@@ -54,6 +59,53 @@ A production-ready Designer Studio / Bridal Boutique management application buil
    ```
 
 6. Open [http://localhost:4000](http://localhost:4000)
+
+### Studio registry (initial multi-studio setup)
+
+The owner registry uses a separate PostgreSQL database configured by `MASTER_DATABASE_URL`.
+Never expose database URLs or Cloudinary credentials to the browser. The application resolves
+the request host to an active studio in the master registry, then uses that studio's database
+and Cloudinary credentials for its requests. `MASTER_DATABASE_URL`, `ENCRYPTION_KEY`, and
+`JWT_SECRET` remain server environment settings; `DATABASE_URL` is only used by database
+management scripts.
+
+Keep these server-only settings in `.env.local` and the Vercel project environment:
+
+```env
+MASTER_DATABASE_URL="postgresql://..."
+ENCRYPTION_KEY="base64-encoded-32-byte-key"
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+```
+
+For the initial owner setup only, temporarily add these values to `.env.local` (do not deploy
+them as runtime environment variables):
+
+```env
+OWNER_EMAIL="owner@example.com"
+OWNER_PASSWORD_HASH="$2b$12$..."
+```
+
+Generate a 32-byte encryption key and a bcrypt owner password hash locally:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+node -e "console.log(require('bcryptjs').hashSync('replace-with-a-strong-password', 12))"
+```
+
+Run `npm run db:migrate:master` to create the studio registry and owner account tables, then
+run `npm run db:owner:seed` once to copy the configured owner email and bcrypt hash into the
+master database. The login flow reads the hash from that database; after seeding, remove
+`OWNER_EMAIL` and `OWNER_PASSWORD_HASH` from `.env.local`. The seed command does not overwrite
+an existing account.
+
+Start the app after seeding.
+Sign in at `/owner/login` and register each studio at `/owner/studios`. The logo field accepts
+an HTTPS image URL; database and Cloudinary URLs are encrypted with `ENCRYPTION_KEY` before
+being stored. `MASTER_DATABASE_URL` and `ENCRYPTION_KEY` must have the same values across
+deployments that read the registry.
+
+Only register a studio after its database schema has been prepared. Login sessions are bound
+to the studio that issued them, and studio database/Cloudinary secrets remain server-side.
 
 ### Default Credentials
 

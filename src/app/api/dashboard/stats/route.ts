@@ -3,8 +3,9 @@ import { db } from "@/lib/db";
 import { customers, orders, outfits } from "@/lib/db/schema";
 import { eq, count, ne } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
-export async function GET() {
+export const GET = withTenant(async (_request: Request) => {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -118,4 +119,4 @@ export async function GET() {
   }
 
   return NextResponse.json({ role: session.role, name: session.name });
-}
+});

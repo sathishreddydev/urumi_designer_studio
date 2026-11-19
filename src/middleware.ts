@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const publicPaths = ["/login", "/portal", "/api/auth/login", "/api/portal"];
+const publicPaths = [
+  "/login",
+  "/owner/login",
+  "/portal",
+  "/api/auth/login",
+  "/api/owner/auth/login",
+  "/api/owner/auth/logout",
+  "/api/owner/studios",
+  "/api/tenant/branding",
+  "/api/portal",
+];
 
 // Fail fast at startup if JWT_SECRET is not configured
 if (!process.env.JWT_SECRET) {

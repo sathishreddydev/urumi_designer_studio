@@ -76,6 +76,7 @@ export default function InvoicePage() {
     return {
       invoiceNumber: data.invoice?.invoiceNumber ?? `INV-${data.order.orderNumber}`,
       issuedAt: data.invoice?.issuedAt ?? new Date().toISOString(),
+      studioName: data.studio?.name,
       order: data.order,
       outfits: data.outfits,
       payments: data.payments,
@@ -184,9 +185,18 @@ export default function InvoicePage() {
 
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
-              <div>
-                <h2 className="text-xl font-extrabold tracking-tight sm:text-2xl">urumi by mounika</h2>
+              <div className="flex items-center gap-3">
+                {data.studio?.logoUrl && (
+                  <img
+                    src={data.studio.logoUrl}
+                    alt=""
+                    className="h-12 w-12 rounded object-contain"
+                  />
+                )}
+                <div>
+                <h2 className="text-xl font-extrabold tracking-tight sm:text-2xl">{data.studio?.name || "Studio"}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Custom Outfit Design &amp; Production</p>
+                </div>
               </div>
               <div className="sm:text-right">
                 <p className="text-xl font-extrabold tracking-widest text-primary sm:text-2xl">INVOICE</p>
@@ -350,7 +360,7 @@ export default function InvoicePage() {
 
             {/* Footer */}
             <div className="pt-2 border-t text-center space-y-1">
-              <p className="text-sm font-medium">Thank you for choosing urumi by mounika!</p>
+              <p className="text-sm font-medium">Thank you for choosing {data.studio?.name || "the studio"}!</p>
               {order.notes && (
                 <p className="text-xs text-muted-foreground italic">Note: {order.notes}</p>
               )}

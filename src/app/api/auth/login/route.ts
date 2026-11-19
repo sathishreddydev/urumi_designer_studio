@@ -6,8 +6,9 @@ import { users } from "@/lib/db/schema";
 import { createSession, createToken } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { loginLimiter, getClientIp } from "@/lib/rate-limit";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
-export async function POST(request: Request) {
+export const POST = withTenant(async (request: Request) => {
   try {
     // Rate limiting
     const ip = getClientIp(request);
@@ -72,4 +73,4 @@ export async function POST(request: Request) {
     console.error("Login error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

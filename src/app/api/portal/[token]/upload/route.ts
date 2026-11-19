@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customers, orders, outfits, referenceImages } from "@/lib/db/schema";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
 import { sanitizeFilename } from "@/lib/utils";
 import { uploadLimiter, getClientIp } from "@/lib/rate-limit";
+import { getTenantContext } from "@/lib/tenant-registry/context";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 const CUSTOMER_UPLOAD_STATUSES = [
   "DRAFT",
@@ -15,10 +14,10 @@ const CUSTOMER_UPLOAD_STATUSES = [
   "WAITING_FOR_DEPENDENCIES",
 ];
 
-export async function POST(
+export const POST = withTenant(async (
   request: Request,
   { params }: { params: Promise<{ token: string }> }
-) {
+) => {
   try {
     // Rate limiting
     const ip = getClientIp(request);
@@ -101,21 +100,8 @@ export async function POST(
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    let url: string;
     const filename = sanitizeFilename(file.name);
-
-    // Use Cloudinary if configured
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      url = await uploadToCloudinary(buffer, filename);
-    } else {
-      // Local fallback
-      const ext = path.extname(file.name) || ".jpg";
-      const savedName = `${uuidv4()}${ext}`;
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      await mkdir(uploadDir, { recursive: true });
-      await writeFile(path.join(uploadDir, savedName), buffer);
-      url = `/uploads/${savedName}`;
-    }
+    const url = await uploadToCloudinary(buffer, filename);
 
     // Save as customer upload reference
     const [reference] = await db
@@ -144,12 +130,12 @@ export async function POST(
     console.error("Portal upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withTenant(async (
   request: Request,
   { params }: { params: Promise<{ token: string }> }
-) {
+) => {
   try {
     const { token } = await params;
 
@@ -239,12 +225,10 @@ export async function DELETE(
     console.error("Portal delete error:", error);
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
-}
+});
 
 async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
-  const apiKey = process.env.CLOUDINARY_API_KEY!;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET!;
+  const { cloudName, apiKey, apiSecret } = getTenantContext().cloudinary;
 
   const timestamp = Math.round(Date.now() / 1000);
   const folder = "urumi-by-mounika/customer-uploads";

@@ -2,6 +2,7 @@ import { eventBus, type AppEvent } from "@/lib/events";
 import { db } from "@/lib/db";
 import { customers, orders, outfits } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,10 @@ export const dynamic = "force-dynamic";
  * Polling endpoint for the customer-facing portal. Returns a JSON array of
  * events relevant to this customer since the given timestamp.
  */
-export async function GET(
+export const GET = withTenant(async (
   request: Request,
   { params }: { params: Promise<{ token: string }> }
-) {
+) => {
   const { token } = await params;
 
   // Verify portal token
@@ -63,4 +64,4 @@ export async function GET(
     events: relevant,
     serverTime: Date.now(),
   });
-}
+});

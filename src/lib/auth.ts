@@ -4,6 +4,7 @@ import { and, eq, isNull, gt } from "drizzle-orm";
 import { db } from "./db";
 import { customers, sessions } from "./db/schema";
 import { generatePrefixedId } from "./id";
+import { getTenantContext } from "./tenant-registry/context";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required");
@@ -22,7 +23,7 @@ export interface SessionUser {
 }
 
 export async function createToken(user: SessionUser, sessionId: string): Promise<string> {
-  return new SignJWT({ user, sessionId })
+  return new SignJWT({ user, sessionId, tenantId: getTenantContext().id })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
     .setIssuedAt()
@@ -34,10 +35,10 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const sessionId = (payload as { sessionId?: string }).sessionId;
     const user = (payload as { user?: SessionUser }).user;
-    if (!user) return null;
+    const tenantId = (payload as { tenantId?: string }).tenantId;
+    if (!user || tenantId !== getTenantContext().id) return null;
 
-    // Keep tokens issued before persisted sessions were introduced valid until they expire.
-    // New logins always include a session ID and can be revoked by an administrator.
+    // Tokens from before tenant binding was introduced are no longer valid.
     if (!sessionId) return user;
 
     const [activeSession] = await db

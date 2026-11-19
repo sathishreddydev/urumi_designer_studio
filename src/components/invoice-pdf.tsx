@@ -18,6 +18,7 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface InvoicePDFData {
+  studioName?: string;
   invoiceNumber: string;
   issuedAt: string;
   order: {
@@ -311,13 +312,14 @@ function fmtCurrency(val: string | number | null | undefined): string {
 
 export function InvoicePDFDocument({ data }: { data: InvoicePDFData }) {
   const { invoiceNumber, issuedAt, order, outfits, payments, totalPaid, outfitTotal, balance } = data;
+  const studioName = data.studioName || "Studio";
 
   const settledPayments = payments.filter((p: any) => !p.status || p.status === "SETTLED");
 
   return (
     <Document
       title={`Invoice ${invoiceNumber}`}
-      author="urumi by mounika"
+      author={studioName}
       subject={`Invoice for ${order.orderNumber}`}
     >
       <Page size="A4" style={S.page}>
@@ -325,7 +327,7 @@ export function InvoicePDFDocument({ data }: { data: InvoicePDFData }) {
         {/* ── Header ── */}
         <View style={S.header}>
           <View>
-            <Text style={S.brandName}>urumi by mounika</Text>
+            <Text style={S.brandName}>{studioName}</Text>
             <Text style={S.brandTagline}>Custom Outfit Design &amp; Production</Text>
           </View>
           <View style={S.invoiceMeta}>
@@ -440,7 +442,7 @@ export function InvoicePDFDocument({ data }: { data: InvoicePDFData }) {
 
         {/* ── Footer ── */}
         <View style={S.footer} fixed>
-          <Text style={S.footerText}>urumi by mounika · Custom Outfit Studio</Text>
+          <Text style={S.footerText}>{studioName} · Custom Outfit Studio</Text>
           {order.notes ? (
             <Text style={S.footerNote}>Note: {order.notes}</Text>
           ) : (

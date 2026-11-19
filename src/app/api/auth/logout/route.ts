@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { revokeCurrentSession } from "@/lib/auth";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
-export async function POST() {
+export const POST = withTenant(async (_request: Request) => {
   await revokeCurrentSession();
   const response = NextResponse.json({ success: true });
   response.cookies.set("session-token", "", {
@@ -12,4 +13,4 @@ export async function POST() {
     path: "/",
   });
   return response;
-}
+});

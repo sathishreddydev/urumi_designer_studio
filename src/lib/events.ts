@@ -1,3 +1,5 @@
+import { getTenantContext } from "@/lib/tenant-registry/context";
+
 /**
  * In-memory event log for polling-based real-time updates.
  *
@@ -58,10 +60,25 @@ class EventLog {
   }
 }
 
-// Global singleton — survives Next.js hot reloads in dev
-const globalForEvents = globalThis as unknown as { eventLog: EventLog | undefined };
-if (!globalForEvents.eventLog) {
-  globalForEvents.eventLog = new EventLog();
+const globalForEvents = globalThis as typeof globalThis & {
+  eventLogs?: Map<string, EventLog>;
+};
+const eventLogs = globalForEvents.eventLogs ?? (globalForEvents.eventLogs = new Map());
+
+function getTenantEventLog(): EventLog {
+  const tenantId = getTenantContext().id;
+  let log = eventLogs.get(tenantId);
+  if (!log) {
+    log = new EventLog();
+    eventLogs.set(tenantId, log);
+  }
+  return log;
 }
 
-export const eventBus = globalForEvents.eventLog;
+export const eventBus = new Proxy({} as EventLog, {
+  get(_target, property) {
+    const log = getTenantEventLog();
+    const value = Reflect.get(log, property, log);
+    return typeof value === "function" ? value.bind(log) : value;
+  },
+});

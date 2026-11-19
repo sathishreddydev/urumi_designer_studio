@@ -1,23 +1,43 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import * as schema from "./schema";
+import { getTenantContext } from "@/lib/tenant-registry/context";
 
-const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
+export type TenantDatabase = NodePgDatabase<typeof schema>;
+
+const globalForDb = globalThis as typeof globalThis & {
+  tenantDatabases?: Map<string, TenantDatabase>;
 };
 
-if (!globalForDb.pool) {
-  globalForDb.pool = new Pool({
-    connectionString: process.env.DATABASE_URL!,
-    max: 20,
-    idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 3000,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+const tenantDatabases =
+  globalForDb.tenantDatabases ?? (globalForDb.tenantDatabases = new Map());
+
+export function getTenantDatabase(studioId: string, connectionString: string): TenantDatabase {
+  const key = `${studioId}:${connectionString}`;
+  const cached = tenantDatabases.get(key);
+  if (cached) return cached;
+
+  const pool = new Pool({
+    connectionString,
+    max: 5,
+    idleTimeoutMillis: 60_000,
+    connectionTimeoutMillis: 5_000,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
+  });
+  pool.on("error", (error) => {
+    console.error("Unexpected tenant database pool error:", error);
   });
 
-  // Keep pool warm
-  globalForDb.pool.on("error", (err) => {
-    console.error("Unexpected pool error:", err);
-  });
+  const database = drizzle(pool, { schema });
+  tenantDatabases.set(key, database);
+  return database;
 }
 
-export const db = drizzle(globalForDb.pool);
+export const db = new Proxy({} as TenantDatabase, {
+  get(_target, property) {
+    const activeDatabase = getTenantContext().db;
+    const value = Reflect.get(activeDatabase, property, activeDatabase);
+    return typeof value === "function" ? value.bind(activeDatabase) : value;
+  },
+});

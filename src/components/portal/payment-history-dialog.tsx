@@ -34,6 +34,7 @@ export function PaymentHistoryDialog({ order }: { order: any }) {
             const { displayTotal, balance } = orderTotals(order);
 
             const data: InvoicePDFData = {
+                studioName: order.studioName,
                 invoiceNumber:
                     order.invoice?.invoiceNumber ||
                     `INV-${order.orderNumber}`,

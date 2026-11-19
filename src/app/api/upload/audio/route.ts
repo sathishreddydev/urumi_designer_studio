@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { getTenantContext } from "@/lib/tenant-registry/context";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 const ALLOWED_AUDIO = ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/wav"];
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
 
-export async function POST(request: Request) {
+export const POST = withTenant(async (request: Request) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -32,30 +31,16 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Use Cloudinary video/upload endpoint (supports audio)
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      const url = await uploadAudioToCloudinary(buffer, file.name);
-      return NextResponse.json({ url, filename: file.name });
-    }
-
-    // Local fallback
-    const ext = path.extname(file.name) || ".webm";
-    const filename = `${uuidv4()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
-
-    return NextResponse.json({ url: `/uploads/${filename}`, filename: file.name });
+    const url = await uploadAudioToCloudinary(buffer, file.name);
+    return NextResponse.json({ url, filename: file.name });
   } catch (error) {
     console.error("Audio upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-}
+});
 
 async function uploadAudioToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
-  const apiKey = process.env.CLOUDINARY_API_KEY!;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET!;
+  const { cloudName, apiKey, apiSecret } = getTenantContext().cloudinary;
 
   const timestamp = Math.round(Date.now() / 1000);
   const folder = "urumi-by-mounika/voice-notes";

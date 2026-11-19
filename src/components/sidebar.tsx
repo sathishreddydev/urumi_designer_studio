@@ -30,6 +30,8 @@ import { Button } from "@/components/ui/button";
 interface SidebarProps {
   role: string;
   userName: string;
+  studioName: string;
+  logoUrl: string;
 }
 
 const roleNavItems: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
@@ -84,7 +86,7 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
   ],
 };
 
-export function Sidebar({ role, userName }: SidebarProps) {
+export function Sidebar({ role, userName, studioName, logoUrl }: SidebarProps) {
   const pathname = usePathname();
   const navItems = roleNavItems[role] || [];
   const [open, setOpen] = useState(false);
@@ -97,8 +99,12 @@ export function Sidebar({ role, userName }: SidebarProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="ml-2 flex items-center gap-2 min-w-0">
-          <Scissors className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-bold text-sm truncate">urumi by mounika</span>
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded object-contain" />
+          ) : (
+            <Scissors className="h-4 w-4 text-primary shrink-0" />
+          )}
+          <span className="font-bold text-sm truncate">{studioName}</span>
         </div>
       </div>
 
@@ -119,8 +125,12 @@ export function Sidebar({ role, userName }: SidebarProps) {
       >
         <div className="flex h-14 items-center justify-between border-b px-4 lg:h-16 lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-            <Scissors className="h-6 w-6 text-primary" />
-            <span className="text-lg font-bold">urumi by mounika</span>
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="h-8 w-8 shrink-0 rounded object-contain" />
+            ) : (
+              <Scissors className="h-6 w-6 text-primary" />
+            )}
+            <span className="text-lg font-bold">{studioName}</span>
           </Link>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(false)}>
             <X className="h-5 w-5" />

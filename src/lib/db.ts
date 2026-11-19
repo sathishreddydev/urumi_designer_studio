@@ -1,2 +1,3 @@
 // Re-export from the db directory so both "./db" and "@/lib/db" resolve correctly.
-export { db } from "./db/index";
+export { db, getTenantDatabase } from "./db/index";
+export type { TenantDatabase } from "./db/index";

@@ -3,6 +3,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sessions } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 // Helper: only ADMIN can manage sessions
 async function requireAdmin() {
@@ -12,10 +13,10 @@ async function requireAdmin() {
   return { session };
 }
 
-export async function GET(
+export const GET = withTenant(async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
@@ -36,12 +37,12 @@ export async function GET(
     ));
 
   return NextResponse.json(activeSessions);
-}
+});
 
-export async function DELETE(
+export const DELETE = withTenant(async (
   request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
@@ -68,4 +69,4 @@ export async function DELETE(
   });
 
   return NextResponse.json({ success: true });
-}
+});

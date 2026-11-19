@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession, type SessionUser } from "./auth";
 import { hasPermission, type Resource, type Action, type Role } from "./permissions";
+import { withTenant } from "./tenant-registry/runtime";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ export function withPermission(
   config: RouteConfig,
   handler: AuthenticatedHandler
 ) {
-  return async (
+  return withTenant(async (
     request: Request,
     routeContext: { params: Promise<Record<string, string>> }
   ): Promise<Response> => {
@@ -78,7 +79,7 @@ export function withPermission(
         { status: 500 }
       );
     }
-  };
+  });
 }
 
 /**
@@ -86,7 +87,7 @@ export function withPermission(
  * Use for endpoints where all authenticated users have access.
  */
 export function withAuth(handler: AuthenticatedHandler) {
-  return async (
+  return withTenant(async (
     request: Request,
     routeContext: { params: Promise<Record<string, string>> }
   ): Promise<Response> => {
@@ -110,5 +111,5 @@ export function withAuth(handler: AuthenticatedHandler) {
         { status: 500 }
       );
     }
-  };
+  });
 }

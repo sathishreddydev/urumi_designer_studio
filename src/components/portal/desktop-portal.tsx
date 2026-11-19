@@ -61,7 +61,7 @@ export function DesktopPortal({
           <div className="shrink-0 text-right space-y-0.5 hidden lg:block">
             <p className="text-sm italic text-muted-foreground">&ldquo;Custom outfits,</p>
             <p className="text-sm italic text-muted-foreground">crafted with care&rdquo;</p>
-            <p className="text-xs font-semibold text-primary mt-1">— Urumi by Mounika</p>
+            <p className="text-xs font-semibold text-primary mt-1">— {data.studio?.name ?? "the studio"}</p>
           </div>
         </div>
 
@@ -180,7 +180,7 @@ export function DesktopPortal({
 
       {/* Footer */}
       <p className="mt-10 text-center text-xs text-muted-foreground">
-        Thank you for choosing Urumi by Mounika ❤️
+        Thank you for choosing {data.studio?.name ?? "the studio"} ❤️
         <br />
         <span className="italic">Custom outfits. Timeless stories.</span>
       </p>

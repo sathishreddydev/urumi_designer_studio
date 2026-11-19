@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
 import { sanitizeFilename } from "@/lib/utils";
+import { getTenantContext } from "@/lib/tenant-registry/context";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
-export async function POST(request: Request) {
+export const POST = withTenant(async (request: Request) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -39,33 +38,16 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Use Cloudinary if configured, otherwise local storage
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      const url = await uploadToCloudinary(buffer, file.name);
-      return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
-    }
-
-    // Local storage fallback (development only)
-    const ext = path.extname(file.name) || ".jpg";
-    const filename = `${uuidv4()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-
-    await mkdir(uploadDir, { recursive: true });
-    const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
-
-    const url = `/uploads/${filename}`;
+    const url = await uploadToCloudinary(buffer, file.name);
     return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-}
+});
 
 async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
-  const apiKey = process.env.CLOUDINARY_API_KEY!;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET!;
+  const { cloudName, apiKey, apiSecret } = getTenantContext().cloudinary;
 
   const timestamp = Math.round(Date.now() / 1000);
   const folder = "urumi-by-mounika";

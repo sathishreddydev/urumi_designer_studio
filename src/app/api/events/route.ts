@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { outfits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { withTenant } from "@/lib/tenant-registry/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
  *
  * Responds in under 1ms — no open connections, no serverless timeout risk.
  */
-export async function GET(request: Request) {
+export const GET = withTenant(async (request: Request) => {
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
@@ -44,4 +45,4 @@ export async function GET(request: Request) {
   }
 
   return Response.json({ events, serverTime: Date.now() });
-}
+});
