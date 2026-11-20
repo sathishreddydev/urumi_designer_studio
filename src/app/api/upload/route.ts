@@ -47,10 +47,11 @@ export const POST = withTenant(async (request: Request) => {
 });
 
 async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
-  const { cloudName, apiKey, apiSecret } = getTenantContext().cloudinary;
+  const tenant = getTenantContext();
+  const { cloudName, apiKey, apiSecret } = tenant.cloudinary;
 
   const timestamp = Math.round(Date.now() / 1000);
-  const folder = "urumi-by-mounika";
+  const folder = tenant.domain;
 
   // Generate signature
   const crypto = await import("crypto");
