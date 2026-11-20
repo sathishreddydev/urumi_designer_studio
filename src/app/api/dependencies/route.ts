@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { eq, ne, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { dependencies, outfits, orders, customers } from "@/lib/db/schema";
-import { withAuth } from "@/lib/api-guard";
+import { withPermission } from "@/lib/api-guard";
 
 // GET all active (pending/blocked) dependencies across all outfits
-export const GET = withAuth(async (_request, { session }) => {
+export const GET = withPermission(
+  { resource: "dependency", action: "read" },
+  async () => {
   // Get all non-resolved dependencies
   const allDeps = await db
     .select()
@@ -47,5 +49,6 @@ export const GET = withAuth(async (_request, { session }) => {
     })
   );
 
-  return NextResponse.json(enriched);
-});
+    return NextResponse.json(enriched);
+  }
+);

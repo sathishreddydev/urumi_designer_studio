@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { sanitizeFilename } from "@/lib/utils";
 import { getTenantContext } from "@/lib/tenant-registry/context";
-import { withTenant } from "@/lib/tenant-registry/runtime";
+import { withPermission } from "@/lib/api-guard";
 
-export const POST = withTenant(async (request: Request) => {
+export const POST = withPermission(
+  { resource: "reference", action: "upload" },
+  async (request: Request) => {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -37,6 +33,13 @@ export const POST = withTenant(async (request: Request) => {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const detectedFormat = detectImageFormat(buffer);
+    if (!detectedFormat || !mimeMatchesImage(file.type, detectedFormat)) {
+      return NextResponse.json(
+        { error: "Invalid file contents. Only JPEG, PNG, and WebP are allowed." },
+        { status: 400 }
+      );
+    }
 
     const url = await uploadToCloudinary(buffer, file.name);
     return NextResponse.json({ url, filename: sanitizeFilename(file.name) });
@@ -44,7 +47,30 @@ export const POST = withTenant(async (request: Request) => {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-});
+  }
+);
+
+function detectImageFormat(buffer: Buffer): "jpeg" | "png" | "webp" | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "jpeg";
+  }
+  if (buffer.length >= 8 &&
+      buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "png";
+  }
+  if (buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "webp";
+  }
+  return null;
+}
+
+function mimeMatchesImage(mimeType: string, format: "jpeg" | "png" | "webp"): boolean {
+  if (format === "jpeg") return mimeType === "image/jpeg" || mimeType === "image/jpg";
+  if (format === "png") return mimeType === "image/png";
+  return mimeType === "image/webp";
+}
 
 async function uploadToCloudinary(buffer: Buffer, originalName: string): Promise<string> {
   const tenant = getTenantContext();
