@@ -449,8 +449,8 @@ export function StudiosList() {
                         <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                           <CalendarClock className="h-3 w-3 shrink-0" />
                           {expired
-                            ? `Auto-deactivated ${new Date(studio.deactivateAt).toLocaleString()}`
-                            : `Auto-deactivates ${new Date(studio.deactivateAt).toLocaleString()}`}
+                            ? `Auto-deactivated at 12:00 AM on ${new Date(studio.deactivateAt).toLocaleDateString()}`
+                            : `Auto-deactivates at 12:00 AM on ${new Date(studio.deactivateAt).toLocaleDateString()}`}
                         </p>
                       )}
                     </div>

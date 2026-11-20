@@ -49,6 +49,18 @@ function getImageUploadError(file: File): string | null {
   return null;
 }
 
+function formatLocalDateInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalDateTime(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function ImagePickerBox({
   label,
   badge,
@@ -383,27 +395,23 @@ export function StudioForm({ studioId }: StudioFormProps) {
               <div className="flex items-center gap-2">
                 <input
                   id="deactivateAt"
-                  type="datetime-local"
+                  type="date"
                   className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   value={
                     studio.deactivateAt
-                      ? (() => {
-                          const d = new Date(studio.deactivateAt);
-                          const offset = d.getTimezoneOffset() * 60_000;
-                          return new Date(d.getTime() - offset).toISOString().slice(0, 16);
-                        })()
+                      ? formatLocalDateInput(new Date(studio.deactivateAt))
                       : ""
                   }
                   min={(() => {
-                    const d = new Date(Date.now() + 60_000);
-                    const offset = d.getTimezoneOffset() * 60_000;
-                    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return formatLocalDateInput(tomorrow);
                   })()}
                   onChange={(e) =>
                     setStudio((s) => ({
                       ...s,
                       deactivateAt: e.target.value
-                        ? new Date(e.target.value).toISOString()
+                        ? getLocalDateTime(e.target.value).toISOString()
                         : null,
                     }))
                   }
@@ -423,7 +431,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
               </div>
               <p className="text-xs text-muted-foreground">
                 {studio.deactivateAt
-                  ? `Will automatically go inactive on ${new Date(studio.deactivateAt).toLocaleString()}`
+                  ? `Will automatically deactivate at 12:00 AM on ${new Date(studio.deactivateAt).toLocaleDateString()}`
                   : "Leave blank to keep the studio active indefinitely"}
               </p>
             </div>
