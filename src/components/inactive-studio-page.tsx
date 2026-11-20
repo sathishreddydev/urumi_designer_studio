@@ -8,15 +8,16 @@ interface Branding {
   logoUrl: string;
 }
 
-export function InactiveStudioPage() {
-  const [branding, setBranding] = useState<Branding | null>(null);
+export function InactiveStudioPage({ branding: initialBranding }: { branding?: Branding }) {
+  const [branding, setBranding] = useState<Branding | null>(initialBranding ?? null);
 
   useEffect(() => {
+    if (initialBranding) return;
     fetch("/api/tenant/branding", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data?.studio) setBranding(data.studio); })
       .catch(() => {});
-  }, []);
+  }, [initialBranding]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">

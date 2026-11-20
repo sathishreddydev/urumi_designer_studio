@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { normalizeDomain } from "@/lib/tenant-registry/domain";
-import { getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
-import { queryMaster } from "@/lib/tenant-registry/db";
+import { getStudioBranding } from "@/lib/tenant-registry/branding";
 
 export const runtime = "nodejs";
-
-interface BrandingRow {
-  name: string;
-  logo_url: string;
-  logo_data: Buffer | null;
-  active: boolean;
-}
 
 export async function GET(request: Request) {
   const host = request.headers.get("host");
@@ -26,24 +18,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { rows } = await queryMaster<BrandingRow>(
-      "SELECT name, logo_url, logo_data, active FROM tenant_registry_studios WHERE domain = $1 LIMIT 1",
-      [domain]
-    );
-    if (!rows[0]) {
+    const studio = await getStudioBranding(domain);
+    if (!studio) {
       return NextResponse.json({ studio: null }, {
         headers: { "Cache-Control": "no-store" },
       });
     }
 
     return NextResponse.json(
-      {
-        studio: {
-          name: rows[0].name,
-          logoUrl: getStudioLogoUrl(rows[0].logo_url, rows[0].logo_data),
-          active: rows[0].active,
-        },
-      },
+      { studio },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
