@@ -2,9 +2,9 @@ import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { queryMaster } from "@/lib/tenant-registry/db";
 import { createHash } from "crypto";
+import { SESSION_DURATION_SECONDS } from "@/lib/session-config";
 
 export const OWNER_COOKIE_NAME = "owner-token";
-const OWNER_SESSION_SECONDS = 8 * 60 * 60;
 
 interface OwnerRow {
   email: string;
@@ -38,7 +38,7 @@ export async function createOwnerToken(email: string): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(email)
     .setIssuedAt()
-    .setExpirationTime(`${OWNER_SESSION_SECONDS}s`)
+    .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .sign(getJwtSecret());
 }
 
@@ -97,7 +97,7 @@ export function ownerCookieOptions() {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
-    maxAge: OWNER_SESSION_SECONDS,
+    maxAge: SESSION_DURATION_SECONDS,
     path: "/",
   };
 }

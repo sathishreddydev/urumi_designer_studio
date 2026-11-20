@@ -5,6 +5,7 @@ import { db } from "./db";
 import { customers, sessions } from "./db/schema";
 import { generatePrefixedId } from "./id";
 import { getTenantContext } from "./tenant-registry/context";
+import { SESSION_DURATION_SECONDS } from "./session-config";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required");
@@ -25,7 +26,7 @@ export interface SessionUser {
 export async function createToken(user: SessionUser, sessionId: string): Promise<string> {
   return new SignJWT({ user, sessionId, tenantId: getTenantContext().id })
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("7d")
+    .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .setIssuedAt()
     .sign(JWT_SECRET);
 }
@@ -62,7 +63,7 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
 
 export async function createSession(user: SessionUser, request: Request) {
   const sessionId = generatePrefixedId("ses");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000);
   const userAgent = request.headers.get("user-agent") || "Unknown browser";
   const forwardedFor = request.headers.get("x-forwarded-for");
   await db.insert(sessions).values({
