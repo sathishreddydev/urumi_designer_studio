@@ -11,6 +11,13 @@ import { queryMaster } from "@/lib/tenant-registry/db";
 const inter = Inter({ subsets: ["latin"] });
 const defaultStudioName = "urumi by mounika";
 
+interface StudioMetadataRow {
+  name: string;
+  logo_url: string;
+  logo_data: Buffer | null;
+  favicon_data: Buffer | null;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const host = (await headers()).get("host");
   if (!host) {
@@ -24,18 +31,20 @@ export async function generateMetadata(): Promise<Metadata> {
     return { title: defaultStudioName };
   }
 
-  const { rows } = await queryMaster<{
-    name: string;
-    logo_url: string;
-    logo_data: Buffer | null;
-    favicon_data: Buffer | null;
-  }>(
-    `SELECT name, logo_url, logo_data, favicon_data
-     FROM tenant_registry_studios
-     WHERE domain = $1
-     LIMIT 1`,
-    [domain]
-  );
+  let rows: StudioMetadataRow[];
+  try {
+    ({ rows } = await queryMaster<StudioMetadataRow>(
+      `SELECT name, logo_url, logo_data, favicon_data
+       FROM tenant_registry_studios
+       WHERE domain = $1
+       LIMIT 1`,
+      [domain]
+    ));
+  } catch (error) {
+    console.warn("Could not load studio metadata; using the default title:", error);
+    return { title: defaultStudioName };
+  }
+
   const studioName = rows[0]?.name || defaultStudioName;
   const studioLogo = rows[0]
     ? getStudioLogoUrl(rows[0].logo_url, rows[0].logo_data)

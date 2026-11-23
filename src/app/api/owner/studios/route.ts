@@ -5,6 +5,8 @@ import { normalizeCloudinaryUrl, normalizeDomain, normalizePostgresUrl } from "@
 import { queryMaster } from "@/lib/tenant-registry/db";
 import { getStudioFaviconUrl, getStudioLogoUrl } from "@/lib/tenant-registry/logo-data";
 import { isOwnerAuthenticated } from "@/lib/tenant-registry/owner-auth";
+import { decryptTenantSecret } from "@/lib/tenant-registry/crypto";
+import { Pool } from "pg";
 
 export const runtime = "nodejs";
 
@@ -21,17 +23,108 @@ interface StudioRow {
   created_at: Date;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (!(await isOwnerAuthenticated())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search")?.trim() ?? "";
+    const status = searchParams.get("status") ?? "all";
+    const health = searchParams.get("health") ?? "all";
+    const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("limit") ?? "10", 10) || 10));
+    const offset = (page - 1) * limit;
+
+    const statusCondition =
+      status === "active"
+        ? `AND active = true AND (deactivate_at IS NULL OR deactivate_at > NOW())`
+        : status === "inactive"
+          ? `AND active = false AND (deactivate_at IS NULL OR deactivate_at > NOW())`
+          : status === "expired"
+            ? `AND deactivate_at IS NOT NULL AND deactivate_at <= NOW()`
+            : "";
+    const searchParam = search ? `%${search}%` : "";
+
+    const baseWhere = `WHERE (
+      $1 = '' OR name ILIKE $1 OR domain ILIKE $1 OR COALESCE(notes, '') ILIKE $1
+    ) ${statusCondition}`;
+
+    if (health === "healthy" || health === "unhealthy") {
+      const { rows: matchingRows } = await queryMaster<StudioRow & { database_url_encrypted: string }>(
+        `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at,
+                database_url_encrypted
+         FROM tenant_registry_studios
+         ${baseWhere}
+         ORDER BY created_at DESC`,
+        [searchParam]
+      );
+
+      const healthResults = await Promise.all(
+        matchingRows.map(async (row) => {
+          try {
+            const dbUrl = normalizePostgresUrl(decryptTenantSecret(row.database_url_encrypted));
+            const pool = new Pool({
+              connectionString: dbUrl,
+              max: 1,
+              connectionTimeoutMillis: 5_000,
+              idleTimeoutMillis: 1_000,
+              ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
+            });
+            try {
+              await pool.query("SELECT 1");
+              return { row, healthy: true };
+            } catch {
+              return { row, healthy: false };
+            } finally {
+              await pool.end().catch(() => {});
+            }
+          } catch {
+            return { row, healthy: false };
+          }
+        })
+      );
+
+      const filteredRows = healthResults
+        .filter(({ healthy }) => health === "healthy" ? healthy : !healthy)
+        .map(({ row }) => row);
+      const paginatedRows = filteredRows.slice(offset, offset + limit);
+
+      return NextResponse.json({
+        studios: paginatedRows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          domain: row.domain,
+          logoUrl: getStudioLogoUrl(row.logo_url, row.logo_data),
+          active: row.active,
+          deactivateAt: row.deactivate_at?.toISOString() ?? null,
+          notes: row.notes,
+          createdAt: row.created_at,
+          healthStatus: health,
+        })),
+        total: filteredRows.length,
+      });
+    }
+
+    const countResult = await queryMaster<{ total: string }>(
+      `SELECT COUNT(*)::text AS total
+       FROM tenant_registry_studios
+       ${baseWhere}`,
+      [searchParam]
+    );
+
     const { rows } = await queryMaster<StudioRow>(
       `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at
        FROM tenant_registry_studios
-       ORDER BY created_at DESC`
+       ${baseWhere}
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [searchParam, limit, offset]
     );
+
+    const total = Number.parseInt(countResult.rows[0]?.total ?? "0", 10);
+
     return NextResponse.json({
       studios: rows.map((row) => ({
         id: row.id,
@@ -43,6 +136,7 @@ export async function GET() {
         notes: row.notes,
         createdAt: row.created_at,
       })),
+      total,
     });
   } catch (error) {
     console.error("Could not list registered studios:", error);
