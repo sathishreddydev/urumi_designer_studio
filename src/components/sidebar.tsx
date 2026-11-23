@@ -37,53 +37,53 @@ interface SidebarProps {
 
 const roleNavItems: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
   ADMIN: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Customers",        href: "/dashboard/customers",      icon: <Users className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Orders",           href: "/dashboard/orders",         icon: <ShoppingBag className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Appointments",     href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Customers", href: "/dashboard/customers", icon: <Users className="h-5 w-5" /> },
+    { label: "Consultations", href: "/dashboard/consultations", icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Orders", href: "/dashboard/orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
+    { label: "Appointments", href: "/dashboard/appointments", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
-    { label: "Employees",        href: "/dashboard/employees",      icon: <Briefcase className="h-5 w-5" /> },
-    { label: "Expenditures",     href: "/dashboard/expenditures",   icon: <Receipt className="h-5 w-5" /> },
-    { label: "Users",            href: "/dashboard/users",          icon: <UserCircle className="h-5 w-5" /> },
+    { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Employees", href: "/dashboard/employees", icon: <Briefcase className="h-5 w-5" /> },
+    { label: "Expenditures", href: "/dashboard/expenditures", icon: <Receipt className="h-5 w-5" /> },
+    { label: "Users", href: "/dashboard/users", icon: <UserCircle className="h-5 w-5" /> },
   ],
   // Store Manager: same as ADMIN but without Users, Employees, and Expenditures
   STORE_MANAGER: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Customers",        href: "/dashboard/customers",      icon: <Users className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Orders",           href: "/dashboard/orders",         icon: <ShoppingBag className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Appointments",     href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Customers", href: "/dashboard/customers", icon: <Users className="h-5 w-5" /> },
+    { label: "Consultations", href: "/dashboard/consultations", icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Orders", href: "/dashboard/orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
+    { label: "Appointments", href: "/dashboard/appointments", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   RECEPTION: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Customers",        href: "/dashboard/customers",      icon: <Users className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Orders",           href: "/dashboard/orders",         icon: <ShoppingBag className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Appointments",     href: "/dashboard/appointments",   icon: <Calendar className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Customers", href: "/dashboard/customers", icon: <Users className="h-5 w-5" /> },
+    { label: "Consultations", href: "/dashboard/consultations", icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Orders", href: "/dashboard/orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
+    { label: "Appointments", href: "/dashboard/appointments", icon: <Calendar className="h-5 w-5" /> },
   ],
   DESIGNER: [
-    { label: "Dashboard",        href: "/dashboard",                icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Consultations",    href: "/dashboard/consultations",  icon: <MessageSquare className="h-5 w-5" /> },
-    { label: "Production",       href: "/dashboard/production",     icon: <Scissors className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Consultations", href: "/dashboard/consultations", icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
     { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Outfits",          href: "/dashboard/outfits",        icon: <Shirt className="h-5 w-5" /> },
-    { label: "Blockers",         href: "/dashboard/blockers",       icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
+    { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
   ],
   MASTER: [
-    { label: "Dashboard",          href: "/dashboard",                   icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: "Production",         href: "/dashboard/production",        icon: <Scissors className="h-5 w-5" /> },
-    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam",  icon: <Sparkles className="h-5 w-5" /> },
-    { label: "Outfits",         href: "/dashboard/outfits",           icon: <Shirt className="h-5 w-5" /> },
-    { label: "Blockers",           href: "/dashboard/blockers",          icon: <AlertTriangle className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Production", href: "/dashboard/production", icon: <Scissors className="h-5 w-5" /> },
+    { label: "Stitching & Maggam", href: "/dashboard/stitching-maggam", icon: <Sparkles className="h-5 w-5" /> },
+    { label: "Outfits", href: "/dashboard/outfits", icon: <Shirt className="h-5 w-5" /> },
+    { label: "Blockers", href: "/dashboard/blockers", icon: <AlertTriangle className="h-5 w-5" /> },
   ],
 };
 
@@ -166,7 +166,7 @@ export function Sidebar({ role, userName, studioName, logoUrl, deactivateAt }: S
               <p className="truncate text-sm font-medium">{userName}</p>
               <div>
                 <p className="text-xs text-muted-foreground capitalize">{role.toLowerCase()}</p>
-                {deactivateAt && (
+                {role === "ADMIN" && deactivateAt && (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
                     Deactivates {new Date(deactivateAt).toLocaleDateString()}
                   </p>
