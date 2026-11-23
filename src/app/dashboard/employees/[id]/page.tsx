@@ -36,6 +36,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { currentEmploymentDate, isEmployedOnDate, type EmploymentPeriod } from "@/lib/employee-employment";
 import { calculateEmployeePeriodEarnings, calculateWorkedHours, DEFAULT_WORK_SCHEDULE, getRegularShiftHours, WorkScheduleSettings } from "@/lib/employee-hours";
 
@@ -158,25 +159,32 @@ export default function EmployeeDetailPage() {
       <EmploymentHistory employeeId={id} periods={emp.employmentPeriods ?? []} />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
-        {(["attendance", "salary", "advances"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "advances" ? "Advances" : t === "salary" ? "Salary" : "Attendance"}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as "attendance" | "salary" | "advances")}>
+        <TabsList
+          aria-label="Employee details"
+          className="h-auto w-full justify-start rounded-none border-b bg-transparent p-0"
+        >
+          {(["attendance", "salary", "advances"] as const).map((t) => (
+            <TabsTrigger
+              key={t}
+              value={t}
+              className="flex-1 rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground sm:flex-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+            >
+              {t === "advances" ? "Advances" : t === "salary" ? "Salary" : "Attendance"}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {tab === "attendance" && <AttendanceTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} employmentPeriods={emp.employmentPeriods ?? []} />}
-      {tab === "salary"     && <SalaryTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} />}
-      {tab === "advances"   && <AdvancesTab employeeId={id} />}
+        <TabsContent value="attendance" className="mt-4">
+          <AttendanceTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} employmentPeriods={emp.employmentPeriods ?? []} />
+        </TabsContent>
+        <TabsContent value="salary" className="mt-4">
+          <SalaryTab employeeId={id} payCycle={emp.payCycle} salaryAmount={Number(emp.salaryAmount)} />
+        </TabsContent>
+        <TabsContent value="advances" className="mt-4">
+          <AdvancesTab employeeId={id} />
+        </TabsContent>
+      </Tabs>
 
       {/* Delete confirm */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

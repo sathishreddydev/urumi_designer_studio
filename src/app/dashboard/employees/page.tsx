@@ -11,6 +11,7 @@ import { StaffTab } from "@/components/employees/staff-tab";
 import { AttendanceTab } from "@/components/employees/attendance-tab";
 import { SalaryTab } from "@/components/employees/salary-tab";
 import { AdvancesTab } from "@/components/employees/advances-tab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -112,64 +113,35 @@ export default function EmployeesPage() {
         </Link>
       </div>
 
-      <div role="tablist" aria-label="Employee management" className="flex gap-1 border-b">
-        {tabs.map((t, index) => (
-          <button
-            key={t}
-            id={`employee-tab-${t}`}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            aria-controls={`employee-panel-${t}`}
-            tabIndex={tab === t ? 0 : -1}
-            onClick={() => selectTab(t)}
-            onKeyDown={(event) => {
-              const nextIndex = event.key === "ArrowRight"
-                ? (index + 1) % tabs.length
-                : event.key === "ArrowLeft"
-                ? (index - 1 + tabs.length) % tabs.length
-                : event.key === "Home"
-                ? 0
-                : event.key === "End"
-                ? tabs.length - 1
-                : -1;
-              if (nextIndex >= 0) {
-                event.preventDefault();
-                const nextTab = tabs[nextIndex];
-                selectTab(nextTab);
-                document.getElementById(`employee-tab-${nextTab}`)?.focus();
-              }
-            }}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tabLabels[t]}
-          </button>
-        ))}
-      </div>
-
-      {tabs.map((t) => (
-        <div
-          key={t}
-          id={`employee-panel-${t}`}
-          role="tabpanel"
-          aria-labelledby={`employee-tab-${t}`}
-          hidden={tab !== t}
-          tabIndex={0}
+      <Tabs value={tab} onValueChange={(value) => selectTab(value as typeof tabs[number])}>
+        <TabsList
+          aria-label="Employee management"
+          className="h-auto w-full justify-start rounded-none border-b bg-transparent p-0"
         >
-          {visitedTabs.has(t) && (
-            <>
-              {t === "staff" && <StaffTab />}
-              {t === "attendance" && <AttendanceTab isAdmin={authData.role === "ADMIN"} />}
-              {t === "salary" && <SalaryTab />}
-              {t === "advances" && <AdvancesTab />}
-            </>
-          )}
-        </div>
-      ))}
+          {tabs.map((t) => (
+            <TabsTrigger
+              key={t}
+              value={t}
+              className="flex-1 rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground sm:flex-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+            >
+              {tabLabels[t]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {tabs.map((t) => (
+          <TabsContent key={t} value={t} className="mt-4">
+            {visitedTabs.has(t) && (
+              <>
+                {t === "staff" && <StaffTab />}
+                {t === "attendance" && <AttendanceTab isAdmin={authData.role === "ADMIN"} />}
+                {t === "salary" && <SalaryTab />}
+                {t === "advances" && <AdvancesTab />}
+              </>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }
