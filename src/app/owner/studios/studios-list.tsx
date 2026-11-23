@@ -90,15 +90,6 @@ export function StudiosList() {
   const [adminError, setAdminError] = useState("");
   const [adminSuccess, setAdminSuccess] = useState("");
 
-  // Owner password state
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState("");
-
   useEffect(() => {
     fetch("/api/owner/studios", { cache: "no-store" })
       .then(async (response) => {
@@ -295,75 +286,16 @@ export function StudiosList() {
     }
   }
 
-  async function handleLogout() {
-    await fetch("/api/owner/auth/logout", { method: "POST" });
-    router.replace("/owner/login");
-    router.refresh();
-  }
-
-  async function handlePasswordChange(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPasswordError("");
-    setPasswordSuccess("");
-    if (newPassword !== confirmNewPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-    if (newPassword.length < 8 || newPassword.length > 128) {
-      setPasswordError("New password must be between 8 and 128 characters");
-      return;
-    }
-
-    setPasswordSaving(true);
-    try {
-      const response = await fetch("/api/owner/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const result = await readApiResponse(response);
-      if (response.status === 401) {
-        router.replace("/owner/login");
-        return;
-      }
-      if (!response.ok) throw new Error(result.error || "Could not change password");
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-      setPasswordSuccess("Owner password changed successfully.");
-      window.dispatchEvent(new Event("owner-session-renewed"));
-    } catch (changeError) {
-      setPasswordError(changeError instanceof Error ? changeError.message : "Could not change password");
-    } finally {
-      setPasswordSaving(false);
-    }
-  }
-
   return (
-    <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 p-4 sm:p-8">
+    <main className="w-full space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Studios</h1>
           <p className="text-sm text-muted-foreground">Manage registered studio domains and settings.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <Link href="/owner/newStudio">Add studio</Link>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setPasswordDialogOpen(true);
-              setPasswordError("");
-              setPasswordSuccess("");
-            }}
-          >
-            Change password
-          </Button>
-          <Button type="button" variant="outline" onClick={handleLogout}>Sign out</Button>
-        </div>
+        <Button asChild>
+          <Link href="/owner/newStudio">Add studio</Link>
+        </Button>
       </header>
 
       {/* <OwnerSessionExpiryWarning /> */}
@@ -553,98 +485,6 @@ export function StudiosList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog
-        open={passwordDialogOpen}
-        onOpenChange={(open) => {
-          if (!passwordSaving) {
-            setPasswordDialogOpen(open);
-            if (!open) {
-              setCurrentPassword("");
-              setNewPassword("");
-              setConfirmNewPassword("");
-              setPasswordError("");
-              setPasswordSuccess("");
-            }
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Change owner password</DialogTitle>
-            <DialogDescription>
-              Enter your current password and choose a new password of 8 to 128 characters.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="owner-current-password">Current password</Label>
-              <Input
-                id="owner-current-password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                disabled={passwordSaving}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="owner-new-password">New password</Label>
-              <Input
-                id="owner-new-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={128}
-                required
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                disabled={passwordSaving}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="owner-confirm-password">Confirm new password</Label>
-              <Input
-                id="owner-confirm-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={128}
-                required
-                value={confirmNewPassword}
-                onChange={(event) => setConfirmNewPassword(event.target.value)}
-                disabled={passwordSaving}
-              />
-            </div>
-            {passwordError && <p role="alert" className="text-sm text-destructive">{passwordError}</p>}
-            {passwordSuccess && <p role="status" className="text-sm text-green-700 dark:text-green-400">{passwordSuccess}</p>}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={passwordSaving}
-                onClick={() => {
-                  setPasswordDialogOpen(false);
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmNewPassword("");
-                  setPasswordError("");
-                  setPasswordSuccess("");
-                }}
-              >
-                {passwordSuccess ? "Close" : "Cancel"}
-              </Button>
-              {!passwordSuccess && (
-                <Button type="submit" disabled={passwordSaving}>
-                  {passwordSaving ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
-                  ) : "Change password"}
-                </Button>
-              )}
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
       {/* ── Admin credentials dialog ── */}
       <Dialog
         open={adminTarget !== null}

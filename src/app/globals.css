@@ -76,6 +76,12 @@
     min-width: 0;
   }
 
+  /* Keep every button visually pill-shaped, including native buttons. */
+  button,
+  [role="button"] {
+    border-radius: 9999px !important;
+  }
+
   /* Ensure buttons, badges, and text truncate properly on small screens */
   button, a, p, span, h1, h2, h3, h4, h5, h6 {
     word-break: break-word;

@@ -32,6 +32,7 @@ interface SidebarProps {
   userName: string;
   studioName: string;
   logoUrl: string;
+  deactivateAt: string | null;
 }
 
 const roleNavItems: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
@@ -86,7 +87,7 @@ const roleNavItems: Record<string, { label: string; href: string; icon: React.Re
   ],
 };
 
-export function Sidebar({ role, userName, studioName, logoUrl }: SidebarProps) {
+export function Sidebar({ role, userName, studioName, logoUrl, deactivateAt }: SidebarProps) {
   const pathname = usePathname();
   const navItems = roleNavItems[role] || [];
   const [open, setOpen] = useState(false);
@@ -163,7 +164,14 @@ export function Sidebar({ role, userName, studioName, logoUrl }: SidebarProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{userName}</p>
-              <p className="text-xs text-muted-foreground capitalize">{role.toLowerCase()}</p>
+              <div>
+                <p className="text-xs text-muted-foreground capitalize">{role.toLowerCase()}</p>
+                {deactivateAt && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Deactivates {new Date(deactivateAt).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-1 mt-1">

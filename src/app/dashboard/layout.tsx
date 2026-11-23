@@ -29,6 +29,7 @@ export default async function DashboardLayout({
             userName={session.name}
             studioName={tenant.name}
             logoUrl={tenant.logoUrl}
+            deactivateAt={tenant.deactivateAt}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden font-sans text-sm leading-5 pt-14 lg:pt-0">
             <RealtimeProvider>

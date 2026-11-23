@@ -6,6 +6,7 @@ export interface TenantContext {
   name: string;
   domain: string;
   logoUrl: string;
+  deactivateAt: string | null;
   db: TenantDatabase;
   cloudinary: {
     cloudName: string;

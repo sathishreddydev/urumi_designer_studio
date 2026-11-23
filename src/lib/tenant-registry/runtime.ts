@@ -74,6 +74,7 @@ async function resolveTenantContext(host: string | null): Promise<TenantContext>
     name: studio.name,
     domain: studio.domain,
     logoUrl: getStudioLogoUrl(studio.logo_url, studio.logo_data),
+    deactivateAt: studio.deactivate_at ? studio.deactivate_at.toISOString() : null,
     db: getTenantDatabase(studio.id, databaseUrl),
     cloudinary: {
       cloudName: cloudinaryUrl.hostname,

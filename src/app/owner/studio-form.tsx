@@ -292,7 +292,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex min-h-64 items-center justify-center">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading studio…</span>
@@ -309,7 +309,7 @@ export function StudioForm({ studioId }: StudioFormProps) {
       : studio.faviconUrl || logoPreview || studio.logoUrl || null);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-2xl space-y-6 p-4 sm:p-8">
+    <main className="mx-auto w-full max-w-2xl space-y-6">
       {/* Header */}
       <header className="space-y-1">
         <Link href="/owner" className="text-xs text-muted-foreground hover:underline">
