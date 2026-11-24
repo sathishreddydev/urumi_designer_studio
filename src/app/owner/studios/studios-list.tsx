@@ -39,6 +39,7 @@ interface Studio {
   deactivateAt: string | null;
   notes: string;
   healthStatus?: "healthy" | "unhealthy";
+  storageBytes?: number | null;
 }
 
 interface ApiResponse {
@@ -48,10 +49,19 @@ interface ApiResponse {
   studio?: Studio;
   healthy?: boolean;
   latencyMs?: number;
+  storageBytes?: number | null;
 }
 
 type HealthStatus = "checking" | "healthy" | "unhealthy";
 const STUDIO_PAGE_LIMIT = 10;
+const STORAGE_WARNING_BYTES = 900_000_000;
+const STORAGE_LIMIT_BYTES = 1_000_000_000;
+
+function formatStorage(bytes: number): string {
+  return bytes >= STORAGE_LIMIT_BYTES
+    ? `${(bytes / STORAGE_LIMIT_BYTES).toFixed(2)} GB`
+    : `${(bytes / 1_000_000).toFixed(bytes >= 100_000_000 ? 0 : 2)} MB`;
+}
 
 async function readApiResponse(response: Response): Promise<ApiResponse> {
   const body = await response.text();
@@ -156,7 +166,7 @@ export function StudiosList() {
               }
               return next;
             });
-            const unchecked = result.studios.filter((studio) => !studio.healthStatus);
+            const unchecked = result.studios.filter((studio) => studio.storageBytes == null);
             if (unchecked.length > 0) void checkStudioHealth(unchecked);
           }
         })
@@ -212,8 +222,18 @@ export function StudiosList() {
             ...current,
             [studio.id]: response.ok && result.healthy ? "healthy" : "unhealthy",
           }));
+          setStudios((current) =>
+            current.map((item) =>
+              item.id === studio.id
+                ? { ...item, storageBytes: response.ok ? result.storageBytes ?? null : null }
+                : item
+            )
+          );
         } catch {
           setHealthStatuses((current) => ({ ...current, [studio.id]: "unhealthy" }));
+          setStudios((current) =>
+            current.map((item) => item.id === studio.id ? { ...item, storageBytes: null } : item)
+          );
         }
       }
     };
@@ -521,6 +541,27 @@ export function StudiosList() {
                         : health === "healthy"
                           ? "Database connected"
                           : "Database unreachable"}
+                    </p>
+                    <p className={`mt-1 flex items-center gap-1.5 text-sm ${
+                      studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
+                        ? "text-destructive"
+                        : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-muted-foreground"
+                    }`}>
+                      {studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES && (
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                      )}
+                      <span>
+                        Storage used: {studio.storageBytes == null
+                          ? studio.storageBytes === null ? "Unavailable" : "Checking…"
+                          : `${formatStorage(studio.storageBytes)} / 1 GB`}
+                      </span>
+                      {studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
+                        ? <span className="font-medium">Limit reached</span>
+                        : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
+                          ? <span className="font-medium">Near limit</span>
+                          : null}
                     </p>
                     {(studio.notes || studio.deactivateAt) && (
                       <div className="mt-2 space-y-1">

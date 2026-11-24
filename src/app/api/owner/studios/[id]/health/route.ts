@@ -46,9 +46,15 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     const start = Date.now();
     try {
-      await pool.query("SELECT 1");
+      const { rows: storageRows } = await pool.query<{ storage_bytes: string }>(
+        "SELECT pg_database_size(current_database())::text AS storage_bytes"
+      );
       const latencyMs = Date.now() - start;
-      return NextResponse.json({ healthy: true, latencyMs });
+      return NextResponse.json({
+        healthy: true,
+        latencyMs,
+        storageBytes: Number(storageRows[0].storage_bytes),
+      });
     } catch (err) {
       return NextResponse.json({
         healthy: false,

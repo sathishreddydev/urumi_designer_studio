@@ -73,26 +73,28 @@ export async function GET(request: Request) {
               ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
             });
             try {
-              await pool.query("SELECT 1");
-              return { row, healthy: true };
+              const { rows } = await pool.query<{ storage_bytes: string }>(
+                "SELECT pg_database_size(current_database())::text AS storage_bytes"
+              );
+              return { row, healthy: true, storageBytes: Number(rows[0].storage_bytes) };
             } catch {
-              return { row, healthy: false };
+              return { row, healthy: false, storageBytes: null };
             } finally {
               await pool.end().catch(() => {});
             }
           } catch {
-            return { row, healthy: false };
+            return { row, healthy: false, storageBytes: null };
           }
         })
       );
 
       const filteredRows = healthResults
         .filter(({ healthy }) => health === "healthy" ? healthy : !healthy)
-        .map(({ row }) => row);
+        .map(({ row, storageBytes }) => ({ row, storageBytes }));
       const paginatedRows = filteredRows.slice(offset, offset + limit);
 
       return NextResponse.json({
-        studios: paginatedRows.map((row) => ({
+        studios: paginatedRows.map(({ row, storageBytes }) => ({
           id: row.id,
           name: row.name,
           domain: row.domain,
@@ -102,6 +104,7 @@ export async function GET(request: Request) {
           notes: row.notes,
           createdAt: row.created_at,
           healthStatus: health,
+          storageBytes,
         })),
         total: filteredRows.length,
       });
