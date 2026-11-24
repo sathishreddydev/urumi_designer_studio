@@ -3,23 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Loader2, CalendarClock, KeyRound, CheckCircle2, XCircle, AlertTriangle, Search, Store } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Plus,
+  Search,
+  Store,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/pagination";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OwnerSessionExpiryWarning } from "../session-expiry-warning";
 import { StudioFilters } from "./studio-filters";
 
 interface Studio {
@@ -48,7 +46,6 @@ interface ApiResponse {
   total?: number;
   studio?: Studio;
   healthy?: boolean;
-  latencyMs?: number;
   storageBytes?: number | null;
 }
 
@@ -84,7 +81,6 @@ export function StudiosList() {
   const [studios, setStudios] = useState<Studio[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [statusError, setStatusError] = useState("");
@@ -95,20 +91,12 @@ export function StudiosList() {
   const [healthFilter, setHealthFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [hasRegisteredStudios, setHasRegisteredStudios] = useState(false);
   const hasActiveFilters =
     search.trim() !== "" ||
     statusFilter !== "all" ||
     healthFilter !== "all";
 
-  // Delete state
-  const [deleteTarget, setDeleteTarget] = useState<Studio | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
-
-  // Admin credential state
   const [adminTarget, setAdminTarget] = useState<Studio | null>(null);
-  const [adminTab, setAdminTab] = useState<"set" | "update" | "delete">("set");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -127,7 +115,6 @@ export function StudiosList() {
         health: healthFilter,
       });
       if (!hasLoaded) setLoading(true);
-      setRefreshing(true);
       setError("");
 
       fetch(`/api/owner/studios?${params.toString()}`, { cache: "no-store" })
@@ -147,14 +134,6 @@ export function StudiosList() {
           if (result) {
             setStudios(result.studios);
             setTotal(result.total);
-            if (
-              page === 1 &&
-              search === "" &&
-              statusFilter === "all" &&
-              healthFilter === "all"
-            ) {
-              setHasRegisteredStudios(result.total > 0);
-            }
             setHealthStatuses((current) => {
               const next = { ...current };
               for (const studio of result.studios) {
@@ -175,7 +154,6 @@ export function StudiosList() {
         })
         .finally(() => {
           setLoading(false);
-          setRefreshing(false);
           setHasLoaded(true);
         });
     }, search ? 300 : 0);
@@ -281,34 +259,8 @@ export function StudiosList() {
     }
   }
 
-  async function handleDeleteConfirm() {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    setDeleteError("");
-
-    try {
-      const response = await fetch(
-        `/api/owner/studios/${encodeURIComponent(deleteTarget.id)}`,
-        { method: "DELETE" }
-      );
-      if (response.status === 401) { router.replace("/owner/login"); return; }
-      if (!response.ok) {
-        const result = await readApiResponse(response);
-        throw new Error(result.error || "Could not delete studio");
-      }
-
-      setStudios((current) => current.filter((s) => s.id !== deleteTarget.id));
-      setDeleteTarget(null);
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Could not delete studio");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   function openAdminDialog(studio: Studio) {
     setAdminTarget(studio);
-    setAdminTab("set");
     setAdminEmail("");
     setAdminName("");
     setAdminPassword("");
@@ -322,39 +274,26 @@ export function StudiosList() {
     setAdminError("");
     setAdminSuccess("");
 
-    if (adminTab !== "delete") {
-      if (adminPassword !== adminConfirmPassword) {
-        setAdminError("Passwords do not match");
-        return;
-      }
-      if (adminTab === "set" && adminPassword.length < 8) {
-        setAdminError("Password must be at least 8 characters");
-        return;
-      }
-      if (adminTab === "update" && adminPassword && adminPassword.length < 8) {
-        setAdminError("Password must be at least 8 characters");
-        return;
-      }
+    if (adminPassword !== adminConfirmPassword) {
+      setAdminError("Passwords do not match");
+      return;
+    }
+    if (adminPassword.length < 8) {
+      setAdminError("Password must be at least 8 characters");
+      return;
     }
 
     setAdminSaving(true);
     try {
       const url = `/api/owner/studios/${encodeURIComponent(adminTarget!.id)}/admin`;
-      let method = "POST";
-      let bodyObj: Record<string, string> = { email: adminEmail, name: adminName || "Admin", password: adminPassword };
-
-      if (adminTab === "update") {
-        method = "PATCH";
-        bodyObj = { email: adminEmail, name: adminName, password: adminPassword };
-      } else if (adminTab === "delete") {
-        method = "DELETE";
-        bodyObj = { email: adminEmail };
-      }
-
       const response = await fetch(url, {
-        method,
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyObj),
+        body: JSON.stringify({
+          email: adminEmail,
+          name: adminName || "Admin",
+          password: adminPassword,
+        }),
       });
       if (response.status === 401) { router.replace("/owner/login"); return; }
       const result = await response.json();
@@ -363,11 +302,7 @@ export function StudiosList() {
         return;
       }
 
-      if (adminTab === "delete") {
-        setAdminSuccess(`Admin account removed.`);
-      } else {
-        setAdminSuccess(`Admin account ${adminTab === "set" ? "set" : "updated"} for ${result.admin.email}`);
-      }
+      setAdminSuccess(`Admin account set for ${result.admin.email}`);
       setAdminPassword("");
       setAdminConfirmPassword("");
     } catch (err) {
@@ -379,38 +314,55 @@ export function StudiosList() {
 
   return (
     <main className="w-full space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Studios</h1>
-          <p className="text-sm text-muted-foreground">Manage registered studio domains and settings.</p>
+      <header className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold leading-tight sm:text-2xl">Studios</h1>
+          <p className="text-xs text-muted-foreground">{total} total</p>
         </div>
-        <Button asChild>
-          <Link href="/owner/newStudio">Add studio</Link>
-        </Button>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
+          <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search studios..."
+              className="h-9 rounded-full pl-9 sm:h-10 sm:rounded-md"
+              aria-label="Search studios"
+            />
+          </div>
+          <Button asChild className="h-9 w-9 shrink-0 rounded-full p-0 sm:h-10 sm:w-auto sm:rounded-md sm:px-4">
+            <Link href="/owner/newStudio" aria-label="Add studio" title="Add studio">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add studio</span>
+            </Link>
+          </Button>
+        </div>
       </header>
 
-      {/* <OwnerSessionExpiryWarning /> */}
-
-      {/* Global status errors */}
       {statusError && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
           {statusError}
         </p>
       )}
       <StudioFilters
-        search={search}
         statusFilter={statusFilter}
         healthFilter={healthFilter}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
+        hasActiveFilters={hasActiveFilters}
         onStatusFilterChange={(value) => {
           setStatusFilter(value);
           setPage(1);
         }}
         onHealthFilterChange={(value) => {
           setHealthFilter(value);
+          setPage(1);
+        }}
+        onClearFilters={() => {
+          setSearch("");
+          setStatusFilter("all");
+          setHealthFilter("all");
           setPage(1);
         }}
       />
@@ -520,49 +472,48 @@ export function StudiosList() {
                       </div>
                     </div>
 
-                    <p
-                      role="status"
-                      className={`mt-5 flex items-center gap-1.5 text-sm ${health === "healthy"
+                    <div role="status" className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                      <span className={`inline-flex items-center gap-1.5 ${health === "healthy"
                         ? "text-green-700 dark:text-green-400"
                         : health === "unhealthy"
                           ? "text-destructive"
                           : "text-muted-foreground"
-                        }`}
-                    >
-                      {health === "checking" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : health === "healthy" ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                      {health === "checking"
-                        ? "Checking database…"
-                        : health === "healthy"
-                          ? "Database connected"
-                          : "Database unreachable"}
-                    </p>
-                    <p className={`mt-1 flex items-center gap-1.5 text-sm ${
-                      studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
-                        ? "text-destructive"
-                        : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-muted-foreground"
-                    }`}>
-                      {studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES && (
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
-                      )}
-                      <span>
-                        Storage used: {studio.storageBytes == null
-                          ? studio.storageBytes === null ? "Unavailable" : "Checking…"
-                          : `${formatStorage(studio.storageBytes)} / 1 GB`}
+                      }`}>
+                        {health === "checking" ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : health === "healthy" ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        {health === "checking"
+                          ? "Checking database…"
+                          : health === "healthy"
+                            ? "Database connected"
+                            : "Database unreachable"}
                       </span>
-                      {studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
-                        ? <span className="font-medium">Limit reached</span>
-                        : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
-                          ? <span className="font-medium">Near limit</span>
-                          : null}
-                    </p>
+                      <span className={`inline-flex items-center gap-1.5 ${
+                        studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
+                          ? "text-destructive"
+                          : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-muted-foreground"
+                      }`}>
+                        {studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES && (
+                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                        )}
+                        <span>
+                          Storage used: {studio.storageBytes == null
+                            ? studio.storageBytes === null ? "Unavailable" : "Checking…"
+                            : `${formatStorage(studio.storageBytes)} / 1 GB`}
+                        </span>
+                        {studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
+                          ? <span className="font-medium">Limit reached</span>
+                          : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
+                            ? <span className="font-medium">Near limit</span>
+                            : null}
+                      </span>
+                    </div>
                     {(studio.notes || studio.deactivateAt) && (
                       <div className="mt-2 space-y-1">
                         {studio.notes && (
@@ -598,16 +549,6 @@ export function StudiosList() {
                         >
                           Set Admin
                         </Button>
-                        {/* <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busy}
-                          className="h-8 w-8 px-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => { setDeleteError(""); setDeleteTarget(studio); }}
-                          aria-label={`Delete ${studio.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button> */}
                       </div>
                     </div>
                   </li>
@@ -624,53 +565,6 @@ export function StudiosList() {
         )}
       </div>
 
-      {/* ── Delete confirmation dialog ── */}
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete studio?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>
-                  This will permanently delete{" "}
-                  <span className="font-semibold text-foreground">{deleteTarget?.name}</span>{" "}
-                  (<span className="font-mono text-xs">{deleteTarget?.domain}</span>).
-                </p>
-                <p>
-                  The studio's database and Cloudinary credentials stored in this registry will be
-                  removed. The actual database and its data are not affected.
-                </p>
-                <p className="font-medium text-destructive">This cannot be undone.</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {deleteError && (
-            <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {deleteError}
-            </p>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); handleDeleteConfirm(); }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</>
-              ) : (
-                "Delete studio"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      {/* ── Admin credentials dialog ── */}
       <Dialog
         open={adminTarget !== null}
         onOpenChange={(open) => { if (!open && !adminSaving) setAdminTarget(null); }}
@@ -687,27 +581,7 @@ export function StudiosList() {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Tab switcher */}
-          {/* <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
-            {(["set", "update", "delete"] as const).filter((tab) => tab === "set").map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => { setAdminTab(tab); setAdminError(""); setAdminSuccess(""); setAdminPassword(""); setAdminConfirmPassword(""); }}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  adminTab === tab
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "set" ? "Set / Create" : tab === "update" ? "Update" : "Remove"}
-              </button>
-            ))}
-          </div> */}
-
           <form onSubmit={handleAdminSubmit} className="space-y-4">
-
-            {/* Email — always shown */}
             <div className="space-y-1.5">
               <Label htmlFor="admin-email" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Email <span className="text-destructive">*</span>
@@ -725,85 +599,58 @@ export function StudiosList() {
               />
             </div>
 
-            {/* Name — Set and Update only */}
-            {adminTab !== "delete" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Display name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="admin-name"
+                required
+                placeholder="e.g. Mounika"
+                value={adminName}
+                onChange={(e) => setAdminName(e.target.value)}
+                disabled={adminSaving}
+                className="h-9"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Password <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="admin-password"
+                type="password"
+                required
+                minLength={8}
+                placeholder="Min. 8 characters"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                disabled={adminSaving}
+                className="h-9"
+                autoComplete="new-password"
+              />
+            </div>
+            {adminPassword && (
               <div className="space-y-1.5">
-                <Label htmlFor="admin-name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Display name{adminTab === "set"
-                    ? <span className="text-destructive"> *</span>
-                    : <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>
-                  }
+                <Label htmlFor="admin-confirm-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Confirm password <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="admin-name"
-                  required={adminTab === "set"}
-                  placeholder={adminTab === "set" ? "e.g. Mounika" : "Leave blank to keep current"}
-                  value={adminName}
-                  onChange={(e) => setAdminName(e.target.value)}
+                  id="admin-confirm-password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="Repeat password"
+                  value={adminConfirmPassword}
+                  onChange={(e) => setAdminConfirmPassword(e.target.value)}
                   disabled={adminSaving}
                   className="h-9"
+                  autoComplete="new-password"
                 />
               </div>
             )}
 
-            {/* Password — Set and Update only */}
-            {adminTab !== "delete" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="admin-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Password{" "}
-                    {adminTab === "set"
-                      ? <span className="text-destructive">*</span>
-                      : <span className="ml-1 text-muted-foreground/60">(leave blank to keep current)</span>
-                    }
-                  </Label>
-                  <Input
-                    id="admin-password"
-                    type="password"
-                    required={adminTab === "set"}
-                    minLength={adminTab === "set" ? 8 : undefined}
-                    placeholder={adminTab === "set" ? "Min. 8 characters" : "Leave blank to keep current"}
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    disabled={adminSaving}
-                    className="h-9"
-                    autoComplete="new-password"
-                  />
-                </div>
-                {adminPassword && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="admin-confirm-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Confirm password <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="admin-confirm-password"
-                      type="password"
-                      required
-                      placeholder="Repeat password"
-                      value={adminConfirmPassword}
-                      onChange={(e) => setAdminConfirmPassword(e.target.value)}
-                      disabled={adminSaving}
-                      className="h-9"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Delete warning */}
-            {adminTab === "delete" && (
-              <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  This permanently deletes the ADMIN user with the given email from{" "}
-                  <span className="font-semibold">{adminTarget?.name}</span>'s database.
-                  This cannot be undone.
-                </span>
-              </div>
-            )}
-
-            {/* Feedback */}
             {adminError && (
               <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
                 <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -825,16 +672,12 @@ export function StudiosList() {
                 type="submit"
                 size="sm"
                 disabled={adminSaving}
-                className={`min-w-[110px] ${adminTab === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
+                className="min-w-[110px]"
               >
                 {adminSaving ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Working…</>
-                ) : adminTab === "set" ? (
-                  "Set credentials"
-                ) : adminTab === "update" ? (
-                  "Save changes"
                 ) : (
-                  "Remove admin"
+                  "Set credentials"
                 )}
               </Button>
             </div>
