@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { DayPicker } from "react-day-picker";
+import { DayButton, DayPicker, type DateRange, type DayButtonProps } from "react-day-picker";
 import { addYears, setMonth as setMonthFn, setYear as setYearFn } from "date-fns";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  onRangeDragSelect?: (range: DateRange) => void;
+};
 
 type CalendarView = "day" | "month" | "year";
 
@@ -106,9 +108,17 @@ function MonthGrid({ current, onSelect, onYearClick }: {
 
 // ─── Main Calendar ────────────────────────────────────────────────────────────
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  const { onRangeDragSelect, ...dayPickerProps } = props;
   const fromYear: number = (props as any).fromYear ?? 2000;
   const toYear: number   = (props as any).toYear   ?? new Date().getFullYear() + 5;
   const selected = (props as { selected?: unknown }).selected;
+  const rangeDragRef = React.useRef<{
+    pointerId: number;
+    start: Date;
+    current: Date;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = React.useRef(false);
 
   const [view, setView] = React.useState<CalendarView>("day");
   const [month, setMonth] = React.useState<Date>(() => {
@@ -121,6 +131,85 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   React.useEffect(() => {
     if (selected instanceof Date) setMonth(selected);
   }, [selected]);
+
+  const RangeDragDayButton = React.useCallback((buttonProps: DayButtonProps) => {
+    const { day, modifiers } = buttonProps;
+
+    function updatePointerDate(event: React.PointerEvent<HTMLButtonElement>) {
+      const drag = rangeDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId || modifiers.disabled) return;
+      drag.current = day.date;
+      drag.moved = drag.current.getTime() !== drag.start.getTime();
+    }
+
+    return (
+      <DayButton
+        {...buttonProps}
+        onPointerDown={(event) => {
+          buttonProps.onPointerDown?.(event);
+          if (event.button !== 0 || modifiers.disabled) return;
+          rangeDragRef.current = {
+            pointerId: event.pointerId,
+            start: day.date,
+            current: day.date,
+            moved: false,
+          };
+        }}
+        onPointerEnter={(event) => {
+          buttonProps.onPointerEnter?.(event);
+          updatePointerDate(event);
+        }}
+        onPointerUp={(event) => {
+          buttonProps.onPointerUp?.(event);
+          updatePointerDate(event);
+        }}
+        onClick={(event) => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          buttonProps.onClick?.(event);
+        }}
+      />
+    );
+  }, []);
+
+  React.useEffect(() => {
+    if (!onRangeDragSelect || props.mode !== "range") return;
+
+    function finishDrag(event: PointerEvent) {
+      const drag = rangeDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      rangeDragRef.current = null;
+
+      if (!drag.moved) return;
+
+      const [from, to] =
+        drag.start.getTime() <= drag.current.getTime()
+          ? [drag.start, drag.current]
+          : [drag.current, drag.start];
+      onRangeDragSelect({ from, to });
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    }
+
+    function cancelDrag(event: PointerEvent) {
+      if (rangeDragRef.current?.pointerId === event.pointerId) {
+        rangeDragRef.current = null;
+      }
+    }
+
+    window.addEventListener("pointerup", finishDrag);
+    window.addEventListener("pointercancel", cancelDrag);
+    return () => {
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", cancelDrag);
+    };
+  }, [onRangeDragSelect, props.mode]);
 
   function prevMonth() {
     if (view === "year")  { setMonth((m) => addYears(m, -12)); return; }
@@ -210,10 +299,14 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
             hidden: "invisible",
             ...classNames,
           }}
+          {...dayPickerProps}
           components={{
+            ...dayPickerProps.components,
             MonthCaption: () => caption,
+            ...(onRangeDragSelect && props.mode === "range"
+              ? { DayButton: RangeDragDayButton }
+              : {}),
           }}
-          {...props}
         />
       )}
 

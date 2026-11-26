@@ -131,7 +131,7 @@ export function DashboardReports() {
           </PopoverTrigger>
 
           <PopoverContent
-            className="w-auto max-w-[calc(100vw-2rem)] p-0"
+            className="w-auto max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl p-0"
             align="end"
           >
             <div className="p-2">
@@ -139,6 +139,10 @@ export function DashboardReports() {
                 mode="range"
                 selected={range}
                 defaultMonth={range.from ?? new Date()}
+                onRangeDragSelect={(r) => {
+                  setRange(r);
+                  setOpen(false);
+                }}
                 onSelect={(r) => {
                   if (r) setRange(r);
                   if (r?.from && r?.to) setOpen(false);
