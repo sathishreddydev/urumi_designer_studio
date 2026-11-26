@@ -3,30 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarClock,
-  CheckCircle2,
-  KeyRound,
+  Check,
+  Clock,
+  Copy,
   Loader2,
   Plus,
   Search,
   Store,
-  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/pagination";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { StudioFilters } from "./studio-filters";
+import { StudioAdminDialog } from "./studio-admin-dialog";
 
 interface Studio {
   id: string;
@@ -45,20 +39,37 @@ interface ApiResponse {
   studios?: Studio[];
   total?: number;
   studio?: Studio;
-  healthy?: boolean;
-  storageBytes?: number | null;
 }
 
 type HealthStatus = "checking" | "healthy" | "unhealthy";
+interface StudioListData {
+  studios: Studio[];
+  total: number;
+}
+
 const STUDIO_PAGE_LIMIT = 10;
 const STORAGE_WARNING_BYTES = 900_000_000;
 const STORAGE_LIMIT_BYTES = 1_000_000_000;
 
-function formatStorage(bytes: number): string {
-  return bytes >= STORAGE_LIMIT_BYTES
-    ? `${(bytes / STORAGE_LIMIT_BYTES).toFixed(2)} GB`
-    : `${(bytes / 1_000_000).toFixed(bytes >= 100_000_000 ? 0 : 2)} MB`;
-}
+const formatStorage = (bytes: number): string => {
+  if (bytes === 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  return mb < 1024 ? `${mb.toFixed(0)} MB` : `${(mb / 1024).toFixed(2)} GB`;
+};
+
+const formatExpiry = (deactivateAt: string, now: number): string => {
+  const target = new Date(deactivateAt).getTime();
+  const diffDays = Math.ceil((target - now) / 86400000);
+  const shortDate = new Date(deactivateAt).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+
+  if (diffDays <= 0) return `Expired ${shortDate}`;
+  if (diffDays === 1) return "Expires tomorrow";
+  if (diffDays <= 7) return `Expires in ${diffDays}d`;
+  return `Expires ${shortDate}`;
+};
 
 async function readApiResponse(response: Response): Promise<ApiResponse> {
   const body = await response.text();
@@ -78,88 +89,81 @@ async function readApiResponse(response: Response): Promise<ApiResponse> {
 
 export function StudiosList() {
   const router = useRouter();
-  const [studios, setStudios] = useState<Studio[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const queryClient = useQueryClient();
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [statusError, setStatusError] = useState("");
-  const [healthStatuses, setHealthStatuses] = useState<Record<string, HealthStatus>>({});
   const [now, setNow] = useState(Date.now());
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const hasActiveFilters =
     search.trim() !== "" ||
     statusFilter !== "all" ||
     healthFilter !== "all";
 
   const [adminTarget, setAdminTarget] = useState<Studio | null>(null);
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminName, setAdminName] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
-  const [adminSaving, setAdminSaving] = useState(false);
-  const [adminError, setAdminError] = useState("");
-  const [adminSuccess, setAdminSuccess] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyDomain = (id: string, domain: string) => {
+    navigator.clipboard.writeText(domain);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), search ? 300 : 0);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const studiosQueryKey = useMemo(
+    () => ["owner", "studios", page, debouncedSearch, statusFilter, healthFilter] as const,
+    [debouncedSearch, healthFilter, page, statusFilter]
+  );
+
+  const {
+    data: studioData,
+    isLoading: loading,
+    error: loadError,
+  } = useQuery<StudioListData, Error>({
+    queryKey: studiosQueryKey,
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams({
         page: String(page),
         limit: String(STUDIO_PAGE_LIMIT),
-        search,
-        status: statusFilter,
-        health: healthFilter,
       });
-      if (!hasLoaded) setLoading(true);
-      setError("");
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (healthFilter !== "all") params.set("health", healthFilter);
 
-      fetch(`/api/owner/studios?${params.toString()}`, { cache: "no-store" })
-        .then(async (response) => {
-          if (response.status === 401) {
-            router.replace("/owner/login");
-            return null;
-          }
-          const result = await readApiResponse(response);
-          if (!response.ok) throw new Error(result.error || "Could not load studios");
-          if (!Array.isArray(result.studios)) {
-            throw new Error("The studios API response did not contain a studio list.");
-          }
-          return { studios: result.studios, total: result.total ?? result.studios.length };
-        })
-        .then((result) => {
-          if (result) {
-            setStudios(result.studios);
-            setTotal(result.total);
-            setHealthStatuses((current) => {
-              const next = { ...current };
-              for (const studio of result.studios) {
-                if (studio.healthStatus) {
-                  next[studio.id] = studio.healthStatus;
-                } else {
-                  next[studio.id] = "checking";
-                }
-              }
-              return next;
-            });
-            const unchecked = result.studios.filter((studio) => studio.storageBytes == null);
-            if (unchecked.length > 0) void checkStudioHealth(unchecked);
-          }
-        })
-        .catch((loadError: unknown) => {
-          setError(loadError instanceof Error ? loadError.message : "Could not load studios");
-        })
-        .finally(() => {
-          setLoading(false);
-          setHasLoaded(true);
-        });
-    }, search ? 300 : 0);
+      const response = await fetch(`/api/owner/studios?${params.toString()}`, {
+        cache: "no-store",
+        signal,
+      });
+      if (response.status === 401) {
+        router.replace("/owner/login");
+        throw new Error("Authentication required");
+      }
 
-    return () => window.clearTimeout(timer);
-  }, [healthFilter, page, router, search, statusFilter]);
+      const result = await readApiResponse(response);
+      if (!response.ok) throw new Error(result.error || "Could not load studios");
+      if (!Array.isArray(result.studios)) {
+        throw new Error("The studios API response did not contain a studio list.");
+      }
+
+      return {
+        studios: result.studios,
+        total: result.total ?? result.studios.length,
+      };
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const studios = studioData?.studios ?? [];
+  const total = studioData?.total ?? studios.length;
+  const error = loadError?.message ?? "";
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -168,57 +172,17 @@ export function StudiosList() {
 
   const filteredStudios = useMemo(() => {
     return studios.filter((studio) => {
-      const health = healthStatuses[studio.id] ?? "checking";
+      const health = studio.healthStatus ?? "checking";
       if (healthFilter !== "all" && health !== healthFilter) return false;
       return true;
     });
-  }, [healthFilter, healthStatuses, studios]);
+  }, [healthFilter, studios]);
 
   const totalPages = Math.max(1, Math.ceil(total / STUDIO_PAGE_LIMIT));
-  const paginatedStudios = filteredStudios;
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-
-  async function checkStudioHealth(studioList: Studio[]) {
-    let nextIndex = 0;
-    const worker = async () => {
-      while (nextIndex < studioList.length) {
-        const studio = studioList[nextIndex++];
-        try {
-          const response = await fetch(
-            `/api/owner/studios/${encodeURIComponent(studio.id)}/health`,
-            { cache: "no-store" }
-          );
-          if (response.status === 401) {
-            router.replace("/owner/login");
-            return;
-          }
-          const result = await readApiResponse(response);
-          setHealthStatuses((current) => ({
-            ...current,
-            [studio.id]: response.ok && result.healthy ? "healthy" : "unhealthy",
-          }));
-          setStudios((current) =>
-            current.map((item) =>
-              item.id === studio.id
-                ? { ...item, storageBytes: response.ok ? result.storageBytes ?? null : null }
-                : item
-            )
-          );
-        } catch {
-          setHealthStatuses((current) => ({ ...current, [studio.id]: "unhealthy" }));
-          setStudios((current) =>
-            current.map((item) => item.id === studio.id ? { ...item, storageBytes: null } : item)
-          );
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(3, studioList.length) }, () => worker())
-    );
-  }
 
   async function handleActiveChange(studio: Studio, active: boolean) {
     setStatusError("");
@@ -239,12 +203,17 @@ export function StudiosList() {
       if (response.status === 401) { router.replace("/owner/login"); return; }
       if (!response.ok) throw new Error(result.error || "Could not update studio status");
 
-      setStudios((current) =>
-        current.map((item) =>
-          item.id === studio.id
-            ? { ...item, active, deactivateAt: result.studio?.deactivateAt ?? item.deactivateAt }
-            : item
-        )
+      queryClient.setQueryData<StudioListData>(studiosQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              studios: current.studios.map((item) =>
+                item.id === studio.id
+                  ? { ...item, active, deactivateAt: result.studio?.deactivateAt ?? item.deactivateAt }
+                  : item
+              ),
+            }
+          : current
       );
     } catch (updateError) {
       setStatusError(
@@ -256,59 +225,6 @@ export function StudiosList() {
         next.delete(studio.id);
         return next;
       });
-    }
-  }
-
-  function openAdminDialog(studio: Studio) {
-    setAdminTarget(studio);
-    setAdminEmail("");
-    setAdminName("");
-    setAdminPassword("");
-    setAdminConfirmPassword("");
-    setAdminError("");
-    setAdminSuccess("");
-  }
-
-  async function handleAdminSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setAdminError("");
-    setAdminSuccess("");
-
-    if (adminPassword !== adminConfirmPassword) {
-      setAdminError("Passwords do not match");
-      return;
-    }
-    if (adminPassword.length < 8) {
-      setAdminError("Password must be at least 8 characters");
-      return;
-    }
-
-    setAdminSaving(true);
-    try {
-      const url = `/api/owner/studios/${encodeURIComponent(adminTarget!.id)}/admin`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: adminEmail,
-          name: adminName || "Admin",
-          password: adminPassword,
-        }),
-      });
-      if (response.status === 401) { router.replace("/owner/login"); return; }
-      const result = await response.json();
-      if (!response.ok) {
-        setAdminError(result.error || "Operation failed");
-        return;
-      }
-
-      setAdminSuccess(`Admin account set for ${result.admin.email}`);
-      setAdminPassword("");
-      setAdminConfirmPassword("");
-    } catch (err) {
-      setAdminError(err instanceof Error ? err.message : "Operation failed");
-    } finally {
-      setAdminSaving(false);
     }
   }
 
@@ -424,132 +340,180 @@ export function StudiosList() {
           </div>
         ) : (
           <>
-            <ul className="space-y-3">
-              {paginatedStudios.map((studio) => {
+            <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950">
+              {filteredStudios.map((studio) => {
                 const busy = updatingIds.has(studio.id);
-                const expired = studio.deactivateAt !== null && new Date(studio.deactivateAt).getTime() <= now;
+                const expired =
+                  studio.deactivateAt !== null &&
+                  new Date(studio.deactivateAt).getTime() <= now;
                 const effectivelyActive = studio.active && !expired;
-                const health = healthStatuses[studio.id] ?? "checking";
-                const statusLabel = expired ? "Expired" : effectivelyActive ? "Active" : "Inactive";
+                const health: HealthStatus = studio.healthStatus ?? "checking";
+
+                const isLimit =
+                  studio.storageBytes != null &&
+                  studio.storageBytes >= STORAGE_LIMIT_BYTES;
+                const isWarning =
+                  studio.storageBytes != null &&
+                  !isLimit &&
+                  studio.storageBytes >= STORAGE_WARNING_BYTES;
+
                 return (
-                  <li key={studio.id} className="rounded-xl border bg-card px-4 py-4 sm:px-5">
-                    <div className="flex items-start justify-between gap-4">
+                  <li key={studio.id} className="p-4 sm:px-5">
+                    {/* TOP ROW: Identity + Active Toggle */}
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         {studio.logoUrl ? (
                           <img
                             src={studio.logoUrl}
                             alt=""
-                            className="h-12 w-12 shrink-0 rounded-xl bg-muted object-contain p-1"
+                            className="h-10 w-10 shrink-0 rounded-lg bg-neutral-100 object-contain p-1 dark:bg-neutral-900"
                           />
                         ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
-                            <Store className="h-6 w-6 text-muted-foreground" />
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 dark:bg-neutral-900">
+                            <Store className="h-5 w-5" />
                           </div>
                         )}
+
                         <div className="min-w-0">
-                          <p className="truncate text-lg font-semibold">{studio.name}</p>
-                          <p className="truncate text-sm text-muted-foreground">{studio.domain}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100 sm:text-base">
+                              {studio.name}
+                            </p>
+                            {expired && (
+                              <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                Expired
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                            <a
+                              href={`https://${studio.domain}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate hover:underline"
+                            >
+                              {studio.domain}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyDomain(studio.id, studio.domain)}
+                              className="rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                              title="Copy domain"
+                            >
+                              {copiedId === studio.id ? (
+                                <Check className="h-3 w-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                        <span
-                          className={`text-sm ${expired
-                            ? "text-amber-600 dark:text-amber-400"
-                            : effectivelyActive
-                              ? "text-green-700 dark:text-green-400"
-                              : "text-muted-foreground"
+
+                      {/* Switch */}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {busy && (
+                          <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                        )}
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={effectivelyActive}
+                          disabled={busy || expired}
+                          onClick={() => handleActiveChange(studio, !effectivelyActive)}
+                          aria-label={`Toggle ${studio.name}`}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${effectivelyActive
+                            ? "bg-neutral-900 dark:bg-white"
+                            : "bg-neutral-200 dark:bg-neutral-800"
                             }`}
                         >
-                          {statusLabel}
-                        </span>
-                        <Switch
-                          checked={effectivelyActive}
-                          disabled={busy || expired}
-                          onCheckedChange={(active) => handleActiveChange(studio, active)}
-                          aria-label={expired ? `${studio.name} is expired` : `${effectivelyActive ? "Deactivate" : "Activate"} ${studio.name}`}
-                        />
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 dark:bg-neutral-950 ${effectivelyActive ? "translate-x-5" : "translate-x-0"
+                              }`}
+                          />
+                        </button>
                       </div>
                     </div>
 
-                    <div role="status" className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                      <span className={`inline-flex items-center gap-1.5 ${health === "healthy"
-                        ? "text-green-700 dark:text-green-400"
-                        : health === "unhealthy"
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      }`}>
+                    {/* MIDDLE: Single Wrap Line for Health, Storage & Auto-Expiry */}
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-neutral-600 dark:text-neutral-400 sm:pl-[52px]">
+                      {/* DB Health */}
+                      <span className="inline-flex items-center gap-1.5">
                         {health === "checking" ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : health === "healthy" ? (
-                          <CheckCircle2 className="h-4 w-4" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
                         ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                        {health === "checking"
-                          ? "Checking database…"
-                          : health === "healthy"
-                            ? "Database connected"
-                            : "Database unreachable"}
-                      </span>
-                      <span className={`inline-flex items-center gap-1.5 ${
-                        studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
-                          ? "text-destructive"
-                          : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-muted-foreground"
-                      }`}>
-                        {studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES && (
-                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                          <span
+                            className={`h-2 w-2 rounded-full ${health === "healthy" ? "bg-emerald-500" : "bg-red-500"
+                              }`}
+                          />
                         )}
                         <span>
-                          Storage used: {studio.storageBytes == null
-                            ? studio.storageBytes === null ? "Unavailable" : "Checking…"
+                          {health === "healthy"
+                            ? "DB Connected"
+                            : health === "unhealthy"
+                              ? "DB Unreachable"
+                              : "Checking DB…"}
+                        </span>
+                      </span>
+
+                      {/* Storage */}
+                      <span
+                        className={`inline-flex items-center gap-1 ${isLimit
+                          ? "font-medium text-red-600 dark:text-red-400"
+                          : isWarning
+                            ? "font-medium text-amber-600 dark:text-amber-400"
+                            : ""
+                          }`}
+                      >
+                        {(isLimit || isWarning) && (
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        )}
+                        <span>
+                          {studio.storageBytes == null
+                            ? "Storage N/A"
                             : `${formatStorage(studio.storageBytes)} / 1 GB`}
                         </span>
-                        {studio.storageBytes != null && studio.storageBytes >= STORAGE_LIMIT_BYTES
-                          ? <span className="font-medium">Limit reached</span>
-                          : studio.storageBytes != null && studio.storageBytes >= STORAGE_WARNING_BYTES
-                            ? <span className="font-medium">Near limit</span>
-                            : null}
                       </span>
+
+                      {/* Auto-Expiry */}
+                      {studio.deactivateAt && (
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          <span>{formatExpiry(studio.deactivateAt, now)}</span>
+                        </span>
+                      )}
                     </div>
-                    {(studio.notes || studio.deactivateAt) && (
-                      <div className="mt-2 space-y-1">
-                        {studio.notes && (
-                          <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
-                            {studio.notes}
-                          </p>
-                        )}
-                        {studio.deactivateAt && (
-                          <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                            <CalendarClock className="h-3 w-3 shrink-0" />
-                            {expired
-                              ? `Auto-deactivated at 12:00 AM on ${new Date(studio.deactivateAt).toLocaleDateString()}`
-                              : `Auto-deactivates at 12:00 AM on ${new Date(studio.deactivateAt).toLocaleDateString()}`}
-                          </p>
-                        )}
-                      </div>
+
+                    {/* NOTES (If present) */}
+                    {studio.notes && (
+                      <p className="mt-2 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 sm:pl-[52px]">
+                        {studio.notes}
+                      </p>
                     )}
 
-                    <div className="mt-5 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-
-                      <div className="flex items-center justify-end gap-2 sm:ml-auto">
-                        <Button asChild variant="secondary" size="sm" disabled={busy}>
-                          <Link href={`/owner/editStudio/${encodeURIComponent(studio.id)}`}>
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => openAdminDialog(studio)}
-                          title="Set admin credentials for this studio"
-                        >
-                          Set Admin
-                        </Button>
-                      </div>
+                    {/* BOTTOM: Direct Action Buttons (Full width on mobile, compact inline on desktop) */}
+                    <div className="mt-3.5 flex items-center gap-2 sm:pl-[52px]">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 rounded-lg border-neutral-200 px-3 py-2 text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-300 sm:flex-initial sm:py-1.5"
+                      >
+                        <Link href={`/owner/editStudio/${encodeURIComponent(studio.id)}`}>
+                          Edit
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => setAdminTarget(studio)}
+                        className="flex-1 rounded-lg border-neutral-200 px-3 py-2 text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-300 sm:flex-initial sm:py-1.5"
+                      >
+                        Set Admin
+                      </Button>
                     </div>
                   </li>
                 );
@@ -565,125 +529,10 @@ export function StudiosList() {
         )}
       </div>
 
-      <Dialog
-        open={adminTarget !== null}
-        onOpenChange={(open) => { if (!open && !adminSaving) setAdminTarget(null); }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
-              Admin credentials — {adminTarget?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Manage the ADMIN account in{" "}
-              <span className="font-mono text-xs">{adminTarget?.domain}</span>'s database.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAdminSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-email" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Email <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="admin-email"
-                type="email"
-                required
-                placeholder="admin@studio.com"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                disabled={adminSaving}
-                className="h-9"
-                autoComplete="off"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Display name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="admin-name"
-                required
-                placeholder="e.g. Mounika"
-                value={adminName}
-                onChange={(e) => setAdminName(e.target.value)}
-                disabled={adminSaving}
-                className="h-9"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Password <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="admin-password"
-                type="password"
-                required
-                minLength={8}
-                placeholder="Min. 8 characters"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                disabled={adminSaving}
-                className="h-9"
-                autoComplete="new-password"
-              />
-            </div>
-            {adminPassword && (
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-confirm-password" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Confirm password <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="admin-confirm-password"
-                  type="password"
-                  required
-                  minLength={8}
-                  placeholder="Repeat password"
-                  value={adminConfirmPassword}
-                  onChange={(e) => setAdminConfirmPassword(e.target.value)}
-                  disabled={adminSaving}
-                  className="h-9"
-                  autoComplete="new-password"
-                />
-              </div>
-            )}
-
-            {adminError && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{adminError}</span>
-              </div>
-            )}
-            {adminSuccess && (
-              <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-3 py-2.5 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{adminSuccess}</span>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" size="sm" disabled={adminSaving} onClick={() => setAdminTarget(null)}>
-                {adminSuccess ? "Close" : "Cancel"}
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={adminSaving}
-                className="min-w-[110px]"
-              >
-                {adminSaving ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Working…</>
-                ) : (
-                  "Set credentials"
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <StudioAdminDialog
+        studio={adminTarget}
+        onClose={() => setAdminTarget(null)}
+      />
     </main>
   );
 }

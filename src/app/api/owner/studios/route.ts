@@ -23,6 +23,50 @@ interface StudioRow {
   created_at: Date;
 }
 
+type StudioHealthRow = StudioRow & { database_url_encrypted: string };
+type StudioHealthResult = {
+  row: StudioHealthRow;
+  healthy: boolean;
+  storageBytes: number | null;
+};
+
+async function checkStudioHealth(rows: StudioHealthRow[]): Promise<StudioHealthResult[]> {
+  const results = new Array<StudioHealthResult>(rows.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < rows.length) {
+      const index = nextIndex++;
+      const row = rows[index];
+      try {
+        const dbUrl = normalizePostgresUrl(decryptTenantSecret(row.database_url_encrypted));
+        const pool = new Pool({
+          connectionString: dbUrl,
+          max: 1,
+          connectionTimeoutMillis: 5_000,
+          idleTimeoutMillis: 1_000,
+          ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
+        });
+        try {
+          const { rows: storageRows } = await pool.query<{ storage_bytes: string }>(
+            "SELECT pg_database_size(current_database())::text AS storage_bytes"
+          );
+          results[index] = { row, healthy: true, storageBytes: Number(storageRows[0].storage_bytes) };
+        } catch {
+          results[index] = { row, healthy: false, storageBytes: null };
+        } finally {
+          await pool.end().catch(() => {});
+        }
+      } catch {
+        results[index] = { row, healthy: false, storageBytes: null };
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(3, rows.length) }, () => worker()));
+  return results;
+}
+
 export async function GET(request: Request) {
   try {
     if (!(await isOwnerAuthenticated())) {
@@ -51,8 +95,12 @@ export async function GET(request: Request) {
       $1 = '' OR name ILIKE $1 OR domain ILIKE $1 OR COALESCE(notes, '') ILIKE $1
     ) ${statusCondition}`;
 
-    if (health === "healthy" || health === "unhealthy") {
-      const { rows: matchingRows } = await queryMaster<StudioRow & { database_url_encrypted: string }>(
+    const filterByHealth = health === "healthy" || health === "unhealthy";
+    let healthResults: StudioHealthResult[];
+    let total: number;
+
+    if (filterByHealth) {
+      const result = await queryMaster<StudioHealthRow>(
         `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at,
                 database_url_encrypted
          FROM tenant_registry_studios
@@ -60,76 +108,36 @@ export async function GET(request: Request) {
          ORDER BY created_at DESC`,
         [searchParam]
       );
-
-      const healthResults = await Promise.all(
-        matchingRows.map(async (row) => {
-          try {
-            const dbUrl = normalizePostgresUrl(decryptTenantSecret(row.database_url_encrypted));
-            const pool = new Pool({
-              connectionString: dbUrl,
-              max: 1,
-              connectionTimeoutMillis: 5_000,
-              idleTimeoutMillis: 1_000,
-              ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
-            });
-            try {
-              const { rows } = await pool.query<{ storage_bytes: string }>(
-                "SELECT pg_database_size(current_database())::text AS storage_bytes"
-              );
-              return { row, healthy: true, storageBytes: Number(rows[0].storage_bytes) };
-            } catch {
-              return { row, healthy: false, storageBytes: null };
-            } finally {
-              await pool.end().catch(() => {});
-            }
-          } catch {
-            return { row, healthy: false, storageBytes: null };
-          }
-        })
+      const allHealthResults = await checkStudioHealth(result.rows);
+      const filteredRows = allHealthResults.filter(({ healthy }) =>
+        health === "healthy" ? healthy : !healthy
       );
-
-      const filteredRows = healthResults
-        .filter(({ healthy }) => health === "healthy" ? healthy : !healthy)
-        .map(({ row, storageBytes }) => ({ row, storageBytes }));
-      const paginatedRows = filteredRows.slice(offset, offset + limit);
-
-      return NextResponse.json({
-        studios: paginatedRows.map(({ row, storageBytes }) => ({
-          id: row.id,
-          name: row.name,
-          domain: row.domain,
-          logoUrl: getStudioLogoUrl(row.logo_url, row.logo_data),
-          active: row.active,
-          deactivateAt: row.deactivate_at?.toISOString() ?? null,
-          notes: row.notes,
-          createdAt: row.created_at,
-          healthStatus: health,
-          storageBytes,
-        })),
-        total: filteredRows.length,
-      });
+      total = filteredRows.length;
+      healthResults = filteredRows.slice(offset, offset + limit);
+    } else {
+      const [countResult, studioResult] = await Promise.all([
+        queryMaster<{ total: string }>(
+          `SELECT COUNT(*)::text AS total
+           FROM tenant_registry_studios
+           ${baseWhere}`,
+          [searchParam]
+        ),
+        queryMaster<StudioHealthRow>(
+          `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at,
+                  database_url_encrypted
+           FROM tenant_registry_studios
+           ${baseWhere}
+           ORDER BY created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [searchParam, limit, offset]
+        ),
+      ]);
+      total = Number.parseInt(countResult.rows[0]?.total ?? "0", 10);
+      healthResults = await checkStudioHealth(studioResult.rows);
     }
 
-    const countResult = await queryMaster<{ total: string }>(
-      `SELECT COUNT(*)::text AS total
-       FROM tenant_registry_studios
-       ${baseWhere}`,
-      [searchParam]
-    );
-
-    const { rows } = await queryMaster<StudioRow>(
-      `SELECT id, name, domain, logo_url, logo_data, active, deactivate_at, notes, created_at
-       FROM tenant_registry_studios
-       ${baseWhere}
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [searchParam, limit, offset]
-    );
-
-    const total = Number.parseInt(countResult.rows[0]?.total ?? "0", 10);
-
     return NextResponse.json({
-      studios: rows.map((row) => ({
+      studios: healthResults.map(({ row, healthy, storageBytes }) => ({
         id: row.id,
         name: row.name,
         domain: row.domain,
@@ -138,6 +146,8 @@ export async function GET(request: Request) {
         deactivateAt: row.deactivate_at?.toISOString() ?? null,
         notes: row.notes,
         createdAt: row.created_at,
+        healthStatus: healthy ? "healthy" : "unhealthy",
+        storageBytes,
       })),
       total,
     });
