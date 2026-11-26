@@ -181,6 +181,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
     if (!selectRange || props.mode !== "range") return;
 
     function finishDrag(event: PointerEvent) {
+      if (!selectRange) return;
+
       const drag = rangeDragRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
       rangeDragRef.current = null;
