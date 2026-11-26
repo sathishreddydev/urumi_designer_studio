@@ -298,7 +298,7 @@ export function OutfitFormFields({
       <Separator />
 
       {/* Priority toggle */}
-      <div className="space-y-1.5">
+      {/* <div className="space-y-1.5">
         <Label className="text-xs font-semibold">Priority</Label>
         <div className="flex gap-2">
           {PRIORITY_OPTIONS.map((opt) => (
@@ -317,7 +317,7 @@ export function OutfitFormFields({
             </button>
           ))}
         </div>
-      </div>
+      </div> */}
 
       <Separator />
 

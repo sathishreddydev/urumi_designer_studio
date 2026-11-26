@@ -180,7 +180,7 @@ export default function ProductionPage() {
           </Select>
         </div>
         {/* Priority pills */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Priority:</span>
           {PRIORITY_OPTIONS.filter((o) => o.value > 0).map((opt) => {
             const isActive = priorityFilter === String(opt.value);
@@ -196,7 +196,7 @@ export default function ProductionPage() {
               </button>
             );
           })}
-        </div>
+        </div> */}
       </div>
 
       {outfits.length === 0 ? (

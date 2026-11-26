@@ -1044,7 +1044,7 @@ export default function OutfitDetailPage() {
               <Separator />
 
               {/* Priority */}
-              <div className="flex justify-between items-center">
+              {/* <div className="flex justify-between items-center">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> Priority
                 </span>
@@ -1070,7 +1070,7 @@ export default function OutfitDetailPage() {
                     {getPriorityOption(outfit.priority ?? 0).label}
                   </span>
                 )}
-              </div>
+              </div> */}
             </div>
           </div>
 

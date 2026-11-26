@@ -287,7 +287,7 @@ export default function OutfitsPage() {
         {/* Pills row */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Priority pills */}
-          {PRIORITY_PILLS.map((pill) => {
+          {/* {PRIORITY_PILLS.map((pill) => {
             const isActive = priorityFilter === pill.value;
             return (
               <button
@@ -300,7 +300,7 @@ export default function OutfitsPage() {
                 {isActive && <X className="h-3 w-3 ml-0.5 opacity-70" />}
               </button>
             );
-          })}
+          })} */}
 
           {/* Separator dot */}
           <span className="text-muted-foreground/40 text-sm select-none">·</span>
