@@ -177,7 +177,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   }, []);
 
   React.useEffect(() => {
-    if (!onRangeDragSelect || props.mode !== "range") return;
+    const selectRange = onRangeDragSelect;
+    if (!selectRange || props.mode !== "range") return;
 
     function finishDrag(event: PointerEvent) {
       const drag = rangeDragRef.current;
@@ -190,7 +191,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         drag.start.getTime() <= drag.current.getTime()
           ? [drag.start, drag.current]
           : [drag.current, drag.start];
-      onRangeDragSelect({ from, to });
+      selectRange({ from, to });
       suppressClickRef.current = true;
       window.setTimeout(() => {
         suppressClickRef.current = false;
