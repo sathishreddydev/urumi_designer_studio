@@ -4,15 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   AlertTriangle,
-  CalendarClock,
   Check,
+  ChevronDown,
   Clock,
   Copy,
+  Ellipsis,
   Loader2,
+  Pencil,
   Plus,
   Search,
+  ShieldCheck,
   Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,6 +109,16 @@ export function StudiosList() {
 
   const [adminTarget, setAdminTarget] = useState<Studio | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedStudios, setExpandedStudios] = useState<Set<string>>(new Set());
+
+  const toggleStudioDetails = (id: string) => {
+    setExpandedStudios((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const copyDomain = (id: string, domain: string) => {
     navigator.clipboard.writeText(domain);
@@ -206,13 +220,13 @@ export function StudiosList() {
       queryClient.setQueryData<StudioListData>(studiosQueryKey, (current) =>
         current
           ? {
-              ...current,
-              studios: current.studios.map((item) =>
-                item.id === studio.id
-                  ? { ...item, active, deactivateAt: result.studio?.deactivateAt ?? item.deactivateAt }
-                  : item
-              ),
-            }
+            ...current,
+            studios: current.studios.map((item) =>
+              item.id === studio.id
+                ? { ...item, active, deactivateAt: result.studio?.deactivateAt ?? item.deactivateAt }
+                : item
+            ),
+          }
           : current
       );
     } catch (updateError) {
@@ -412,27 +426,100 @@ export function StudiosList() {
                       </div>
 
                       {/* Switch */}
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2 sm:hidden">
                         {busy && (
                           <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
                         )}
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={effectivelyActive}
+                        {/* Manual activation switch temporarily disabled.
+                        <Switch
+                          checked={effectivelyActive}
                           disabled={busy || expired}
-                          onClick={() => handleActiveChange(studio, !effectivelyActive)}
+                          onCheckedChange={(active) => handleActiveChange(studio, active)}
                           aria-label={`Toggle ${studio.name}`}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${effectivelyActive
-                            ? "bg-neutral-900 dark:bg-white"
-                            : "bg-neutral-200 dark:bg-neutral-800"
-                            }`}
+                        />
+                        */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-neutral-500"
+                          aria-label={`${expandedStudios.has(studio.id) ? "Hide" : "Show"} details for ${studio.name}`}
+                          aria-expanded={expandedStudios.has(studio.id)}
+                          aria-controls={expandedStudios.has(studio.id) ? `studio-notes-mobile-${studio.id}` : undefined}
+                          onClick={() => toggleStudioDetails(studio.id)}
                         >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 dark:bg-neutral-950 ${effectivelyActive ? "translate-x-5" : "translate-x-0"
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${expandedStudios.has(studio.id) ? "rotate-180" : ""
                               }`}
                           />
-                        </button>
+                        </Button>
+                      </div>
+
+                      {/* Desktop controls */}
+                      <div className="hidden shrink-0 items-center gap-1 sm:flex">
+                        {busy && (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin text-neutral-400" />
+                        )}
+                        {/* Manual activation switch temporarily disabled.
+                        <Switch
+                          checked={effectivelyActive}
+                          disabled={busy || expired}
+                          onCheckedChange={(active) => handleActiveChange(studio, active)}
+                          aria-label={`Toggle ${studio.name}`}
+                        />
+                        */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-neutral-500"
+                          aria-label={`${expandedStudios.has(studio.id) ? "Hide" : "Show"} details for ${studio.name}`}
+                          aria-expanded={expandedStudios.has(studio.id)}
+                          aria-controls={expandedStudios.has(studio.id) ? `studio-notes-${studio.id}` : undefined}
+                          onClick={() => toggleStudioDetails(studio.id)}
+                        >
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${expandedStudios.has(studio.id) ? "rotate-180" : ""
+                              }`}
+                          />
+                        </Button>
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-neutral-500"
+                              aria-label={`Actions for ${studio.name}`}
+                            >
+                              <Ellipsis className="h-5 w-5" />
+                            </Button>
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.Content
+                              align="end"
+                              sideOffset={8}
+                              className="z-50 min-w-52 rounded-xl border border-neutral-200 bg-white p-2 text-sm text-neutral-700 shadow-lg dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200"
+                            >
+                              <DropdownMenu.Item asChild>
+                                <Link
+                                  href={`/owner/editStudio/${encodeURIComponent(studio.id)}`}
+                                  className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 outline-none hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900"
+                                >
+                                  <Pencil className="h-4 w-4 text-neutral-500" />
+                                  Edit Studio
+                                </Link>
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item
+                                onSelect={() => setAdminTarget(studio)}
+                                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 outline-none hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900"
+                              >
+                                <ShieldCheck className="h-4 w-4 text-neutral-500" />
+                                Set Admin
+                              </DropdownMenu.Item>
+                            </DropdownMenu.Content>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
                       </div>
                     </div>
 
@@ -487,13 +574,26 @@ export function StudiosList() {
 
                     {/* NOTES (If present) */}
                     {studio.notes && (
-                      <p className="mt-2 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 sm:pl-[52px]">
+                      <p
+                        id={`studio-notes-mobile-${studio.id}`}
+                        className={`mt-2 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 sm:hidden ${expandedStudios.has(studio.id) ? "block" : "hidden"
+                          }`}
+                      >
                         {studio.notes}
                       </p>
                     )}
 
-                    {/* BOTTOM: Direct Action Buttons (Full width on mobile, compact inline on desktop) */}
-                    <div className="mt-3.5 flex items-center gap-2 sm:pl-[52px]">
+                    {expandedStudios.has(studio.id) && studio.notes && (
+                      <p
+                        id={`studio-notes-${studio.id}`}
+                        className="ml-16 mt-2 hidden whitespace-pre-wrap border-t border-neutral-100 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:block"
+                      >
+                        {studio.notes}
+                      </p>
+                    )}
+
+                    {/* Mobile direct action buttons */}
+                    <div className="mt-3.5 flex items-center gap-2 sm:hidden">
                       <Button
                         asChild
                         variant="outline"
