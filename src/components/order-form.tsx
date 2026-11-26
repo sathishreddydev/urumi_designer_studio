@@ -737,7 +737,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
                       <CalendarPicker
                         mode="single"
                         selected={trialDate}
@@ -770,7 +770,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
                       <CalendarPicker
                         mode="single"
                         selected={deliveryDate}

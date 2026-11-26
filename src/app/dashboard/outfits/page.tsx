@@ -234,7 +234,7 @@ export default function OutfitsPage() {
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
+                <PopoverContent align="start" className="w-auto overflow-hidden rounded-xl p-0">
                   <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
                 </PopoverContent>
               </Popover>
@@ -337,7 +337,7 @@ export default function OutfitsPage() {
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
+            <PopoverContent align="start" className="w-auto overflow-hidden rounded-xl p-0">
               <Calendar mode="single" selected={customDate} onSelect={(d) => handleCustomDate(d)} initialFocus />
             </PopoverContent>
           </Popover>

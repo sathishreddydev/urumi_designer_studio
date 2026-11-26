@@ -79,7 +79,7 @@ function SetDateButton({
           {date ? format(date, "dd MMM") : `Set ${label}`}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent align="start" className="w-auto overflow-hidden rounded-xl p-0">
         <CalendarPicker
           mode="single"
           selected={date}

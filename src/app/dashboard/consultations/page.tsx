@@ -213,7 +213,7 @@ function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSa
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
               <CalendarPicker mode="single" selected={consultationDate} onSelect={setConsultationDate} initialFocus />
             </PopoverContent>
           </Popover>
@@ -235,7 +235,7 @@ function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSa
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
               <CalendarPicker
                 mode="single"
                 selected={expectedTrialDate}
@@ -263,7 +263,7 @@ function NewConsultationForm({ onCancel, onSaved }: { onCancel: () => void; onSa
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
               <CalendarPicker
                 mode="single"
                 selected={expectedDeliveryDate}

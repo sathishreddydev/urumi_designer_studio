@@ -82,7 +82,7 @@ export function DashboardReports() {
               {formatRangeLabel(range)}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+          <PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="end">
             <div className="space-y-2 p-2">
               <Calendar
                 mode="range"
